@@ -1,0 +1,10 @@
+services:
+  docling:
+    image: quay.io/docling-project/docling-serve
+    container_name: docling
+    ports:
+      - "5001:5001"
+    environment:
+      DOCLING_SERVE_ENABLE_UI: "true"
+      DOCLING_DEVICE: "cpu"
+    restart: no

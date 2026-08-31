@@ -5,6 +5,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
+import org.entryPoint.model.Law;
+import org.entryPoint.model.LawResponse;
 import org.entryPoint.model.LawSumary;
 import org.entryPoint.model.RequestResult;
 
@@ -74,22 +76,35 @@ public class LawsSource {
   }
 
   private static void searcher(LawSumary law) throws Exception{
+    String url =
+        "https://api.v2.leismunicipais.com.br/v2/municipais/normas/"
+        + law.getId();
+
     HttpClient client = HttpClient.newHttpClient();
 
-    HttpRequest request = HttpRequest.newBuilder()
-        .uri(URI.create(law.getUrl().toString()))
+    HttpRequest request = HttpRequest.newBuilder()  
+        .uri(URI.create(url))
         .GET()
-        .header("User-Agent", "Mozilla/5.0")
+        .header("Accept", "application/json")
         .build();
 
     HttpResponse<String> response =
-        client.send(request, HttpResponse.BodyHandlers.ofString());
+        client.send(
+            request,
+            HttpResponse.BodyHandlers.ofString()
+        );
 
-    System.out.println(response.statusCode());
-    System.out.println(response.headers());
-    System.out.println(response.body().substring(
-        0,
-        Math.min(1000, response.body().length())
-    ));
+    System.out.println("Status: " + response.statusCode());
+
+    ObjectMapper mapper = new ObjectMapper();
+
+    LawResponse result =
+        mapper.readValue(response.body(), LawResponse.class);
+
+    Law norma = result.getData().getNorma();
+
+    System.out.println(norma.getTitulo());
+    System.out.println(norma.getEmenta());
+    System.out.println(norma.getIntegra());
   }
 }

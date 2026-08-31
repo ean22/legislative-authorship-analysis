@@ -2,24 +2,49 @@ package org.entryPoint.model;
 
 import java.net.URL;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class LawSumary {
-    private int scope;
-    private int year;
-    private String date;
-    private String summary;
-    private long id;
-    private int location;
-    private int number;
-    private String slug;
-    private int type;
-    private String typeWritten;
-    private String typeSlug;
-    private URL url;
+  @JsonProperty("ambito")
+  private int scope;
 
-    // getters e setters
+  @JsonProperty("ano")
+  private int year;
+
+  @JsonProperty("data")
+  private String date;
+
+  @JsonProperty("ementa")
+  private String summary;
+
+  @JsonProperty("id")
+  private long id;
+
+  @JsonProperty("local")
+  private int location;
+
+  @JsonProperty("numero")
+  private int number;
+
+  @JsonProperty("slug")
+  private String slug;
+
+  @JsonProperty("tipo")
+  private int type;
+
+  @JsonProperty("tipo_escrito")
+  private String typeWritten;
+
+  @JsonProperty("tipo_slug")
+  private String typeSlug;
+
+  @JsonProperty("url")
+  private URL url;
 }

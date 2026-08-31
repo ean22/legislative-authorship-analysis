@@ -14,21 +14,21 @@ public class Law {
     private String cidade;
     private String estado;
 
-    private String data_original;
-    private String data_publicacao;
+    private String dataOriginal;
+    private String dataPublicacao;
 
     private String ementa;
     private String integra;
 
     private int numero;
-    private String tipo_escrito;
-    private String tipo_slug;
+    private String tipoEscrito;
+    private String tipoSlug;
 
     private String titulo;
     private String slug;
     private String url;
 
-    private String entidade_nome;
-    private int local_id;
-    private String local_slug;
+    private String entidadeNome;
+    private int localId;
+    private String localSlug;
 }

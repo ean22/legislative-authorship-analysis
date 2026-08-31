@@ -1,9 +1,10 @@
-package org.entryPoint;
+package org.entryPoint.service;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.entryPoint.model.Law;
 import org.entryPoint.model.LawResponse;
@@ -13,6 +14,9 @@ import org.entryPoint.model.RequestResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class LawsSource {  
+  private static final DatabaseService database =
+    new DatabaseService();
+
   public static void access() {
 
     String url =
@@ -71,14 +75,15 @@ public class LawsSource {
 
       System.out.println("-------------------------");
 
-      searcher(law);
+      featchLaw(law);
+      delayAleatorio();
     }
   }
 
-  private static void searcher(LawSumary law) throws Exception{
+  private static void featchLaw (LawSumary lawSumary) throws Exception{
     String url =
         "https://api.v2.leismunicipais.com.br/v2/municipais/normas/"
-        + law.getId();
+        + lawSumary.getId();
 
     HttpClient client = HttpClient.newHttpClient();
 
@@ -90,21 +95,37 @@ public class LawsSource {
 
     HttpResponse<String> response =
         client.send(
-            request,
-            HttpResponse.BodyHandlers.ofString()
+          request,
+          HttpResponse.BodyHandlers.ofString()
         );
 
-    System.out.println("Status: " + response.statusCode());
+    if (response.statusCode() != 200) {
+      System.err.println(
+        "Erro ao buscar norma " +
+        lawSumary.getId() +
+        ": " +
+        response.statusCode()
+      );
+
+      return;
+    }
 
     ObjectMapper mapper = new ObjectMapper();
 
     LawResponse result =
         mapper.readValue(response.body(), LawResponse.class);
 
-    Law norma = result.getData().getNorma();
+    Law law = result.getData().getNorma();
 
-    System.out.println(norma.getTitulo());
-    System.out.println(norma.getEmenta());
-    System.out.println(norma.getIntegra());
+    database.save(law);
+
+    System.out.println(law.getTitulo());
+    System.out.println(law.getEmenta());
+    System.out.println(law.getIntegra());
+  }
+
+  private static void delayAleatorio() throws InterruptedException {
+    int segundos = ThreadLocalRandom.current().nextInt(5, 9);
+    Thread.sleep(segundos * 1000L);
   }
 }

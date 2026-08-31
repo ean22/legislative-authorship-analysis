@@ -16,6 +16,7 @@ dependencies {
     implementation 'org.json:json:20260814'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.20.0'
+    implementation 'org.xerial:sqlite-jdbc:3.50.3.0'
     
     compileOnly 'org.projectlombok:lombok:1.18.46'
     annotationProcessor 'org.projectlombok:lombok:1.18.46'

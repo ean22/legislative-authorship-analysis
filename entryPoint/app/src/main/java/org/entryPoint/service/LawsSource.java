@@ -11,29 +11,62 @@ import org.entryPoint.model.LawResponse;
 import org.entryPoint.model.LawSumary;
 import org.entryPoint.model.RequestResult;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class LawsSource {  
+  private static final String urlBase = "https://api.v2.leismunicipais.com.br/v2/municipais/normas/";
+  private static ObjectMapper mapper = new ObjectMapper();
+
   private static final DatabaseService database =
     new DatabaseService();
 
   public static void access() {
+    int limitPerPage = 100;
+    int totalPaginas = 0;
+    int paginaAtual = 0;
 
-    String url =
-      "https://api.v2.leismunicipais.com.br/v2/municipais/normas/_search";
+    HttpResponse<String> response = request(limitPerPage, 1);
+    
+    try {
+      JsonNode json;
+      json = mapper.readTree(response.body());
+   
+      totalPaginas = json.get("pages").asInt();
+      paginaAtual = json.get("page").asInt();
+
+    } catch (JsonProcessingException e) {
+      e.printStackTrace();
+    }
+    
+    try {
+      for (int page = paginaAtual; page <= totalPaginas; page++) {
+        response = request(limitPerPage, page);
+        
+        mapper(response);
+      }
+      
+    } catch (Exception e) {
+      System.err.println(e);
+    }
+  }
+
+  private static HttpResponse<String> request(int limitPerPage, int page) {
+    String url = urlBase + "_search";
 
     String requestPayload = """
       {
-        "limit": 8,
-        "page": 1,
-        "q": "2026",
+        "limit": %d,
+        "page": %d,
+        "q": "",
         "data_final":"2025-12-31",
         "data_inicial":"2025-01-01",
         "score_first": false,
         "cidade": 5298,
         "sort": ["ano", "numero"]
       }
-      """;
+      """.formatted(limitPerPage, page);;
 
     HttpClient client = HttpClient.newHttpClient();
 
@@ -50,30 +83,29 @@ public class LawsSource {
             request,
             HttpResponse.BodyHandlers.ofString()
           );
-          
-        mapper(response);
 
+      return response;
     } catch (Exception e) {
-        System.err.println(e);
+      System.err.println(e);
     }
+
+    return null;
   }
 
-  private static void mapper(HttpResponse<String> response) throws Exception {
-    ObjectMapper mapper = new ObjectMapper();
-    
+  private static void mapper(HttpResponse<String> response) throws Exception {  
     RequestResult result = mapper.readValue(response.body(), RequestResult.class);
 
     for (LawSumary law : result.getData()) {
-      System.out.println(
-        law.getYear() + " - " +
-        law.getTypeWritten() + " " +
-        law.getNumber()
-      );
+      // System.out.println(
+      //   law.getYear() + " - " +
+      //   law.getTypeWritten() + " " +
+      //   law.getNumber()
+      // );
 
-      System.out.println(law.getSummary());
-      System.out.println(law.getUrl());
+      // System.out.println(law.getSummary());
+      // System.out.println(law.getUrl());
 
-      System.out.println("-------------------------");
+      // System.out.println("-------------------------");
 
       featchLaw(law);
       delayAleatorio();
@@ -81,9 +113,7 @@ public class LawsSource {
   }
 
   private static void featchLaw (LawSumary lawSumary) throws Exception{
-    String url =
-        "https://api.v2.leismunicipais.com.br/v2/municipais/normas/"
-        + lawSumary.getId();
+    String url = urlBase + lawSumary.getId();
 
     HttpClient client = HttpClient.newHttpClient();
 
@@ -110,22 +140,23 @@ public class LawsSource {
       return;
     }
 
-    ObjectMapper mapper = new ObjectMapper();
-
     LawResponse result =
         mapper.readValue(response.body(), LawResponse.class);
 
     Law law = result.getData().getNorma();
 
+    // System.out.println(law.toString());
+    // System.out.println("\n");
+
     database.save(law);
 
-    System.out.println(law.getTitulo());
-    System.out.println(law.getEmenta());
-    System.out.println(law.getIntegra());
+    // System.out.println(law.getTitulo());
+    // System.out.println(law.getEmenta());
+    // System.out.println(law.getIntegra());
   }
 
   private static void delayAleatorio() throws InterruptedException {
-    int segundos = ThreadLocalRandom.current().nextInt(5, 9);
+    int segundos = ThreadLocalRandom.current().nextInt(4, 7);
     Thread.sleep(segundos * 1000L);
   }
 }

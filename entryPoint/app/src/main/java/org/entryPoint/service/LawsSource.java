@@ -18,9 +18,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class LawsSource {  
   private static final String urlBase = "https://api.v2.leismunicipais.com.br/v2/municipais/normas/";
   private static ObjectMapper mapper = new ObjectMapper();
-
-  private static final DatabaseService database =
-    new DatabaseService();
+  private static int baseDelay = 400; // milliseconds
+  private static final int maxDelay = 3000; // milliseconds
+  private static final DatabaseService database = new DatabaseService();
 
   public static void access() {
     int limitPerPage = 100;
@@ -28,6 +28,7 @@ public class LawsSource {
     int paginaAtual = 0;
 
     HttpResponse<String> response = request(limitPerPage, 1);
+    // System.out.println("Response: " + response.body());
     
     try {
       JsonNode json;
@@ -44,11 +45,23 @@ public class LawsSource {
       for (int page = paginaAtual; page <= totalPaginas; page++) {
         response = request(limitPerPage, page);
         
+        System.out.println("Página " + page + " de " + totalPaginas + "\n\n");
         mapper(response);
       }
       
     } catch (Exception e) {
       System.err.println(e);
+
+    } finally {
+      System.out.println(
+        """
+          \n\n
+          -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
+
+          Fim do processo de busca de normas.
+
+          -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
+        """);
     }
   }
 
@@ -60,8 +73,8 @@ public class LawsSource {
         "limit": %d,
         "page": %d,
         "q": "",
-        "data_final":"2025-12-31",
-        "data_inicial":"2025-01-01",
+        "data_final":"2021-01-06",
+        "data_inicial":"2021-01-01",
         "score_first": false,
         "cidade": 5298,
         "sort": ["ano", "numero"]
@@ -78,13 +91,27 @@ public class LawsSource {
         .build();
 
     try {
-      HttpResponse<String> response =
-          client.send(
-            request,
-            HttpResponse.BodyHandlers.ofString()
-          );
+      while (true) {
+        HttpResponse<String> response =
+            client.send(
+              request,
+              HttpResponse.BodyHandlers.ofString()
+            );
 
-      return response;
+        if (response.statusCode() != 429) {
+          delay(10000);
+          return response;
+        }
+
+        System.err.println(
+          "Rate limit atingido. Aguardando " +
+          (baseDelay / 1000) +
+          " segundos antes de tentar novamente."
+        );
+
+        delay(baseDelay);
+        baseDelay = Math.min(baseDelay + 150, maxDelay);
+      }
     } catch (Exception e) {
       System.err.println(e);
     }
@@ -108,7 +135,7 @@ public class LawsSource {
       // System.out.println("-------------------------");
 
       featchLaw(law);
-      delayAleatorio();
+      delay(500);
     }
   }
 
@@ -150,13 +177,11 @@ public class LawsSource {
 
     database.save(law);
 
-    // System.out.println(law.getTitulo());
-    // System.out.println(law.getEmenta());
-    // System.out.println(law.getIntegra());
+    System.out.println(law.getTitulo() + " - " + law.getDataOriginal());
   }
 
-  private static void delayAleatorio() throws InterruptedException {
-    int segundos = ThreadLocalRandom.current().nextInt(4, 7);
-    Thread.sleep(segundos * 1000L);
+  private static void delay(int milisegundos) throws InterruptedException {
+    // int segundos = ThreadLocalRandom.current().nextInt(origin, bound);
+    Thread.sleep(milisegundos);
   }
 }

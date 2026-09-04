@@ -1,0 +1,19 @@
+A penúltima gestão municipal começou em 1º de janeiro de 2021 e 
+terminou em 31 de dezembro de 2024.
+
+
+Tentar buscar nº municípios entre esse mesmo período para ter varios autores políticos (montar uma rede)
+
+Decreto nº 12.002/2024 regula elaboração de decretos
+
+determina que o ato normativo deve ter um objeto, e não pode conter matéria estranha a esse objeto ou sem relação de afinidade, pertinência ou conexão
+
+
+Um decreto pode ser multitemático.
+Dentro dele poderiam existir dispositivos sobre:
+Saúde → atendimento nas unidades de saúde;
+Educação → funcionamento de determinados serviços escolares;
+Trânsito → organização do transporte para esses serviços;
+Assistência social → atendimento a determinados grupos.
+
+multilabel classification.

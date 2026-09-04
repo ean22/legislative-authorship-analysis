@@ -1,0 +1,5 @@
+Opções:
+Latent Dirichlet Allocation
+Clusterização de embeddings
+LLM
+TF-IDF / embeddings + clustering ou topic modeling

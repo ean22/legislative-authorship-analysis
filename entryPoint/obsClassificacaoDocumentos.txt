@@ -1,0 +1,4 @@
+Opções
+Palavras-chave
+TF-IDF + classificação
+Embeddings + classificador

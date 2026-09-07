@@ -1,6 +1,6 @@
 package org.entryPoint.repository;
 
-import org.entryPoint.model.Law;
+import org.entryPoint.model.Norma;
 
 import java.io.File;
 import java.sql.Connection;
@@ -9,18 +9,18 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class DatabaseRepository {
+public class RepositorioBancoDados {
 
-  private static final String DATABASE_PATH = "../../data/leis.db";
+  private final String CAMINHO_BANCO_DADOS = "../../data/leis.db";
 
-  private static final String DATABASE_URL = "jdbc:sqlite:" + DATABASE_PATH;
+  private final String URL_BANCO_DADOS = "jdbc:sqlite:" + CAMINHO_BANCO_DADOS;
 
-  public DatabaseRepository() {
-    createDatabaseDirectory();
-    createTables();
+  public RepositorioBancoDados() {
+    criarDiretorioBancoDados();
+    criarTabelas();
   }
 
-  public void saveRawLaw(Law law) {
+  public void salvarNorma(Norma norma) {
 
     String sql = """
       INSERT OR REPLACE INTO normas (
@@ -41,35 +41,35 @@ public class DatabaseRepository {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """;
 
-    try (Connection connection = connect();
-      PreparedStatement statement = connection.prepareStatement(sql)) {
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql)) {
 
-        statement.setLong(1, law.getId());
-        statement.setInt(2, law.getNumero());
-        statement.setInt(3, law.getAno());
-        statement.setString(4, law.getTipoEscrito());
-        statement.setString(5, law.getTipoSlug());
-        statement.setString(6, law.getTitulo());
-        statement.setString(7, law.getEmenta());
-        statement.setString(8, law.getDataOriginal());
-        statement.setString(9, law.getDataPublicacao());
-        statement.setString(10, law.getUrl());
-        statement.setString(11, law.getIntegra());
-        statement.setString(12, law.getCidade());
-        statement.setString(13, law.getEstado());
+        statement.setLong(1, norma.getId());
+        statement.setInt(2, norma.getNumero());
+        statement.setInt(3, norma.getAno());
+        statement.setString(4, norma.getTipoEscrito());
+        statement.setString(5, norma.getTipoSlug());
+        statement.setString(6, norma.getTitulo());
+        statement.setString(7, norma.getEmenta());
+        statement.setString(8, norma.getDataOriginal());
+        statement.setString(9, norma.getDataPublicacao());
+        statement.setString(10, norma.getUrl());
+        statement.setString(11, norma.getIntegra());
+        statement.setString(12, norma.getCidade());
+        statement.setString(13, norma.getEstado());
 
         statement.executeUpdate();
 
     } catch (SQLException e) {
       System.err.println(
-        "Erro ao salvar norma " + law.getId() +
+        "Erro ao salvar norma " + norma.getId() +
         ": " + e.getMessage() + "\n" +
         e
       );
     }
   }
 
-  public void listLaws() {
+  public void listarNormas() {
     String sql = 
     """
       SELECT * FROM normas
@@ -77,8 +77,8 @@ public class DatabaseRepository {
     """;
     
     try {
-      Connection connection = connect();
-      PreparedStatement statement = connection.prepareStatement(sql);
+      Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
       ResultSet resultSet = statement.executeQuery();
       
       System.out.println("Listando normas:");
@@ -100,21 +100,21 @@ public class DatabaseRepository {
       
   }
   
-  private void createDatabaseDirectory() {
-    File databaseFile = new File(DATABASE_PATH);
+  private void criarDiretorioBancoDados() {
+    File arquivoBancoDados = new File(CAMINHO_BANCO_DADOS);
 
-    File parent = databaseFile.getParentFile();
+    File diretorioPai = arquivoBancoDados.getParentFile();
 
-    if (parent != null) {
-      parent.mkdirs();
+    if (diretorioPai != null) {
+      diretorioPai.mkdirs();
     }
   }
 
-  private Connection connect() throws SQLException {
-    return DriverManager.getConnection(DATABASE_URL);
+  private Connection conectar() throws SQLException {
+    return DriverManager.getConnection(URL_BANCO_DADOS);
   }
 
-  private void createTables() {
+  private void criarTabelas() {
 
     String createNormas = """
       CREATE TABLE IF NOT EXISTS normas (
@@ -152,16 +152,16 @@ public class DatabaseRepository {
       )
     """;
 
-    try (Connection connection = connect()) {
-      try (PreparedStatement statement = connection.prepareStatement(createNormas)) {
+    try (Connection conexao = conectar()) {
+      try (PreparedStatement statement = conexao.prepareStatement(createNormas)) {
         statement.execute();
       }
 
-      try (PreparedStatement statement = connection.prepareStatement(createAutores)) {
+      try (PreparedStatement statement = conexao.prepareStatement(createAutores)) {
         statement.execute();
       }
 
-      try (PreparedStatement statement = connection.prepareStatement(createNormaAutor)) {
+      try (PreparedStatement statement = conexao.prepareStatement(createNormaAutor)) {
         statement.execute();
       }
 

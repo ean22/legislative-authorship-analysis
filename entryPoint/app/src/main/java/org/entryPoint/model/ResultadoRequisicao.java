@@ -11,8 +11,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RequestResult {
-  private List<LawSumary> data;
+public class ResultadoRequisicao {
+  private List<ResumoNorma> data;
   @JsonProperty("entidade_nome")
   private String name_entity;
   private int hits;

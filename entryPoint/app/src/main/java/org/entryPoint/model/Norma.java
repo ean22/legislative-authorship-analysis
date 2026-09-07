@@ -11,7 +11,7 @@ import lombok.ToString;
 @Setter
 @ToString
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Law {
+public class Norma {
 
     private long id;
     private int ano;

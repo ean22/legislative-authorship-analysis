@@ -9,8 +9,8 @@ import lombok.ToString;
 @Setter
 @ToString
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class LawResponse {
+public class RespostaNorma {
 
-    private LawData data;
+    private DadosNorma data;
     private String status;
 }

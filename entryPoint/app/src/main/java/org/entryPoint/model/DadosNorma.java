@@ -9,6 +9,6 @@ import lombok.ToString;
 @Setter
 @ToString
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class LawData {
-  private Law norma;
+public class DadosNorma {
+  private Norma norma;
 }

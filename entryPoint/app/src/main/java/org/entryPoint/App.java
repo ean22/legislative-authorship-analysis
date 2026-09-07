@@ -1,9 +1,10 @@
 package org.entryPoint;
 
-import org.entryPoint.service.LawsSource;
+import org.entryPoint.ui.MainMenu;
 
 public class App {
   public static void main(String[] args) {     
-    LawsSource.access();
+    MainMenu.greeting();
+    MainMenu.init();
   }
 }

@@ -4,7 +4,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.concurrent.ThreadLocalRandom;
 
 import org.entryPoint.model.Law;
 import org.entryPoint.model.LawResponse;
@@ -21,6 +20,8 @@ public class LawsSource {
   private static int baseDelay = 400; // milliseconds
   private static final int maxDelay = 3000; // milliseconds
   private static final DatabaseService database = new DatabaseService();
+  private static String initialDate = "2013-01-01";
+  private static String finalDate = "2021-01-06";
 
   public static void access() {
     int limitPerPage = 100;
@@ -65,6 +66,15 @@ public class LawsSource {
     }
   }
 
+  public static void listLaws() {
+    database.listLaws();
+  }
+
+  public static void setDateRange(String initialDate, String finalDate) {
+    LawsSource.initialDate = initialDate;
+    LawsSource.finalDate = finalDate;
+  }
+
   private static HttpResponse<String> request(int limitPerPage, int page) {
     String url = urlBase + "_search";
 
@@ -73,13 +83,13 @@ public class LawsSource {
         "limit": %d,
         "page": %d,
         "q": "",
-        "data_final":"2021-01-06",
-        "data_inicial":"2021-01-01",
+        "data_final":"%s",
+        "data_inicial":"%s",
         "score_first": false,
         "cidade": 5298,
         "sort": ["ano", "numero"]
       }
-      """.formatted(limitPerPage, page);;
+      """.formatted(limitPerPage, page, initialDate, finalDate);
 
     HttpClient client = HttpClient.newHttpClient();
 

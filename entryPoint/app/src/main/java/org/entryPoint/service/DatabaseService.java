@@ -6,11 +6,12 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class DatabaseService {
 
-  private static final String DATABASE_PATH = "data/leis.db";
+  private static final String DATABASE_PATH = "../../data/leis.db";
 
   private static final String DATABASE_URL = "jdbc:sqlite:" + DATABASE_PATH;
 
@@ -113,5 +114,36 @@ public class DatabaseService {
         e
       );
     }
+  }
+
+  public void listLaws() {
+    String sql = 
+    """
+      SELECT * FROM normas
+      LIMIT 10;
+    """;
+    
+    try {
+      Connection connection = connect();
+      PreparedStatement statement = connection.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery();
+      
+      System.out.println("Listando normas:");
+      
+      while (resultSet.next()) {
+        System.out.println(
+          "ID: " + resultSet.getLong("id") +
+          ", Título: " + resultSet.getString("titulo") +
+          ", Ementa: " + resultSet.getString("ementa") +
+          ", Data Original: " + resultSet.getString("dataOriginal")
+        );
+      }
+
+    } catch (SQLException e) {
+      System.err.println(
+        "Erro ao listar normas: " + e.getMessage() + "\n" + e
+      );
+    }
+      
   }
 }

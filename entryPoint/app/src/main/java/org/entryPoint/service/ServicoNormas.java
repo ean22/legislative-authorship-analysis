@@ -16,15 +16,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class ServicoNormas {
-  private static final String URL_BASE = "https://api.v2.leismunicipais.com.br/v2/municipais/normas/";
-  private static final ObjectMapper MAPEADOR = new ObjectMapper();
-  private static int atrasoAtual = 400;
-  private static final int ATRASO_MAXIMO = 3000;
-  private static final RepositorioBancoDados repositorio = new RepositorioBancoDados();
-  private static String dataInicial = "2013-01-01";
-  private static String dataFinal = "2021-01-06";
+  private final String URL_BASE = "https://api.v2.leismunicipais.com.br/v2/municipais/normas/";
+  private final ObjectMapper MAPEADOR = new ObjectMapper();
+  private int atrasoAtual = 400;
+  private final int ATRASO_MAXIMO = 3000;
+  private final RepositorioBancoDados repositorio = new RepositorioBancoDados();
+  private String dataInicial = "2013-01-01";
+  private String dataFinal = "2021-01-06";
 
-  public static void buscarNormas() {
+  public void buscarNormas() {
     int limitePorPagina = 100;
     int totalPaginas = 0;
     int paginaAtual = 0;
@@ -67,16 +67,16 @@ public class ServicoNormas {
     }
   }
 
-  public static void listarNormas() {
+  public void listarNormas() {
     repositorio.listarNormas();
   }
 
-  public static void definirIntervaloDatas(String dataInicial, String dataFinal) {
-    ServicoNormas.dataInicial = dataInicial;
-    ServicoNormas.dataFinal = dataFinal;
+  public void definirIntervaloDatas(String dataInicial, String dataFinal) {
+    this.dataInicial = dataInicial;
+    this.dataFinal = dataFinal;
   }
 
-  private static HttpResponse<String> solicitarPagina(int limitePorPagina, int pagina) {
+  private HttpResponse<String> solicitarPagina(int limitePorPagina, int pagina) {
     String url = URL_BASE + "_search";
 
     String requestPayload = """
@@ -130,7 +130,7 @@ public class ServicoNormas {
     return null;
   }
 
-  private static void processarResposta(HttpResponse<String> resposta) throws Exception {
+  private void processarResposta(HttpResponse<String> resposta) throws Exception {
     ResultadoRequisicao resultado = MAPEADOR.readValue(resposta.body(), ResultadoRequisicao.class);
 
     for (ResumoNorma resumoNorma : resultado.getData()) {
@@ -150,7 +150,7 @@ public class ServicoNormas {
     }
   }
 
-  private static void buscarNorma(ResumoNorma resumoNorma) throws Exception {
+  private void buscarNorma(ResumoNorma resumoNorma) throws Exception {
     String url = URL_BASE + resumoNorma.getId();
 
     HttpClient cliente = HttpClient.newHttpClient();
@@ -191,7 +191,7 @@ public class ServicoNormas {
     System.out.println(norma.getTitulo() + " - " + norma.getDataOriginal());
   }
 
-  private static void aguardar(int milissegundos) throws InterruptedException {
+  private void aguardar(int milissegundos) throws InterruptedException {
     // int segundos = ThreadLocalRandom.current().nextInt(origin, bound);
     Thread.sleep(milissegundos);
   }

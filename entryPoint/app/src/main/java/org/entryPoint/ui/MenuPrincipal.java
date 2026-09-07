@@ -5,7 +5,8 @@ import java.util.Scanner;
 import org.entryPoint.service.ServicoNormas;
 
 public class MenuPrincipal {
-  private static final Scanner leitor = new Scanner(System.in);
+  private static final Scanner sc = new Scanner(System.in);
+  private static ServicoNormas servicoNormas = new ServicoNormas();
 
   public static void exibirSaudacao() {
     System.out.println("Bem-vindo ao sistema de análise de autoria legislativa!");
@@ -62,7 +63,7 @@ public class MenuPrincipal {
       exibirMenu();
 
     try { 
-      String entrada = leitor.nextLine();
+      String entrada = sc.nextLine();
       opcao = Integer.parseInt(entrada);
     } catch (NumberFormatException e) { 
       System.out.println("Entrada inválida. Por favor, insira um número."); 
@@ -75,21 +76,21 @@ public class MenuPrincipal {
           exibirBaixandoNormas();
 
           solicitarDataInicial();
-          String dataInicial = leitor.next();
+          String dataInicial = sc.next();
           pularLinha();
 
           solicitarDataFinal();
-          String dataFinal = leitor.next();
+          String dataFinal = sc.next();
           pularLinha();
 
-          ServicoNormas.definirIntervaloDatas(dataInicial, dataFinal);
-          ServicoNormas.buscarNormas();
+          servicoNormas.definirIntervaloDatas(dataInicial, dataFinal);
+          servicoNormas.buscarNormas();
 
           break;
 
         case 2:
           exibirListandoNormas();
-          ServicoNormas.listarNormas();
+          servicoNormas.listarNormas();
           pularLinha();
 
           break;
@@ -107,6 +108,6 @@ public class MenuPrincipal {
 
     } while (opcao != 3);
 
-    leitor.close();
+    sc.close();
   }
 }

@@ -2,182 +2,87 @@ package org.entryPoint.service;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.entryPoint.repository.RepositorioBancoDados;
 
-import java.sql.*;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ServicoAutores {
+  private final RepositorioBancoDados repositorioBancoDados = new RepositorioBancoDados();
 
-    private final Connection conexao;
-    
+  public void extrairAutores() throws SQLException {
+    for (RepositorioBancoDados.NormaComIntegra norma : repositorioBancoDados.listarNormasComIntegra()) {
+      List<Autor> autores = extrairAutoresDoHtml(norma.integra());
 
-    public ServicoAutores(Connection conexao) {
-        this.conexao = conexao;
-    }
-
-    public void extrairAutores() throws SQLException {
-
-        String sql = """
-            SELECT id, integra
-            FROM normas
-            WHERE integra IS NOT NULL
-              AND TRIM(integra) <> ''
-            """;
-
-        try (PreparedStatement statement = conexao.prepareStatement(sql);
-             ResultSet resultSet = statement.executeQuery()) {
-
-            while (resultSet.next()) {
-
-                long idNorma = resultSet.getLong("id");
-                String integra = resultSet.getString("integra");
-
-                List<Autor> autores = extrairAutoresDoHtml(integra);
-
-                for (Autor autor : autores) {
-                    long idAutor = salvarAutor(autor.nome());
-                    salvarNormaAutor(
-                        idNorma,
-                        idAutor,
-                        autor.cargo()
-                    );
-                }
-            }
-        }
-    }
-
-    private List<Autor> extrairAutoresDoHtml(String html) {
-
-        List<Autor> autores = new ArrayList<>();
-
-        Document document = Jsoup.parse(html);
-
-        String texto = document
-            .html()
-            .replaceAll("(?i)<br\\s*/?>", "\n");
-
-        texto = Jsoup.parse(texto).text();
-
-        String inicio = "PREFEITURA DO MUNICÍPIO DE SÃO PAULO";
-        String fim = "Publicado na Secretaria do Governo Municipal";
-
-        int posicaoInicio = texto.indexOf(inicio);
-        int posicaoFim = texto.indexOf(fim);
-
-        if (posicaoInicio == -1 || posicaoFim == -1) {
-            return autores;
-        }
-
-        String blocoAssinaturas = texto.substring(
-            posicaoInicio + inicio.length(),
-            posicaoFim
+      for (Autor autor : autores) {
+        long idAutor = repositorioBancoDados.salvarAutor(autor.nome());
+        repositorioBancoDados.salvarNormaAutor(
+          norma.id(),
+          idAutor,
+          autor.cargo()
         );
+      }
+    }
+  }
 
-        String[] linhas = blocoAssinaturas.split("\\n");
+  private List<Autor> extrairAutoresDoHtml(String html) {
 
-        for (String linha : linhas) {
+    List<Autor> autores = new ArrayList<>();
 
-            linha = linha.trim();
+    Document document = Jsoup.parse(html);
 
-            if (linha.isEmpty()) {
-                continue;
-            }
+  String texto = document
+      .html()
+      .replaceAll("(?i)<br\\s*/?>", "\n");
 
-            int separador = linha.indexOf(',');
+    texto = Jsoup.parse(texto).text();
 
-            if (separador == -1) {
-                continue;
-            }
+    String inicio = "PREFEITURA DO MUNICÍPIO DE SÃO PAULO";
+    String fim = "Publicado na Secretaria do Governo Municipal";
 
-            String nome = linha.substring(0, separador).trim();
-            String cargo = linha.substring(separador + 1).trim();
+    int posicaoInicio = texto.indexOf(inicio);
+    int posicaoFim = texto.indexOf(fim);
 
-            if (!nome.isEmpty() && !cargo.isEmpty()) {
-                autores.add(new Autor(nome, cargo));
-            }
-        }
-
-        return autores;
+    if (posicaoInicio == -1 || posicaoFim == -1) {
+      return autores;
     }
 
-    private long salvarAutor(String nome) throws SQLException {
+    String blocoAssinaturas = texto.substring(
+      posicaoInicio + inicio.length(),
+      posicaoFim
+    );
 
-        String sql = """
-            INSERT INTO autores (nome)
-            VALUES (?)
-            ON CONFLICT(nome) DO NOTHING
-            """;
+    String[] linhas = blocoAssinaturas.split("\\n");
 
-        try (PreparedStatement statement =
-                 conexao.prepareStatement(sql)) {
+    for (String linha : linhas) {
 
-            statement.setString(1, normalizarNome(nome));
-            statement.executeUpdate();
-        }
+      linha = linha.trim();
 
-        String busca = """
-            SELECT id
-            FROM autores
-            WHERE nome = ?
-            """;
+      if (linha.isEmpty()) {
+        continue;
+      }
 
-        try (PreparedStatement statement =
-                 conexao.prepareStatement(busca)) {
+      int separador = linha.indexOf(',');
 
-            statement.setString(1, normalizarNome(nome));
+      if (separador == -1) {
+        continue;
+      }
 
-            try (ResultSet resultSet = statement.executeQuery()) {
+      String nome = linha.substring(0, separador).trim();
+      String cargo = linha.substring(separador + 1).trim();
 
-                if (resultSet.next()) {
-                    return resultSet.getLong("id");
-                }
-            }
-        }
-
-        throw new SQLException(
-            "Não foi possível obter o ID do autor: " + nome
-        );
+      if (!nome.isEmpty() && !cargo.isEmpty()) {
+        autores.add(new Autor(nome, cargo));
+      }
     }
 
-    private void salvarNormaAutor(
-        long idNorma,
-        long idAutor,
-        String cargo
-    ) throws SQLException {
-
-        String sql = """
-            INSERT INTO norma_autor (
-                id_norma,
-                id_autor,
-                cargo_autor
-            )
-            VALUES (?, ?, ?)
-            ON CONFLICT(id_norma, id_autor) DO UPDATE SET
-                cargo_autor = excluded.cargo_autor
-            """;
-
-        try (PreparedStatement statement =
-                 conexao.prepareStatement(sql)) {
-
-            statement.setLong(1, idNorma);
-            statement.setLong(2, idAutor);
-            statement.setString(3, cargo);
-
-            statement.executeUpdate();
-        }
-    }
-
-    private String normalizarNome(String nome) {
-
-        return nome
-            .trim()
-            .replaceAll("\\s+", " ")
-            .toUpperCase();
-    }
+    return autores;
+  }
 
     private record Autor(
-        String nome,
-        String cargo
+      String nome,
+      String cargo
     ) {}
+
 }

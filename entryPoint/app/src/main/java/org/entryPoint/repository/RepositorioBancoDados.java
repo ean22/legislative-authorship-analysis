@@ -8,12 +8,12 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RepositorioBancoDados {
-
-  private final String CAMINHO_BANCO_DADOS = "../../data/leis.db";
-
-  private final String URL_BANCO_DADOS = "jdbc:sqlite:" + CAMINHO_BANCO_DADOS;
+  private final String PATH_BANCO = "../../data/leis.db";
+  private final String URL_BANCO_DADOS = "jdbc:sqlite:" + PATH_BANCO;
 
   public RepositorioBancoDados() {
     criarDiretorioBancoDados();
@@ -99,9 +99,94 @@ public class RepositorioBancoDados {
     }
       
   }
+
+  public List<NormaComIntegra> listarNormasComIntegra() throws SQLException {
+    String sql = """
+      SELECT id, integra
+      FROM normas
+      WHERE integra IS NOT NULL
+        AND TRIM(integra) <> ''
+      """;
+
+    List<NormaComIntegra> normas = new ArrayList<>();
+
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+
+      while (resultSet.next()) {
+        normas.add(new NormaComIntegra(
+          resultSet.getLong("id"),
+          resultSet.getString("integra")
+        ));
+      }
+    }
+
+    return normas;
+  }
+
+  public long salvarAutor(String nome) throws SQLException {
+    String nomeNormalizado = normalizarNome(nome);
+
+    String sql = """
+      INSERT INTO autores (nome)
+      VALUES (?)
+      ON CONFLICT(nome) DO NOTHING
+      """;
+
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql)) {
+      statement.setString(1, nomeNormalizado);
+      statement.executeUpdate();
+    }
+
+    String busca = """
+      SELECT id
+      FROM autores
+      WHERE nome = ?
+      """;
+
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(busca)) {
+      statement.setString(1, nomeNormalizado);
+
+      try (ResultSet resultSet = statement.executeQuery()) {
+        if (resultSet.next()) {
+          return resultSet.getLong("id");
+        }
+      }
+    }
+
+    throw new SQLException("Não foi possível obter o ID do autor: " + nome);
+  }
+
+  public void salvarNormaAutor(
+    long idNorma,
+    long idAutor,
+    String cargo
+  ) throws SQLException {
+    String sql = """
+      INSERT INTO norma_autor (
+        id_norma,
+        id_autor,
+        cargo_autor
+      )
+      VALUES (?, ?, ?)
+      ON CONFLICT(id_norma, id_autor) DO UPDATE SET
+        cargo_autor = excluded.cargo_autor
+      """;
+
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql)) {
+      statement.setLong(1, idNorma);
+      statement.setLong(2, idAutor);
+      statement.setString(3, cargo);
+      statement.executeUpdate();
+    }
+  }
   
   private void criarDiretorioBancoDados() {
-    File arquivoBancoDados = new File(CAMINHO_BANCO_DADOS);
+    File arquivoBancoDados = new File(PATH_BANCO);
 
     File diretorioPai = arquivoBancoDados.getParentFile();
 
@@ -173,6 +258,15 @@ public class RepositorioBancoDados {
       );
     }
   }
+
+  private String normalizarNome(String nome) {
+    return nome
+      .trim()
+      .replaceAll("\\s+", " ")
+      .toUpperCase();
+  }
+
+  public record NormaComIntegra(long id, String integra) {}
 
 
 }

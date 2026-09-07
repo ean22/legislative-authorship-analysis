@@ -9,6 +9,7 @@ import org.entryPoint.model.Law;
 import org.entryPoint.model.LawResponse;
 import org.entryPoint.model.LawSumary;
 import org.entryPoint.model.RequestResult;
+import org.entryPoint.repository.DatabaseRepository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -19,7 +20,7 @@ public class LawsSource {
   private static ObjectMapper mapper = new ObjectMapper();
   private static int baseDelay = 400; // milliseconds
   private static final int maxDelay = 3000; // milliseconds
-  private static final DatabaseService database = new DatabaseService();
+  private static final DatabaseRepository database = new DatabaseRepository();
   private static String initialDate = "2013-01-01";
   private static String finalDate = "2021-01-06";
 
@@ -185,7 +186,7 @@ public class LawsSource {
     // System.out.println(law.toString());
     // System.out.println("\n");
 
-    database.save(law);
+    database.saveRawLaw(law);
 
     System.out.println(law.getTitulo() + " - " + law.getDataOriginal());
   }

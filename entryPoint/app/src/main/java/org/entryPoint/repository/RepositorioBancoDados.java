@@ -10,9 +10,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class RepositorioBancoDados {
-  private final String PATH_BANCO = "../../data/leis.db";
+  private final String PATH_BANCO = "../data/leis.db";
   private final String URL_BANCO_DADOS = "jdbc:sqlite:" + PATH_BANCO;
 
   public RepositorioBancoDados() {
@@ -76,10 +77,9 @@ public class RepositorioBancoDados {
       LIMIT 10;
     """;
     
-    try {
-      Connection conexao = conectar();
+    try (Connection conexao = conectar();
       PreparedStatement statement = conexao.prepareStatement(sql);
-      ResultSet resultSet = statement.executeQuery();
+      ResultSet resultSet = statement.executeQuery()) {
       
       System.out.println("Listando normas:");
       
@@ -134,12 +134,6 @@ public class RepositorioBancoDados {
       ON CONFLICT(nome) DO NOTHING
       """;
 
-    try (Connection conexao = conectar();
-      PreparedStatement statement = conexao.prepareStatement(sql)) {
-      statement.setString(1, nomeNormalizado);
-      statement.executeUpdate();
-    }
-
     String busca = """
       SELECT id
       FROM autores
@@ -147,10 +141,14 @@ public class RepositorioBancoDados {
       """;
 
     try (Connection conexao = conectar();
-      PreparedStatement statement = conexao.prepareStatement(busca)) {
-      statement.setString(1, nomeNormalizado);
+      PreparedStatement inserir = conexao.prepareStatement(sql);
+      PreparedStatement consultar = conexao.prepareStatement(busca)) {
+      inserir.setString(1, nomeNormalizado);
+      inserir.executeUpdate();
 
-      try (ResultSet resultSet = statement.executeQuery()) {
+      consultar.setString(1, nomeNormalizado);
+
+      try (ResultSet resultSet = consultar.executeQuery()) {
         if (resultSet.next()) {
           return resultSet.getLong("id");
         }
@@ -180,7 +178,7 @@ public class RepositorioBancoDados {
       PreparedStatement statement = conexao.prepareStatement(sql)) {
       statement.setLong(1, idNorma);
       statement.setLong(2, idAutor);
-      statement.setString(3, cargo);
+      statement.setString(3, cargo.trim().replaceAll("\\s+", " ").toUpperCase(Locale.ROOT));
       statement.executeUpdate();
     }
   }
@@ -196,7 +194,11 @@ public class RepositorioBancoDados {
   }
 
   private Connection conectar() throws SQLException {
-    return DriverManager.getConnection(URL_BANCO_DADOS);
+    Connection conexao = DriverManager.getConnection(URL_BANCO_DADOS);
+    try (var statement = conexao.createStatement()) {
+      statement.execute("PRAGMA busy_timeout = 5000");
+    }
+    return conexao;
   }
 
   private void criarTabelas() {
@@ -222,8 +224,13 @@ public class RepositorioBancoDados {
     String createAutores = """
       CREATE TABLE IF NOT EXISTS autores (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT 
+        nome TEXT UNIQUE
       )
+      """;
+
+    String criarIndiceNomeAutor = """
+      CREATE UNIQUE INDEX IF NOT EXISTS indice_autores_nome
+      ON autores (nome)
       """;
 
     String createNormaAutor = """
@@ -238,11 +245,19 @@ public class RepositorioBancoDados {
     """;
 
     try (Connection conexao = conectar()) {
+      try (var statement = conexao.createStatement()) {
+        statement.execute("PRAGMA journal_mode = WAL");
+      }
+
       try (PreparedStatement statement = conexao.prepareStatement(createNormas)) {
         statement.execute();
       }
 
       try (PreparedStatement statement = conexao.prepareStatement(createAutores)) {
+        statement.execute();
+      }
+
+      try (PreparedStatement statement = conexao.prepareStatement(criarIndiceNomeAutor)) {
         statement.execute();
       }
 
@@ -263,7 +278,7 @@ public class RepositorioBancoDados {
     return nome
       .trim()
       .replaceAll("\\s+", " ")
-      .toUpperCase();
+      .toUpperCase(Locale.ROOT);
   }
 
   public record NormaComIntegra(long id, String integra) {}

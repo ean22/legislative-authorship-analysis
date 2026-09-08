@@ -1,12 +1,15 @@
 package org.entryPoint.ui;
 
+import java.sql.SQLException;
 import java.util.Scanner;
 
+import org.entryPoint.service.ServicoAutores;
 import org.entryPoint.service.ServicoNormas;
 
 public class MenuPrincipal {
   private static final Scanner sc = new Scanner(System.in);
   private static ServicoNormas servicoNormas = new ServicoNormas();
+  private static ServicoAutores servicoAutores = new ServicoAutores();
 
   public static void exibirSaudacao() {
     System.out.println("Bem-vindo ao sistema de análise de autoria legislativa!");
@@ -21,7 +24,8 @@ public class MenuPrincipal {
     System.out.println("Escolha uma opção:");
     System.out.println("1. Baixar normas");
     System.out.println("2. Listar normas");
-    System.out.println("3. Sair");
+    System.out.println("3. Extrair autores");
+    System.out.println("0. Sair");
   }
 
   public static void sair() {
@@ -94,8 +98,18 @@ public class MenuPrincipal {
           pularLinha();
 
           break;
-
+        
         case 3:
+          try {
+            servicoAutores.extrairAutores();
+          } catch (SQLException e) {
+            e.printStackTrace();
+          }
+          pularLinha();
+
+          break;
+
+        case 0:
           sair();
           
           break;
@@ -106,7 +120,7 @@ public class MenuPrincipal {
           break;
       }
 
-    } while (opcao != 3);
+    } while (opcao != 0);
 
     sc.close();
   }

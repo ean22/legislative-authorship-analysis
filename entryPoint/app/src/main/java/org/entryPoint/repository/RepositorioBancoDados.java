@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Locale;
 
 public class RepositorioBancoDados {
-  private final String PATH_BANCO = "../data/leis.db";
+  private final String PATH_BANCO = "../../data/leis.db";
   private final String URL_BANCO_DADOS = "jdbc:sqlite:" + PATH_BANCO;
 
   public RepositorioBancoDados() {
@@ -128,12 +128,6 @@ public class RepositorioBancoDados {
   public long salvarAutor(String nome) throws SQLException {
     String nomeNormalizado = normalizarNome(nome);
 
-    String sql = """
-      INSERT INTO autores (nome)
-      VALUES (?)
-      ON CONFLICT(nome) DO NOTHING
-      """;
-
     String busca = """
       SELECT id
       FROM autores
@@ -141,13 +135,26 @@ public class RepositorioBancoDados {
       """;
 
     try (Connection conexao = conectar();
-      PreparedStatement inserir = conexao.prepareStatement(sql);
       PreparedStatement consultar = conexao.prepareStatement(busca)) {
-      inserir.setString(1, nomeNormalizado);
-      inserir.executeUpdate();
-
       consultar.setString(1, nomeNormalizado);
 
+      try (ResultSet resultSet = consultar.executeQuery()) {
+        if (resultSet.next()) {
+          return resultSet.getLong("id");
+        }
+      }
+
+      String inserirSql = """
+        INSERT INTO autores (nome)
+        VALUES (?)
+        """;
+
+      try (PreparedStatement inserir = conexao.prepareStatement(inserirSql)) {
+        inserir.setString(1, nomeNormalizado);
+        inserir.executeUpdate();
+      }
+
+      consultar.setString(1, nomeNormalizado);
       try (ResultSet resultSet = consultar.executeQuery()) {
         if (resultSet.next()) {
           return resultSet.getLong("id");

@@ -8,8 +8,19 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 public class ServicoAutores {
+  private static final Pattern NOME_AUTOR = Pattern.compile(
+    "[\\p{L}]+(?:[ .'-][\\p{L}]+){1,9}"
+  );
+  private static final Pattern CARGO_AUTOR = Pattern.compile(
+    "(?i).*\\b(prefeit[oa]|vice-prefeit[oa]|secretári[oa]|subsecretári[oa]|"
+      + "ministro|governador|presidente|diretor|procurador|assessor|chefe|"
+      + "superintendente|coordenador|vereador|desembargador|juiz|conselheiro|"
+      + "administrador|subprefeit[oa]|corregedor|controlador|ouvidor|"
+      + "comandante|reitor|delegad[oa])\\b.*"
+  );
   private final RepositorioBancoDados repositorioBancoDados = new RepositorioBancoDados();
 
   public void extrairAutores() throws SQLException {
@@ -17,9 +28,6 @@ public class ServicoAutores {
       List<Autor> autores = extrairAutoresDoHtml(norma.integra());
 
       for (Autor autor : autores) {
-
-        System.out.println("Autor: " + autor.nome() + ", Cargo: " + autor.cargo());
-
         long idAutor = repositorioBancoDados.salvarAutor(autor.nome());
         repositorioBancoDados.salvarNormaAutor(
           norma.id(),
@@ -41,28 +49,43 @@ public class ServicoAutores {
 
     String htmlComQuebras = html.replaceAll("(?i)<br\\s*\\\\?\\s*/?>", "\n");
     Document document = Jsoup.parse(htmlComQuebras);
-    String texto = document.wholeText();
-
-    String inicio = "PREFEITURA DO MUNICÍPIO DE SÃO PAULO";
-    String fim = "PUBLICADO NA SECRETARIA DO GOVERNO MUNICIPAL";
+    String texto = document.body().wholeText()
+      .replace('\u00a0', ' ')
+      .replaceAll("[ \\t]+", " ");
     String textoParaBusca = texto.toUpperCase(Locale.ROOT);
-    String inicioNormalizado = inicio.toUpperCase(Locale.ROOT);
-    String fimNormalizado = fim.toUpperCase(Locale.ROOT);
-    int posicaoFim = textoParaBusca.lastIndexOf(fimNormalizado);
-    int posicaoInicio = textoParaBusca.lastIndexOf(inicioNormalizado, posicaoFim);
 
-    if (posicaoInicio == -1 || posicaoFim == -1 || posicaoInicio >= posicaoFim) {
+    int posicaoInicio = ultimaOcorrencia(textoParaBusca,
+      "PREFEITURA DO MUNICÍPIO DE SÃO PAULO",
+      "PREFEITURA DO MUNICIPIO DE SAO PAULO",
+      "CÂMARA MUNICIPAL DE SÃO PAULO",
+      "CAMARA MUNICIPAL DE SAO PAULO"
+    );
+
+    if (posicaoInicio == -1) {
       return autores;
     }
 
+    int posicaoFim = primeiraOcorrenciaDepoisDe(textoParaBusca, posicaoInicio,
+      "PUBLICADO NA SECRETARIA DO GOVERNO MUNICIPAL",
+      "PUBLICADA NA SECRETARIA DO GOVERNO MUNICIPAL",
+      "PUBLICADO NA SECRETARIA",
+      "PUBLICADA NA CASA CIVIL",
+      "PUBLICADA NA SECRETARIA GERAL PARLAMENTAR",
+      "PUBLICADO NA SECRETARIA GERAL PARLAMENTAR"
+    );
+    if (posicaoFim == -1) {
+      posicaoFim = texto.length();
+    }
+
     String blocoAssinaturas = texto.substring(
-      posicaoInicio + inicio.length(),
+      posicaoInicio,
       posicaoFim
     );
 
     String[] linhas = blocoAssinaturas.split("\\R");
 
-    for (String linha : linhas) {
+    for (int indice = 0; indice < linhas.length; indice++) {
+      String linha = linhas[indice];
       linha = linha.trim();
 
       if (linha.isEmpty()) {
@@ -72,18 +95,55 @@ public class ServicoAutores {
       int separador = linha.indexOf(',');
 
       if (separador <= 0 || separador == linha.length() - 1) {
+        if (indice + 1 < linhas.length) {
+          String nome = linha;
+          String cargo = linhas[indice + 1].trim();
+          adicionarAutor(autores, nome, cargo);
+        }
         continue;
       }
 
       String nome = linha.substring(0, separador).trim();
       String cargo = linha.substring(separador + 1).trim();
-
-      if (nome.matches("[\\p{L}][\\p{L} .'-]{2,}") && !cargo.isEmpty()) {
-        autores.add(new Autor(nome, cargo));
-      }
+      adicionarAutor(autores, nome, cargo);
     }
 
     return autores;
+  }
+
+  private void adicionarAutor(List<Autor> autores, String nome, String cargo) {
+    if (NOME_AUTOR.matcher(nome).matches()
+      && cargo.length() <= 120
+      && !cargo.matches(".*\\d.*")
+      && !cargo.contains("<")
+      && !cargo.contains("http")
+      && CARGO_AUTOR.matcher(cargo).matches()
+      && !autores.contains(new Autor(nome, cargo))) {
+      autores.add(new Autor(nome, cargo));
+    }
+  }
+
+  private int ultimaOcorrencia(String texto, String... marcadores) {
+    int ultimaPosicao = -1;
+    for (String marcador : marcadores) {
+      ultimaPosicao = Math.max(ultimaPosicao, texto.lastIndexOf(marcador));
+    }
+    return ultimaPosicao;
+  }
+
+  private int primeiraOcorrenciaDepoisDe(
+    String texto,
+    int posicaoInicio,
+    String... marcadores
+  ) {
+    int primeiraPosicao = -1;
+    for (String marcador : marcadores) {
+      int posicao = texto.indexOf(marcador, posicaoInicio);
+      if (posicao != -1 && (primeiraPosicao == -1 || posicao < primeiraPosicao)) {
+        primeiraPosicao = posicao;
+      }
+    }
+    return primeiraPosicao;
   }
 
     private record Autor(

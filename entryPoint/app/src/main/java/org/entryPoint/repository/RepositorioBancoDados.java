@@ -2,6 +2,7 @@ package org.entryPoint.repository;
 
 import org.entryPoint.model.Norma;
 import org.entryPoint.model.EmentaPreProcessada;
+import org.entryPoint.model.RelacionamentoNorma;
 
 import java.io.File;
 import java.sql.Connection;
@@ -9,10 +10,14 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class RepositorioBancoDados {
   private final String PATH_BANCO = "../../data/leis.db";
@@ -275,6 +280,32 @@ public class RepositorioBancoDados {
       )
     """;
 
+    String createRelacionamentosNormas = """
+      CREATE TABLE IF NOT EXISTS norma_relacionamentos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_norma_origem INTEGER NOT NULL,
+        id_norma_destino INTEGER,
+        tipo_relacionamento TEXT NOT NULL,
+        url_alvo TEXT,
+        tipo_slug_alvo TEXT,
+        ano_alvo INTEGER,
+        numero_alvo INTEGER,
+        trecho_contexto TEXT,
+        FOREIGN KEY (id_norma_origem) REFERENCES normas(id),
+        FOREIGN KEY (id_norma_destino) REFERENCES normas(id)
+      )
+    """;
+
+    String criarIndiceRelOrigem = """
+      CREATE INDEX IF NOT EXISTS idx_norma_rel_origem
+      ON norma_relacionamentos (id_norma_origem)
+    """;
+
+    String criarIndiceRelDestino = """
+      CREATE INDEX IF NOT EXISTS idx_norma_rel_destino
+      ON norma_relacionamentos (id_norma_destino)
+    """;
+
     try (Connection conexao = conectar()) {
       try (var statement = conexao.createStatement()) {
         statement.execute("PRAGMA journal_mode = WAL");
@@ -300,6 +331,18 @@ public class RepositorioBancoDados {
         statement.execute();
       }
 
+      try (PreparedStatement statement = conexao.prepareStatement(createRelacionamentosNormas)) {
+        statement.execute();
+      }
+
+      try (PreparedStatement statement = conexao.prepareStatement(criarIndiceRelOrigem)) {
+        statement.execute();
+      }
+
+      try (PreparedStatement statement = conexao.prepareStatement(criarIndiceRelDestino)) {
+        statement.execute();
+      }
+
       try (var stmt = conexao.createStatement()) {
         stmt.execute("ALTER TABLE norma_autor ADD COLUMN cargo_autor_normalizado TEXT");
       } catch (SQLException ignored) {
@@ -308,7 +351,7 @@ public class RepositorioBancoDados {
 
     } catch (SQLException e) {
       throw new RuntimeException(
-        "Erro ao criar tabela normas",
+        "Erro ao criar tabelas",
         e
       );
     }
@@ -506,6 +549,109 @@ public class RepositorioBancoDados {
       }
     }
     return 0;
+  }
+
+  public void salvarRelacionamentosEmLote(List<RelacionamentoNorma> lote) throws SQLException {
+    String sql = """
+      INSERT INTO norma_relacionamentos (
+        id_norma_origem,
+        id_norma_destino,
+        tipo_relacionamento,
+        url_alvo,
+        tipo_slug_alvo,
+        ano_alvo,
+        numero_alvo,
+        trecho_contexto
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """;
+
+    try (Connection conexao = conectar()) {
+      conexao.setAutoCommit(false);
+      try (PreparedStatement statement = conexao.prepareStatement(sql)) {
+        for (RelacionamentoNorma item : lote) {
+          statement.setLong(1, item.idNormaOrigem());
+          if (item.idNormaDestino() != null) {
+            statement.setLong(2, item.idNormaDestino());
+          } else {
+            statement.setNull(2, Types.INTEGER);
+          }
+          statement.setString(3, item.tipoRelacionamento());
+          statement.setString(4, item.urlAlvo());
+          statement.setString(5, item.tipoSlugAlvo());
+          if (item.anoAlvo() != null) {
+            statement.setInt(6, item.anoAlvo());
+          } else {
+            statement.setNull(6, Types.INTEGER);
+          }
+          if (item.numeroAlvo() != null) {
+            statement.setInt(7, item.numeroAlvo());
+          } else {
+            statement.setNull(7, Types.INTEGER);
+          }
+          statement.setString(8, item.trechoContexto());
+          statement.addBatch();
+        }
+        statement.executeBatch();
+        conexao.commit();
+      } catch (SQLException e) {
+        conexao.rollback();
+        throw e;
+      } finally {
+        conexao.setAutoCommit(true);
+      }
+    }
+  }
+
+  public Set<Long> listarTodosIdsNormas() throws SQLException {
+    String sql = "SELECT id FROM normas";
+    Set<Long> ids = new HashSet<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        ids.add(resultSet.getLong("id"));
+      }
+    }
+    return ids;
+  }
+
+  public Map<String, Long> mapearChavesNormasParaId() throws SQLException {
+    String sql = "SELECT id, tipoSlug, ano, numero FROM normas WHERE tipoSlug IS NOT NULL AND ano IS NOT NULL AND numero IS NOT NULL";
+    Map<String, Long> mapa = new HashMap<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        long id = resultSet.getLong("id");
+        String tipoSlug = resultSet.getString("tipoSlug");
+        int ano = resultSet.getInt("ano");
+        int numero = resultSet.getInt("numero");
+        String chave = (tipoSlug + ":" + ano + ":" + numero).toLowerCase();
+        mapa.put(chave, id);
+      }
+    }
+    return mapa;
+  }
+
+  public long contarRelacionamentos() throws SQLException {
+    String sql = "SELECT COUNT(*) FROM norma_relacionamentos";
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      if (resultSet.next()) {
+        return resultSet.getLong(1);
+      }
+    }
+    return 0;
+  }
+
+  public void limparRelacionamentos() throws SQLException {
+    String sql = "DELETE FROM norma_relacionamentos";
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql)) {
+      statement.executeUpdate();
+    }
   }
 
   public record NormaComIntegra(long id, String integra) {}

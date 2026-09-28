@@ -1,6 +1,7 @@
 package org.entryPoint.repository;
 
 import org.entryPoint.model.Norma;
+import org.entryPoint.model.EmentaPreProcessada;
 
 import java.io.File;
 import java.sql.Connection;
@@ -254,6 +255,26 @@ public class RepositorioBancoDados {
       )
     """;
 
+    String createEmentasPreProcessadas = """
+      CREATE TABLE IF NOT EXISTS ementas_pre_processadas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_norma INTEGER UNIQUE,
+        stopwords_tfidf_topk TEXT,
+        tfidf_topk TEXT,
+        resumo_extrativo_tfidf TEXT,
+        textrank TEXT,
+        tfidf_posicao_sentenca TEXT,
+        tfidf_mmr TEXT,
+        tfidf_similaridade_frases TEXT,
+        svd_lsa TEXT,
+        tfidf_feature_selection TEXT,
+        chi_square_termos TEXT,
+        mutual_information TEXT,
+        clustering_sentencas TEXT,
+        FOREIGN KEY (id_norma) REFERENCES normas(id)
+      )
+    """;
+
     try (Connection conexao = conectar()) {
       try (var statement = conexao.createStatement()) {
         statement.execute("PRAGMA journal_mode = WAL");
@@ -272,6 +293,10 @@ public class RepositorioBancoDados {
       }
 
       try (PreparedStatement statement = conexao.prepareStatement(createNormaAutor)) {
+        statement.execute();
+      }
+
+      try (PreparedStatement statement = conexao.prepareStatement(createEmentasPreProcessadas)) {
         statement.execute();
       }
 
@@ -383,7 +408,107 @@ public class RepositorioBancoDados {
     return totalLinhasModificadas;
   }
 
-  public record NormaComIntegra(long id, String integra) {}
+  public List<NormaComEmenta> listarNormasComEmenta() throws SQLException {
+    String sql = """
+      SELECT id, ementa, tipoEscrito
+      FROM normas
+      WHERE ementa IS NOT NULL
+        AND TRIM(ementa) <> ''
+      ORDER BY id
+      """;
 
+    List<NormaComEmenta> lista = new ArrayList<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+
+      while (resultSet.next()) {
+        lista.add(new NormaComEmenta(
+          resultSet.getLong("id"),
+          resultSet.getString("ementa"),
+          resultSet.getString("tipoEscrito")
+        ));
+      }
+    }
+    return lista;
+  }
+
+  public void salvarEmentasPreProcessadasEmLote(List<EmentaPreProcessada> lote) throws SQLException {
+    String sql = """
+      INSERT INTO ementas_pre_processadas (
+        id_norma,
+        stopwords_tfidf_topk,
+        tfidf_topk,
+        resumo_extrativo_tfidf,
+        textrank,
+        tfidf_posicao_sentenca,
+        tfidf_mmr,
+        tfidf_similaridade_frases,
+        svd_lsa,
+        tfidf_feature_selection,
+        chi_square_termos,
+        mutual_information,
+        clustering_sentencas
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id_norma) DO UPDATE SET
+        stopwords_tfidf_topk = excluded.stopwords_tfidf_topk,
+        tfidf_topk = excluded.tfidf_topk,
+        resumo_extrativo_tfidf = excluded.resumo_extrativo_tfidf,
+        textrank = excluded.textrank,
+        tfidf_posicao_sentenca = excluded.tfidf_posicao_sentenca,
+        tfidf_mmr = excluded.tfidf_mmr,
+        tfidf_similaridade_frases = excluded.tfidf_similaridade_frases,
+        svd_lsa = excluded.svd_lsa,
+        tfidf_feature_selection = excluded.tfidf_feature_selection,
+        chi_square_termos = excluded.chi_square_termos,
+        mutual_information = excluded.mutual_information,
+        clustering_sentencas = excluded.clustering_sentencas
+      """;
+
+    try (Connection conexao = conectar()) {
+      conexao.setAutoCommit(false);
+      try (PreparedStatement statement = conexao.prepareStatement(sql)) {
+        for (EmentaPreProcessada item : lote) {
+          statement.setLong(1, item.getIdNorma());
+          statement.setString(2, item.getStopwordsTfidfTopk());
+          statement.setString(3, item.getTfidfTopk());
+          statement.setString(4, item.getResumoExtrativoTfidf());
+          statement.setString(5, item.getTextrank());
+          statement.setString(6, item.getTfidfPosicaoSentenca());
+          statement.setString(7, item.getTfidfMmr());
+          statement.setString(8, item.getTfidfSimilaridadeFrases());
+          statement.setString(9, item.getSvdLsa());
+          statement.setString(10, item.getTfidfFeatureSelection());
+          statement.setString(11, item.getChiSquareTermos());
+          statement.setString(12, item.getMutualInformation());
+          statement.setString(13, item.getClusteringSentencas());
+          statement.addBatch();
+        }
+        statement.executeBatch();
+        conexao.commit();
+      } catch (SQLException e) {
+        conexao.rollback();
+        throw e;
+      } finally {
+        conexao.setAutoCommit(true);
+      }
+    }
+  }
+
+  public long contarEmentasPreProcessadas() throws SQLException {
+    String sql = "SELECT COUNT(*) FROM ementas_pre_processadas";
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      if (resultSet.next()) {
+        return resultSet.getLong(1);
+      }
+    }
+    return 0;
+  }
+
+  public record NormaComIntegra(long id, String integra) {}
+  public record NormaComEmenta(long id, String ementa, String tipoEscrito) {}
 
 }

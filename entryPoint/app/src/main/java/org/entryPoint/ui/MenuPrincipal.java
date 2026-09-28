@@ -6,12 +6,14 @@ import java.util.Scanner;
 import org.entryPoint.service.ServicoAutores;
 import org.entryPoint.service.ServicoNormas;
 import org.entryPoint.service.ServicoNormalizacaoCargo;
+import org.entryPoint.service.preprocessamento.ServicoPreProcessamentoEmentas;
 
 public class MenuPrincipal {
   private static final Scanner sc = new Scanner(System.in);
   private static ServicoNormas servicoNormas = new ServicoNormas();
   private static ServicoAutores servicoAutores = new ServicoAutores();
   private static ServicoNormalizacaoCargo servicoNormalizacaoCargo = new ServicoNormalizacaoCargo();
+  private static ServicoPreProcessamentoEmentas servicoPreProcessamento = new ServicoPreProcessamentoEmentas();
 
   public static void exibirSaudacao() {
     System.out.println("Bem-vindo ao sistema de análise de autoria legislativa!");
@@ -28,6 +30,7 @@ public class MenuPrincipal {
     System.out.println("2. Testar leitura do banco");
     System.out.println("3. Extrair autores");
     System.out.println("4. Normalizar cargos (Google Gemini)");
+    System.out.println("5. Pré-processar ementas (redução textual)");
     System.out.println("0. Sair");
   }
 
@@ -114,6 +117,12 @@ public class MenuPrincipal {
 
         case 4:
           servicoNormalizacaoCargo.normalizarCargos();
+          pularLinha();
+
+          break;
+
+        case 5:
+          servicoPreProcessamento.processarTodasEmentas();
           pularLinha();
 
           break;

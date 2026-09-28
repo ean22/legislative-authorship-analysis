@@ -2,7 +2,10 @@ package org.entryPoint.service;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.entryPoint.model.NormaComIntegra;
+import org.entryPoint.repository.RepositorioAutores;
 import org.entryPoint.repository.RepositorioBancoDados;
+import org.entryPoint.repository.RepositorioNormas;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -21,15 +24,31 @@ public class ServicoAutores {
       + "administrador|subprefeit[oa]|corregedor|controlador|ouvidor|"
       + "comandante|reitor|delegad[oa])\\b.*"
   );
-  private final RepositorioBancoDados repositorioBancoDados = new RepositorioBancoDados();
+  private final RepositorioNormas repositorioNormas;
+  private final RepositorioAutores repositorioAutores;
+
+  public ServicoAutores() {
+    this.repositorioNormas = new RepositorioNormas();
+    this.repositorioAutores = new RepositorioAutores();
+  }
+
+  public ServicoAutores(RepositorioNormas repositorioNormas, RepositorioAutores repositorioAutores) {
+    this.repositorioNormas = repositorioNormas;
+    this.repositorioAutores = repositorioAutores;
+  }
+
+  public ServicoAutores(RepositorioBancoDados repositorioBancoDados) {
+    this.repositorioNormas = repositorioBancoDados.getRepositorioNormas();
+    this.repositorioAutores = repositorioBancoDados.getRepositorioAutores();
+  }
 
   public void extrairAutores() throws SQLException {
-    for (RepositorioBancoDados.NormaComIntegra norma : repositorioBancoDados.listarNormasComIntegra()) {
+    for (NormaComIntegra norma : repositorioNormas.listarNormasComIntegra()) {
       List<Autor> autores = extrairAutoresDoHtml(norma.integra());
 
       for (Autor autor : autores) {
-        long idAutor = repositorioBancoDados.salvarAutor(autor.nome());
-        repositorioBancoDados.salvarNormaAutor(
+        long idAutor = repositorioAutores.salvarAutor(autor.nome());
+        repositorioAutores.salvarNormaAutor(
           norma.id(),
           idAutor,
           autor.cargo()

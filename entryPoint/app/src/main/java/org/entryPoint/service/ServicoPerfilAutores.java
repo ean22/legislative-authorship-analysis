@@ -10,33 +10,43 @@ import java.util.Map;
 
 import org.entryPoint.model.NormaTopico;
 import org.entryPoint.model.PerfilAutor;
+import org.entryPoint.repository.RepositorioAutores;
 import org.entryPoint.repository.RepositorioBancoDados;
+import org.entryPoint.repository.RepositorioTopicos;
 
 public class ServicoPerfilAutores {
 
-  private final RepositorioBancoDados repositorio;
+  private final RepositorioAutores repositorioAutores;
+  private final RepositorioTopicos repositorioTopicos;
 
   public ServicoPerfilAutores() {
-    this.repositorio = new RepositorioBancoDados();
+    this.repositorioAutores = new RepositorioAutores();
+    this.repositorioTopicos = new RepositorioTopicos();
+  }
+
+  public ServicoPerfilAutores(RepositorioAutores repositorioAutores, RepositorioTopicos repositorioTopicos) {
+    this.repositorioAutores = repositorioAutores;
+    this.repositorioTopicos = repositorioTopicos;
   }
 
   public ServicoPerfilAutores(RepositorioBancoDados repositorio) {
-    this.repositorio = repositorio;
+    this.repositorioAutores = repositorio.getRepositorioAutores();
+    this.repositorioTopicos = repositorio.getRepositorioTopicos();
   }
 
   /**
    * Gera o perfil temático de todos os autores que possuem normas classificadas no banco.
    */
   public List<PerfilAutor> gerarPerfisAutores(int minNormas) throws SQLException {
-    Map<Long, NormaTopico> mapaNormasTopicos = repositorio.listarNormasTopicosComoMapa();
+    Map<Long, NormaTopico> mapaNormasTopicos = repositorioTopicos.listarNormasTopicosComoMapa();
     if (mapaNormasTopicos.isEmpty()) {
       System.out.println("Nenhum tópico encontrado na tabela 'norma_topicos'. Execute o Topic Modeling primeiro.");
       return List.of();
     }
 
-    Map<Long, String> nomesAutores = repositorio.listarNomesAutores();
-    Map<Long, String> cargosAutores = repositorio.listarCargosNormalizadosAutores();
-    Map<Long, List<Long>> autorParaNormas = repositorio.listarAutoresComNormas();
+    Map<Long, String> nomesAutores = repositorioAutores.listarNomesAutores();
+    Map<Long, String> cargosAutores = repositorioAutores.listarCargosNormalizadosAutores();
+    Map<Long, List<Long>> autorParaNormas = repositorioAutores.listarAutoresComNormas();
 
     List<PerfilAutor> perfis = new ArrayList<>();
 

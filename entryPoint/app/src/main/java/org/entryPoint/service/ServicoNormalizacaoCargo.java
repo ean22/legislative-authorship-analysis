@@ -7,13 +7,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.entryPoint.repository.RepositorioAutores;
 import org.entryPoint.repository.RepositorioBancoDados;
 import org.entryPoint.service.agent.AgenteGemini;
 
 public class ServicoNormalizacaoCargo {
 
-  private final RepositorioBancoDados repositorio = new RepositorioBancoDados();
-  private final AgenteGemini agenteGemini = new AgenteGemini();
+  private final RepositorioAutores repositorio;
+  private final AgenteGemini agenteGemini;
+
+  public ServicoNormalizacaoCargo() {
+    this.repositorio = new RepositorioAutores();
+    this.agenteGemini = new AgenteGemini();
+  }
+
+  public ServicoNormalizacaoCargo(RepositorioAutores repositorio) {
+    this.repositorio = repositorio;
+    this.agenteGemini = new AgenteGemini();
+  }
+
+  public ServicoNormalizacaoCargo(RepositorioBancoDados repositorioBancoDados) {
+    this.repositorio = repositorioBancoDados.getRepositorioAutores();
+    this.agenteGemini = new AgenteGemini();
+  }
 
   public void normalizarCargos() {
     System.out.println("""

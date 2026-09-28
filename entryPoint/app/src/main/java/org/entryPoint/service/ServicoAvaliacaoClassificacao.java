@@ -13,17 +13,27 @@ import java.util.TreeSet;
 import org.entryPoint.model.MetricasClassificacao;
 import org.entryPoint.model.NormaTopico;
 import org.entryPoint.repository.RepositorioBancoDados;
+import org.entryPoint.repository.RepositorioNormas;
+import org.entryPoint.repository.RepositorioTopicos;
 
 public class ServicoAvaliacaoClassificacao {
 
-  private final RepositorioBancoDados repositorio;
+  private final RepositorioNormas repositorioNormas;
+  private final RepositorioTopicos repositorioTopicos;
 
   public ServicoAvaliacaoClassificacao() {
-    this.repositorio = new RepositorioBancoDados();
+    this.repositorioNormas = new RepositorioNormas();
+    this.repositorioTopicos = new RepositorioTopicos();
+  }
+
+  public ServicoAvaliacaoClassificacao(RepositorioNormas repositorioNormas, RepositorioTopicos repositorioTopicos) {
+    this.repositorioNormas = repositorioNormas;
+    this.repositorioTopicos = repositorioTopicos;
   }
 
   public ServicoAvaliacaoClassificacao(RepositorioBancoDados repositorio) {
-    this.repositorio = repositorio;
+    this.repositorioNormas = repositorio.getRepositorioNormas();
+    this.repositorioTopicos = repositorio.getRepositorioTopicos();
   }
 
   /**
@@ -31,13 +41,13 @@ public class ServicoAvaliacaoClassificacao {
    * baseado em padrões sintático-semânticos das ementas originais (Ground Truth Heurístico / Silver Standard).
    */
   public MetricasClassificacao avaliarDesempenho(long tempoExecucaoMs, long totalTokensProcessados, long memoriaUtilizadaMb) throws SQLException {
-    List<NormaTopico> classificacoes = repositorio.listarNormasTopicos();
+    List<NormaTopico> classificacoes = repositorioTopicos.listarNormasTopicos();
     if (classificacoes.isEmpty()) {
       System.out.println("Nenhuma classificação disponível na tabela 'norma_topicos'.");
       return null;
     }
 
-    Map<Long, String> ementasOriginais = repositorio.listarEmentasOriginais();
+    Map<Long, String> ementasOriginais = repositorioNormas.listarEmentasOriginais();
 
     // 1. Extrair Ground Truth de referência das ementas originais
     List<String> classesReais = new ArrayList<>();

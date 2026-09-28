@@ -8,9 +8,11 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.entryPoint.model.NormaComIntegra;
 import org.entryPoint.model.RelacionamentoNorma;
 import org.entryPoint.repository.RepositorioBancoDados;
-import org.entryPoint.repository.RepositorioBancoDados.NormaComIntegra;
+import org.entryPoint.repository.RepositorioNormas;
+import org.entryPoint.repository.RepositorioRelacionamentos;
 
 public class ServicoRelacionamentoNormas {
 
@@ -63,13 +65,29 @@ public class ServicoRelacionamentoNormas {
 
   private static final Pattern TAGS_HTML = Pattern.compile("<[^>]+>");
 
-  private final RepositorioBancoDados repositorioBancoDados = new RepositorioBancoDados();
+  private final RepositorioNormas repositorioNormas;
+  private final RepositorioRelacionamentos repositorioRelacionamentos;
+
+  public ServicoRelacionamentoNormas() {
+    this.repositorioNormas = new RepositorioNormas();
+    this.repositorioRelacionamentos = new RepositorioRelacionamentos();
+  }
+
+  public ServicoRelacionamentoNormas(RepositorioNormas repositorioNormas, RepositorioRelacionamentos repositorioRelacionamentos) {
+    this.repositorioNormas = repositorioNormas;
+    this.repositorioRelacionamentos = repositorioRelacionamentos;
+  }
+
+  public ServicoRelacionamentoNormas(RepositorioBancoDados repositorioBancoDados) {
+    this.repositorioNormas = repositorioBancoDados.getRepositorioNormas();
+    this.repositorioRelacionamentos = repositorioBancoDados.getRepositorioRelacionamentos();
+  }
 
   public void extrairEPopularRelacionamentos() throws SQLException {
     System.out.println("Carregando normas e índices em memória para resolução rápida...");
-    List<NormaComIntegra> normas = repositorioBancoDados.listarNormasComIntegra();
-    Set<Long> idsExistentes = repositorioBancoDados.listarTodosIdsNormas();
-    Map<String, Long> mapaNormasPorChave = repositorioBancoDados.mapearChavesNormasParaId();
+    List<NormaComIntegra> normas = repositorioNormas.listarNormasComIntegra();
+    Set<Long> idsExistentes = repositorioNormas.listarTodosIdsNormas();
+    Map<String, Long> mapaNormasPorChave = repositorioNormas.mapearChavesNormasParaId();
 
     System.out.printf("Total de normas com íntegra para processar: %d\n", normas.size());
 
@@ -149,7 +167,7 @@ public class ServicoRelacionamentoNormas {
         totalProcessados++;
 
         if (lote.size() >= tamanhoLote) {
-          repositorioBancoDados.salvarRelacionamentosEmLote(lote);
+          repositorioRelacionamentos.salvarRelacionamentosEmLote(lote);
           lote.clear();
           System.out.printf("Relacionamentos extraídos até agora: %d\n", totalProcessados);
         }
@@ -157,11 +175,11 @@ public class ServicoRelacionamentoNormas {
     }
 
     if (!lote.isEmpty()) {
-      repositorioBancoDados.salvarRelacionamentosEmLote(lote);
+      repositorioRelacionamentos.salvarRelacionamentosEmLote(lote);
       lote.clear();
     }
 
-    long totalNoBanco = repositorioBancoDados.contarRelacionamentos();
+    long totalNoBanco = repositorioRelacionamentos.contarRelacionamentos();
     System.out.printf("""
         \n==========================================================
         Extração de relacionamentos concluída com sucesso!

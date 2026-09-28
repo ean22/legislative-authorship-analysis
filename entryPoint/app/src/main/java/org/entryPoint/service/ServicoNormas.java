@@ -9,7 +9,7 @@ import org.entryPoint.model.Norma;
 import org.entryPoint.model.RespostaNorma;
 import org.entryPoint.model.ResumoNorma;
 import org.entryPoint.model.ResultadoRequisicao;
-import org.entryPoint.repository.RepositorioBancoDados;
+import org.entryPoint.repository.RepositorioNormas;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,9 +20,17 @@ public class ServicoNormas {
   private final ObjectMapper MAPEADOR = new ObjectMapper();
   private int atrasoAtual = 400;
   private final int ATRASO_MAXIMO = 3000;
-  private final RepositorioBancoDados repositorio = new RepositorioBancoDados();
+  private final RepositorioNormas repositorio;
   private String dataInicial = "2013-01-01";
   private String dataFinal = "2021-01-06";
+
+  public ServicoNormas() {
+    this.repositorio = new RepositorioNormas();
+  }
+
+  public ServicoNormas(RepositorioNormas repositorio) {
+    this.repositorio = repositorio;
+  }
 
   public void buscarNormas() {
     int limitePorPagina = 100;

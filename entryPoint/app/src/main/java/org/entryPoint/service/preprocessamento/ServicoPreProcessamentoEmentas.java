@@ -5,11 +5,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.entryPoint.model.EmentaPreProcessada;
+import org.entryPoint.model.NormaComEmenta;
 import org.entryPoint.repository.RepositorioBancoDados;
-import org.entryPoint.repository.RepositorioBancoDados.NormaComEmenta;
+import org.entryPoint.repository.RepositorioEmentasPreProcessadas;
+import org.entryPoint.repository.RepositorioNormas;
 
 public class ServicoPreProcessamentoEmentas {
-  private final RepositorioBancoDados repositorio;
+  private final RepositorioNormas repositorioNormas;
+  private final RepositorioEmentasPreProcessadas repositorioEmentas;
 
   private final EstrategiaStopwordsTfidfTopK estrategiaStopwordsTfidf = new EstrategiaStopwordsTfidfTopK(7);
   private final EstrategiaTfidfTopK estrategiaTfidfTopK = new EstrategiaTfidfTopK(7);
@@ -25,11 +28,18 @@ public class ServicoPreProcessamentoEmentas {
   private final EstrategiaClusteringSentencas estrategiaClusteringSentencas = new EstrategiaClusteringSentencas(2);
 
   public ServicoPreProcessamentoEmentas() {
-    this.repositorio = new RepositorioBancoDados();
+    this.repositorioNormas = new RepositorioNormas();
+    this.repositorioEmentas = new RepositorioEmentasPreProcessadas();
+  }
+
+  public ServicoPreProcessamentoEmentas(RepositorioNormas repositorioNormas, RepositorioEmentasPreProcessadas repositorioEmentas) {
+    this.repositorioNormas = repositorioNormas;
+    this.repositorioEmentas = repositorioEmentas;
   }
 
   public ServicoPreProcessamentoEmentas(RepositorioBancoDados repositorio) {
-    this.repositorio = repositorio;
+    this.repositorioNormas = repositorio.getRepositorioNormas();
+    this.repositorioEmentas = repositorio.getRepositorioEmentas();
   }
 
   public void processarTodasEmentas() {
@@ -38,7 +48,7 @@ public class ServicoPreProcessamentoEmentas {
     System.out.println("==========================================================");
 
     try {
-      List<NormaComEmenta> normas = repositorio.listarNormasComEmenta();
+      List<NormaComEmenta> normas = repositorioNormas.listarNormasComEmenta();
       if (normas.isEmpty()) {
         System.out.println("Nenhuma ementa encontrada para processamento.");
         return;
@@ -84,7 +94,7 @@ public class ServicoPreProcessamentoEmentas {
         totalProcessadas++;
 
         if (lote.size() >= tamanhoLote) {
-          repositorio.salvarEmentasPreProcessadasEmLote(lote);
+          repositorioEmentas.salvarEmentasPreProcessadasEmLote(lote);
           System.out.printf("Processadas %d de %d ementas (%.1f%%)...%n",
               totalProcessadas, normas.size(), (totalProcessadas * 100.0) / normas.size());
           lote.clear();
@@ -92,11 +102,11 @@ public class ServicoPreProcessamentoEmentas {
       }
 
       if (!lote.isEmpty()) {
-        repositorio.salvarEmentasPreProcessadasEmLote(lote);
+        repositorioEmentas.salvarEmentasPreProcessadasEmLote(lote);
         lote.clear();
       }
 
-      long totalNoBanco = repositorio.contarEmentasPreProcessadas();
+      long totalNoBanco = repositorioEmentas.contarEmentasPreProcessadas();
       System.out.println("==========================================================");
       System.out.printf("Concluído! Total de ementas pré-processadas no banco: %d%n", totalNoBanco);
       System.out.println("==========================================================");

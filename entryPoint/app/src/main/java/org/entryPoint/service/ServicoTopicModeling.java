@@ -11,9 +11,12 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.entryPoint.model.EmentaParaTopico;
 import org.entryPoint.model.NormaTopico;
 import org.entryPoint.model.TopicoTematico;
 import org.entryPoint.repository.RepositorioBancoDados;
+import org.entryPoint.repository.RepositorioEmentasPreProcessadas;
+import org.entryPoint.repository.RepositorioTopicos;
 
 public class ServicoTopicModeling {
 
@@ -32,14 +35,22 @@ public class ServicoTopicModeling {
     "alei", "especifica", "conforme", "previsto", "vigor", "municipal", "município", "municipio", "cidade", "são", "paulo"
   );
 
-  private final RepositorioBancoDados repositorio;
+  private final RepositorioEmentasPreProcessadas repositorioEmentas;
+  private final RepositorioTopicos repositorioTopicos;
 
   public ServicoTopicModeling() {
-    this.repositorio = new RepositorioBancoDados();
+    this.repositorioEmentas = new RepositorioEmentasPreProcessadas();
+    this.repositorioTopicos = new RepositorioTopicos();
+  }
+
+  public ServicoTopicModeling(RepositorioEmentasPreProcessadas repositorioEmentas, RepositorioTopicos repositorioTopicos) {
+    this.repositorioEmentas = repositorioEmentas;
+    this.repositorioTopicos = repositorioTopicos;
   }
 
   public ServicoTopicModeling(RepositorioBancoDados repositorio) {
-    this.repositorio = repositorio;
+    this.repositorioEmentas = repositorio.getRepositorioEmentas();
+    this.repositorioTopicos = repositorio.getRepositorioTopicos();
   }
 
   public ResultadoTopicModeling executarTopicModeling() throws SQLException {
@@ -56,7 +67,7 @@ public class ServicoTopicModeling {
     System.out.println("=".repeat(75));
 
     // 1. Carregar ementas pré-processadas
-    List<RepositorioBancoDados.EmentaParaTopico> ementas = repositorio.listarEmentasParaTopicos();
+    List<EmentaParaTopico> ementas = repositorioEmentas.listarEmentasParaTopicos();
     if (ementas.isEmpty()) {
       System.err.println("Nenhuma ementa pré-processada encontrada no banco de dados.");
       return new ResultadoTopicModeling(List.of(), List.of(), 0, 0, 0, 0);
@@ -68,7 +79,7 @@ public class ServicoTopicModeling {
     List<Long> docIdsBrutos = new ArrayList<>();
     Map<String, Integer> contagemFrequenciaDoc = new HashMap<>();
 
-    for (RepositorioBancoDados.EmentaParaTopico item : ementas) {
+    for (EmentaParaTopico item : ementas) {
       String texto = item.termos();
       if (texto == null || texto.isBlank()) continue;
 
@@ -260,7 +271,7 @@ public class ServicoTopicModeling {
     for (int t = 0; t < k; t++) {
       String rotulo = inferirRotuloTema(termosPorTopico.get(t));
       if (!mapaRotuloIds.containsKey(rotulo)) {
-        int idRotulo = repositorio.obterOuCriarIdRotuloTopico(rotulo);
+        int idRotulo = repositorioTopicos.obterOuCriarIdRotuloTopico(rotulo);
         mapaRotuloIds.put(rotulo, idRotulo);
       }
     }
@@ -303,9 +314,9 @@ public class ServicoTopicModeling {
     // 8. Salvar no banco se solicitado
     if (salvarNoBanco) {
       System.out.println("Persistindo tópicos descobertos na tabela 'topicos'...");
-      repositorio.salvarTopicosDescobertosEmLote(topicos);
+      repositorioTopicos.salvarTopicosDescobertosEmLote(topicos);
       System.out.println("Persistindo vínculos de normas na tabela 'norma_topicos'...");
-      repositorio.salvarTopicosNormasEmLote(classificacoes);
+      repositorioTopicos.salvarTopicosNormasEmLote(classificacoes);
     }
 
     long tempoTotalMs = (System.nanoTime() - inicioTempo) / 1_000_000;

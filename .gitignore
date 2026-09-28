@@ -1,0 +1,9 @@
+# Gradle
+.gradle/
+build/
+.kotlin/
+
+# Project untracked files & directories
+.codegraph/
+agents/
+data/

@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class RepositorioBancoDados {
   private final String PATH_BANCO = "../../data/leis.db";
@@ -245,6 +246,8 @@ public class RepositorioBancoDados {
         id_norma INTEGER,
         id_autor INTEGER,
         cargo_autor TEXT,
+        cargo_autor_normalizado TEXT,
+        ativo INTEGER NOT NULL DEFAULT 1 CHECK (ativo IN (0, 1)),
         PRIMARY KEY (id_norma, id_autor),
         FOREIGN KEY (id_norma) REFERENCES normas(id),
         FOREIGN KEY (id_autor) REFERENCES autores(id)
@@ -272,7 +275,12 @@ public class RepositorioBancoDados {
         statement.execute();
       }
 
-      
+      try (var stmt = conexao.createStatement()) {
+        stmt.execute("ALTER TABLE norma_autor ADD COLUMN cargo_autor_normalizado TEXT");
+      } catch (SQLException ignored) {
+        // Coluna já existe
+      }
+
     } catch (SQLException e) {
       throw new RuntimeException(
         "Erro ao criar tabela normas",
@@ -286,6 +294,93 @@ public class RepositorioBancoDados {
       .trim()
       .replaceAll("\\s+", " ")
       .toUpperCase(Locale.ROOT);
+  }
+
+  public List<String> listarCargosDistintos() throws SQLException {
+    String sql = """
+      SELECT DISTINCT cargo_autor
+      FROM norma_autor
+      WHERE cargo_autor IS NOT NULL
+        AND TRIM(cargo_autor) <> ''
+      ORDER BY cargo_autor
+      """;
+
+    List<String> cargos = new ArrayList<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+
+      while (resultSet.next()) {
+        cargos.add(resultSet.getString(1));
+      }
+    }
+    return cargos;
+  }
+
+  public List<String> listarCargosPendentesNormalizacao() throws SQLException {
+    String sql = """
+      SELECT DISTINCT cargo_autor
+      FROM norma_autor
+      WHERE cargo_autor IS NOT NULL
+        AND TRIM(cargo_autor) <> ''
+        AND (cargo_autor_normalizado IS NULL OR TRIM(cargo_autor_normalizado) = '')
+      ORDER BY cargo_autor
+      """;
+
+    List<String> cargos = new ArrayList<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+
+      while (resultSet.next()) {
+        cargos.add(resultSet.getString(1));
+      }
+    }
+    return cargos;
+  }
+
+  public int atualizarCargosNormaAutor(Map<String, String> mapaDePara) throws SQLException {
+    String sql = """
+      UPDATE norma_autor
+      SET cargo_autor_normalizado = ?
+      WHERE cargo_autor = ?
+      """;
+
+    int totalLinhasModificadas = 0;
+
+    try (Connection conexao = conectar()) {
+      conexao.setAutoCommit(false);
+      try (PreparedStatement statement = conexao.prepareStatement(sql)) {
+        for (Map.Entry<String, String> entry : mapaDePara.entrySet()) {
+          String original = entry.getKey();
+          String normalizado = entry.getValue();
+
+          if (original == null || normalizado == null) {
+            continue;
+          }
+
+          statement.setString(1, normalizado);
+          statement.setString(2, original);
+          statement.addBatch();
+        }
+
+        int[] resultados = statement.executeBatch();
+        for (int contagem : resultados) {
+          if (contagem > 0) {
+            totalLinhasModificadas += contagem;
+          }
+        }
+
+        conexao.commit();
+      } catch (SQLException e) {
+        conexao.rollback();
+        throw e;
+      } finally {
+        conexao.setAutoCommit(true);
+      }
+    }
+
+    return totalLinhasModificadas;
   }
 
   public record NormaComIntegra(long id, String integra) {}

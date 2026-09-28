@@ -30,15 +30,12 @@ public class EstrategiaClusteringSentencas implements EstrategiaReducao {
     final int index;
     final String texto;
     final Map<String, Double> vetor;
-    final double norma;
     int clusterAtribuido = 0;
 
     SentencaPonto(int index, String texto, Map<String, Double> vetor) {
       this.index = index;
       this.texto = texto;
       this.vetor = vetor;
-      double somaQuadrados = vetor.values().stream().mapToDouble(v -> v * v).sum();
-      this.norma = Math.sqrt(somaQuadrados);
     }
   }
 

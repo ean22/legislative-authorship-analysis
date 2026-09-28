@@ -2,7 +2,9 @@ package org.entryPoint.repository;
 
 import org.entryPoint.model.Norma;
 import org.entryPoint.model.EmentaPreProcessada;
+import org.entryPoint.model.NormaTopico;
 import org.entryPoint.model.RelacionamentoNorma;
+import org.entryPoint.model.TopicoTematico;
 
 import java.io.File;
 import java.sql.Connection;
@@ -343,6 +345,81 @@ public class RepositorioBancoDados {
         statement.execute();
       }
 
+      String createRotulosTopicos = """
+        CREATE TABLE IF NOT EXISTS rotulos_topicos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          nome TEXT UNIQUE NOT NULL
+        )
+      """;
+
+      String createTopicos = """
+        CREATE TABLE IF NOT EXISTS topicos (
+          id INTEGER PRIMARY KEY,
+          id_rotulo_topico INTEGER NOT NULL,
+          termos_principais TEXT,
+          total_normas INTEGER,
+          percentual_base REAL,
+          FOREIGN KEY (id_rotulo_topico) REFERENCES rotulos_topicos(id)
+        )
+      """;
+
+      try (PreparedStatement statement = conexao.prepareStatement(createRotulosTopicos)) {
+        statement.execute();
+      }
+
+      try (PreparedStatement statement = conexao.prepareStatement(createTopicos)) {
+        statement.execute();
+      }
+
+      // Migração/criação da tabela norma_topicos com id_rotulo_topico
+      try (var stmt = conexao.createStatement()) {
+        var rs = stmt.executeQuery("PRAGMA table_info(norma_topicos)");
+        boolean temRotuloTexto = false;
+        while (rs.next()) {
+          if ("rotulo_topico".equalsIgnoreCase(rs.getString("name"))) {
+            temRotuloTexto = true;
+            break;
+          }
+        }
+        if (temRotuloTexto) {
+          stmt.execute("DROP TABLE norma_topicos");
+        }
+      } catch (SQLException ignored) {}
+
+      String createNormaTopicos = """
+        CREATE TABLE IF NOT EXISTS norma_topicos (
+          id_norma INTEGER PRIMARY KEY,
+          id_topico INTEGER NOT NULL,
+          id_rotulo_topico INTEGER NOT NULL,
+          score_pertinencia REAL,
+          termos_chave TEXT,
+          FOREIGN KEY (id_norma) REFERENCES normas(id),
+          FOREIGN KEY (id_rotulo_topico) REFERENCES rotulos_topicos(id)
+        )
+      """;
+
+      String criarIndiceNormaTopico = """
+        CREATE INDEX IF NOT EXISTS idx_norma_topicos_topico
+        ON norma_topicos (id_topico)
+      """;
+
+      String criarIndiceNormaRotulo = """
+        CREATE INDEX IF NOT EXISTS idx_norma_topicos_rotulo
+        ON norma_topicos (id_rotulo_topico)
+      """;
+
+      try (PreparedStatement statement = conexao.prepareStatement(createNormaTopicos)) {
+        statement.execute();
+      }
+
+      try (PreparedStatement statement = conexao.prepareStatement(criarIndiceNormaTopico)) {
+        statement.execute();
+      }
+
+      try (PreparedStatement statement = conexao.prepareStatement(criarIndiceNormaRotulo)) {
+        statement.execute();
+      }
+
       try (var stmt = conexao.createStatement()) {
         stmt.execute("ALTER TABLE norma_autor ADD COLUMN cargo_autor_normalizado TEXT");
       } catch (SQLException ignored) {
@@ -652,6 +729,269 @@ public class RepositorioBancoDados {
       PreparedStatement statement = conexao.prepareStatement(sql)) {
       statement.executeUpdate();
     }
+  }
+
+  public record EmentaParaTopico(long idNorma, String termos) {}
+
+  public List<EmentaParaTopico> listarEmentasParaTopicos() throws SQLException {
+    String sql = """
+      SELECT n.id, 
+             COALESCE(e.stopwords_tfidf_topk, '') || ' ' || COALESCE(e.svd_lsa, '') AS termos
+      FROM normas n
+      JOIN ementas_pre_processadas e ON n.id = e.id_norma
+      WHERE (e.stopwords_tfidf_topk IS NOT NULL AND TRIM(e.stopwords_tfidf_topk) != '')
+         OR (e.svd_lsa IS NOT NULL AND TRIM(e.svd_lsa) != '')
+    """;
+    List<EmentaParaTopico> lista = new ArrayList<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        lista.add(new EmentaParaTopico(resultSet.getLong("id"), resultSet.getString("termos")));
+      }
+    }
+    return lista;
+  }
+
+  public int obterOuCriarIdRotuloTopico(String nomeRotulo) throws SQLException {
+    String sqlSelect = "SELECT id FROM rotulos_topicos WHERE nome = ?";
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sqlSelect)) {
+      statement.setString(1, nomeRotulo);
+      try (ResultSet rs = statement.executeQuery()) {
+        if (rs.next()) {
+          return rs.getInt("id");
+        }
+      }
+    }
+
+    String sqlInsert = "INSERT OR IGNORE INTO rotulos_topicos (nome) VALUES (?)";
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sqlInsert)) {
+      statement.setString(1, nomeRotulo);
+      statement.executeUpdate();
+    }
+
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sqlSelect)) {
+      statement.setString(1, nomeRotulo);
+      try (ResultSet rs = statement.executeQuery()) {
+        if (rs.next()) {
+          return rs.getInt("id");
+        }
+      }
+    }
+    return 1;
+  }
+
+  public Map<String, Integer> mapearRotulosParaIds() throws SQLException {
+    String sql = "SELECT id, nome FROM rotulos_topicos";
+    Map<String, Integer> mapa = new HashMap<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet rs = statement.executeQuery()) {
+      while (rs.next()) {
+        mapa.put(rs.getString("nome"), rs.getInt("id"));
+      }
+    }
+    return mapa;
+  }
+
+  public void salvarTopicosDescobertosEmLote(List<TopicoTematico> topicos) throws SQLException {
+    String sql = """
+      INSERT OR REPLACE INTO topicos (
+        id,
+        id_rotulo_topico,
+        termos_principais,
+        total_normas,
+        percentual_base
+      )
+      VALUES (?, ?, ?, ?, ?)
+    """;
+
+    try (Connection conexao = conectar()) {
+      conexao.setAutoCommit(false);
+      try (PreparedStatement statement = conexao.prepareStatement(sql)) {
+        for (TopicoTematico item : topicos) {
+          statement.setInt(1, item.id());
+          statement.setInt(2, item.idRotuloTopico());
+          statement.setString(3, String.join(", ", item.termosPrincipais()));
+          statement.setLong(4, item.totalNormas());
+          statement.setDouble(5, item.percentualBase());
+          statement.addBatch();
+        }
+        statement.executeBatch();
+        conexao.commit();
+      } catch (SQLException e) {
+        conexao.rollback();
+        throw e;
+      } finally {
+        conexao.setAutoCommit(true);
+      }
+    }
+  }
+
+  public void salvarTopicosNormasEmLote(List<NormaTopico> lote) throws SQLException {
+    String sql = """
+      INSERT OR REPLACE INTO norma_topicos (
+        id_norma,
+        id_topico,
+        id_rotulo_topico,
+        score_pertinencia,
+        termos_chave
+      )
+      VALUES (?, ?, ?, ?, ?)
+    """;
+
+    try (Connection conexao = conectar()) {
+      conexao.setAutoCommit(false);
+      try (PreparedStatement statement = conexao.prepareStatement(sql)) {
+        for (NormaTopico item : lote) {
+          statement.setLong(1, item.idNorma());
+          statement.setInt(2, item.idTopico());
+          statement.setInt(3, item.idRotuloTopico());
+          statement.setDouble(4, item.scorePertinencia());
+          statement.setString(5, item.termosChave());
+          statement.addBatch();
+        }
+        statement.executeBatch();
+        conexao.commit();
+      } catch (SQLException e) {
+        conexao.rollback();
+        throw e;
+      } finally {
+        conexao.setAutoCommit(true);
+      }
+    }
+  }
+
+  public List<NormaTopico> listarNormasTopicos() throws SQLException {
+    String sql = """
+      SELECT nt.id_norma, nt.id_topico, nt.id_rotulo_topico, rt.nome AS rotulo_topico, nt.score_pertinencia, nt.termos_chave
+      FROM norma_topicos nt
+      JOIN rotulos_topicos rt ON nt.id_rotulo_topico = rt.id
+    """;
+    List<NormaTopico> lista = new ArrayList<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        lista.add(new NormaTopico(
+          resultSet.getLong("id_norma"),
+          resultSet.getInt("id_topico"),
+          resultSet.getInt("id_rotulo_topico"),
+          resultSet.getString("rotulo_topico"),
+          resultSet.getDouble("score_pertinencia"),
+          resultSet.getString("termos_chave")
+        ));
+      }
+    }
+    return lista;
+  }
+
+  public Map<Long, NormaTopico> listarNormasTopicosComoMapa() throws SQLException {
+    String sql = """
+      SELECT nt.id_norma, nt.id_topico, nt.id_rotulo_topico, rt.nome AS rotulo_topico, nt.score_pertinencia, nt.termos_chave
+      FROM norma_topicos nt
+      JOIN rotulos_topicos rt ON nt.id_rotulo_topico = rt.id
+    """;
+    Map<Long, NormaTopico> mapa = new HashMap<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        mapa.put(resultSet.getLong("id_norma"), new NormaTopico(
+          resultSet.getLong("id_norma"),
+          resultSet.getInt("id_topico"),
+          resultSet.getInt("id_rotulo_topico"),
+          resultSet.getString("rotulo_topico"),
+          resultSet.getDouble("score_pertinencia"),
+          resultSet.getString("termos_chave")
+        ));
+      }
+    }
+    return mapa;
+  }
+
+  public List<TopicoTematico> listarTopicosSalvos() throws SQLException {
+    String sql = """
+      SELECT t.id, t.id_rotulo_topico, rt.nome AS rotulo, t.termos_principais, t.total_normas, t.percentual_base
+      FROM topicos t
+      JOIN rotulos_topicos rt ON t.id_rotulo_topico = rt.id
+      ORDER BY t.id
+    """;
+    List<TopicoTematico> lista = new ArrayList<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet rs = statement.executeQuery()) {
+      while (rs.next()) {
+        String tp = rs.getString("termos_principais");
+        List<String> termosList = tp != null ? List.of(tp.split(",\\s*")) : List.of();
+        lista.add(new TopicoTematico(
+          rs.getInt("id"),
+          rs.getInt("id_rotulo_topico"),
+          rs.getString("rotulo"),
+          termosList,
+          rs.getLong("total_normas"),
+          rs.getDouble("percentual_base")
+        ));
+      }
+    }
+    return lista;
+  }
+
+  public Map<Long, String> listarEmentasOriginais() throws SQLException {
+    String sql = "SELECT id, ementa FROM normas WHERE ementa IS NOT NULL";
+    Map<Long, String> mapa = new HashMap<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        mapa.put(resultSet.getLong("id"), resultSet.getString("ementa"));
+      }
+    }
+    return mapa;
+  }
+
+  public Map<Long, List<Long>> listarAutoresComNormas() throws SQLException {
+    String sql = "SELECT id_autor, id_norma FROM norma_autor WHERE ativo = 1 ORDER BY id_autor";
+    Map<Long, List<Long>> mapa = new HashMap<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        long idAutor = resultSet.getLong("id_autor");
+        long idNorma = resultSet.getLong("id_norma");
+        mapa.computeIfAbsent(idAutor, k -> new ArrayList<>()).add(idNorma);
+      }
+    }
+    return mapa;
+  }
+
+  public Map<Long, String> listarNomesAutores() throws SQLException {
+    String sql = "SELECT id, nome FROM autores";
+    Map<Long, String> mapa = new HashMap<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        mapa.put(resultSet.getLong("id"), resultSet.getString("nome"));
+      }
+    }
+    return mapa;
+  }
+
+  public Map<Long, String> listarCargosNormalizadosAutores() throws SQLException {
+    String sql = "SELECT DISTINCT id_autor, cargo_autor_normalizado FROM norma_autor WHERE cargo_autor_normalizado IS NOT NULL";
+    Map<Long, String> mapa = new HashMap<>();
+    try (Connection conexao = conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        mapa.put(resultSet.getLong("id_autor"), resultSet.getString("cargo_autor_normalizado"));
+      }
+    }
+    return mapa;
   }
 
   public record NormaComIntegra(long id, String integra) {}

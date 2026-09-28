@@ -5,11 +5,13 @@ import java.util.Scanner;
 
 import org.entryPoint.service.ServicoAutores;
 import org.entryPoint.service.ServicoNormas;
+import org.entryPoint.service.ServicoNormalizacaoCargo;
 
 public class MenuPrincipal {
   private static final Scanner sc = new Scanner(System.in);
   private static ServicoNormas servicoNormas = new ServicoNormas();
   private static ServicoAutores servicoAutores = new ServicoAutores();
+  private static ServicoNormalizacaoCargo servicoNormalizacaoCargo = new ServicoNormalizacaoCargo();
 
   public static void exibirSaudacao() {
     System.out.println("Bem-vindo ao sistema de análise de autoria legislativa!");
@@ -23,8 +25,9 @@ public class MenuPrincipal {
   public static void exibirMenu() {
     System.out.println("Escolha uma opção:");
     System.out.println("1. Baixar normas");
-    System.out.println("2. Listar normas");
+    System.out.println("2. Testar leitura do banco");
     System.out.println("3. Extrair autores");
+    System.out.println("4. Normalizar cargos (Google Gemini)");
     System.out.println("0. Sair");
   }
 
@@ -105,6 +108,12 @@ public class MenuPrincipal {
           } catch (SQLException e) {
             e.printStackTrace();
           }
+          pularLinha();
+
+          break;
+
+        case 4:
+          servicoNormalizacaoCargo.normalizarCargos();
           pularLinha();
 
           break;

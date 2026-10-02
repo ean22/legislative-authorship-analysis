@@ -10,6 +10,11 @@ import org.entryPoint.service.ServicoNormalizacaoCargo;
 import org.entryPoint.service.ServicoPerfilAutores;
 import org.entryPoint.service.ServicoRelacionamentoNormas;
 import org.entryPoint.service.ServicoTopicModeling;
+import org.entryPoint.service.ServicoClusterizacaoEmbeddings;
+import org.entryPoint.service.embeddings.GeradorEmbeddings;
+import org.entryPoint.service.embeddings.GeradorEmbeddingsGemini;
+import org.entryPoint.service.embeddings.GeradorEmbeddingsLocal;
+import org.entryPoint.service.embeddings.ServicoEmbeddings;
 import org.entryPoint.service.preprocessamento.ServicoPreProcessamentoEmentas;
 
 public class MenuPrincipal {
@@ -22,6 +27,8 @@ public class MenuPrincipal {
   private static ServicoTopicModeling servicoTopicModeling = new ServicoTopicModeling();
   private static ServicoPerfilAutores servicoPerfilAutores = new ServicoPerfilAutores();
   private static ServicoAvaliacaoClassificacao servicoAvaliacao = new ServicoAvaliacaoClassificacao();
+  private static ServicoEmbeddings servicoEmbeddings = new ServicoEmbeddings();
+  private static ServicoClusterizacaoEmbeddings servicoClusterizacao = new ServicoClusterizacaoEmbeddings();
 
   private static ServicoTopicModeling.ResultadoTopicModeling ultimoResultadoTopicModeling = null;
 
@@ -45,6 +52,8 @@ public class MenuPrincipal {
     System.out.println("7. Executar Topic Modeling nas normas (NMF)");
     System.out.println("8. Exibir perfil temático dos autores");
     System.out.println("9. Avaliar métricas de classificação e desempenho");
+    System.out.println("10. Gerar embeddings das ementas (armazena em data/leis.db)");
+    System.out.println("11. Clusterizar embeddings (K-Means) e exibir normas representativas");
     System.out.println("0. Sair");
   }
 
@@ -185,6 +194,18 @@ public class MenuPrincipal {
 
           break;
 
+        case 10:
+          executarGeracaoEmbeddings();
+          pularLinha();
+
+          break;
+
+        case 11:
+          executarClusterizacaoEmbeddings();
+          pularLinha();
+
+          break;
+
         case 0:
           sair();
           
@@ -199,5 +220,76 @@ public class MenuPrincipal {
     } while (opcao != 0);
 
     sc.close();
+  }
+
+  private static void executarGeracaoEmbeddings() {
+    System.out.println("\n--- GERAÇÃO DE EMBEDDINGS DE EMENTAS ---");
+    System.out.println("Escolha o provedor de embeddings:");
+    System.out.println("1. Google Gemini (text-embedding-004) [Requer GEMINI_API_KEY]");
+    System.out.println("2. Local Semantic Embeddings (128D, 100% offline e rápido)");
+    System.out.print("Opção [Padrão: 2]: ");
+    String optStr = sc.nextLine().trim();
+    int opt = 2;
+    try {
+      if (!optStr.isBlank()) {
+        opt = Integer.parseInt(optStr);
+      }
+    } catch (NumberFormatException ignored) {}
+
+    GeradorEmbeddings gerador;
+    if (opt == 1) {
+      gerador = new GeradorEmbeddingsGemini();
+      if (!gerador.isDisponivel()) {
+        System.err.println("AVISO: GEMINI_API_KEY não foi encontrada no ambiente. Utilizando gerador local como fallback.");
+        gerador = new GeradorEmbeddingsLocal();
+      }
+    } else {
+      gerador = new GeradorEmbeddingsLocal();
+    }
+
+    System.out.print("Deseja gerar apenas para normas pendentes (sem embedding)? (S/n) [Padrão: S]: ");
+    String pendentesStr = sc.nextLine().trim();
+    boolean apenasPendentes = !pendentesStr.equalsIgnoreCase("n");
+
+    System.out.print("Definir limite de normas a processar? (0 para todas) [Padrão: 0]: ");
+    String limiteStr = sc.nextLine().trim();
+    int limite = 0;
+    try {
+      if (!limiteStr.isBlank()) {
+        limite = Integer.parseInt(limiteStr);
+      }
+    } catch (NumberFormatException ignored) {}
+
+    try {
+      servicoEmbeddings.gerarESalvarEmbeddings(gerador, apenasPendentes, limite);
+    } catch (Exception e) {
+      System.err.println("Erro durante a geração de embeddings: " + e.getMessage());
+      e.printStackTrace();
+    }
+  }
+
+  private static void executarClusterizacaoEmbeddings() {
+    System.out.println("\n--- CLUSTERIZAÇÃO DE EMBEDDINGS (K-MEANS) ---");
+    System.out.print("Digite a quantidade de clusters desejada (k) [Padrão: 10]: ");
+    String kStr = sc.nextLine().trim();
+    int k = 10;
+    try {
+      if (!kStr.isBlank()) {
+        k = Integer.parseInt(kStr);
+      }
+    } catch (NumberFormatException ignored) {}
+
+    if (k <= 0) {
+      System.out.println("Quantidade de clusters inválida. Usando k=10.");
+      k = 10;
+    }
+
+    try {
+      var resultado = servicoClusterizacao.clusterizar(k);
+      servicoClusterizacao.exibirRelatorioClusterizacao(resultado);
+    } catch (SQLException e) {
+      System.err.println("Erro ao executar clusterização: " + e.getMessage());
+      e.printStackTrace();
+    }
   }
 }

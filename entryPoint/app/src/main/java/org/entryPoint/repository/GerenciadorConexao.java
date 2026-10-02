@@ -99,6 +99,7 @@ public class GerenciadorConexao {
         chi_square_termos TEXT,
         mutual_information TEXT,
         clustering_sentencas TEXT,
+        embeddings TEXT,
         FOREIGN KEY (id_norma) REFERENCES normas(id)
       )
     """;
@@ -243,6 +244,18 @@ public class GerenciadorConexao {
 
       try (var stmt = conexao.createStatement()) {
         stmt.execute("ALTER TABLE norma_autor ADD COLUMN cargo_autor_normalizado TEXT");
+      } catch (SQLException ignored) {
+        // Coluna já existe
+      }
+
+      try (var stmt = conexao.createStatement()) {
+        stmt.execute("ALTER TABLE norma_autor ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1");
+      } catch (SQLException ignored) {
+        // Coluna já existe
+      }
+
+      try (var stmt = conexao.createStatement()) {
+        stmt.execute("ALTER TABLE ementas_pre_processadas ADD COLUMN embeddings TEXT");
       } catch (SQLException ignored) {
         // Coluna já existe
       }

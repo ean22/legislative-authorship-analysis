@@ -139,6 +139,22 @@ public class RepositorioBancoDados {
     return repositorioEmentas.contarEmentasPreProcessadas();
   }
 
+  public long contarEmbeddings() throws SQLException {
+    return repositorioEmentas.contarEmbeddings();
+  }
+
+  public void salvarEmbeddingsEmLote(Map<Long, String> mapaEmbeddings) throws SQLException {
+    repositorioEmentas.salvarEmbeddingsEmLote(mapaEmbeddings);
+  }
+
+  public List<org.entryPoint.model.NormaComEmenta> listarNormasParaGeracaoEmbedding(boolean apenasPendentes, int limite) throws SQLException {
+    return repositorioEmentas.listarNormasParaGeracaoEmbedding(apenasPendentes, limite);
+  }
+
+  public List<org.entryPoint.model.EmbeddingNorma> listarEmbeddingsParaClusterizacao() throws SQLException {
+    return repositorioEmentas.listarEmbeddingsParaClusterizacao();
+  }
+
   public List<EmentaParaTopico> listarEmentasParaTopicos() throws SQLException {
     return repositorioEmentas.listarEmentasParaTopicos();
   }

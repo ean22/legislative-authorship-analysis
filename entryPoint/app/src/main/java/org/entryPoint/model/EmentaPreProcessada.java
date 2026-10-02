@@ -24,4 +24,5 @@ public class EmentaPreProcessada {
   private String chiSquareTermos;
   private String mutualInformation;
   private String clusteringSentencas;
+  private String embeddings;
 }

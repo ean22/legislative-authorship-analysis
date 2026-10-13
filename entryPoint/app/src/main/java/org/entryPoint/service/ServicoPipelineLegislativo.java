@@ -101,8 +101,28 @@ public class ServicoPipelineLegislativo {
 
     try (Connection conexao = gerenciadorConexao.conectar()) {
       conexao.setAutoCommit(false);
-      try (PreparedStatement stmt = conexao.prepareStatement(sql)) {
-        int limite = Math.min(docIds.size(), matrizDocTopico.length);
+      try {
+        // 1. Sincronizar rotulos_topicos para garantir integridade referencial com os 8 tópicos
+        if (topicos != null && !topicos.isEmpty()) {
+          try (PreparedStatement stmtRotulos = conexao.prepareStatement(
+              "INSERT OR REPLACE INTO rotulos_topicos (id, nome) VALUES (?, ?)"
+          )) {
+            for (TopicoTematico topico : topicos) {
+              stmtRotulos.setInt(1, topico.id());
+              stmtRotulos.setString(2, topico.nome());
+              stmtRotulos.addBatch();
+            }
+            stmtRotulos.executeBatch();
+          }
+        }
+
+        // 2. Limpar atribuições anteriores para assegurar que apenas os tópicos oficiais permaneçam
+        try (PreparedStatement deleteStmt = conexao.prepareStatement("DELETE FROM norma_topicos")) {
+          deleteStmt.executeUpdate();
+        }
+
+        try (PreparedStatement stmt = conexao.prepareStatement(sql)) {
+          int limite = Math.min(docIds.size(), matrizDocTopico.length);
         for (int i = 0; i < limite; i++) {
           long idNorma = docIds.get(i);
           double[] linha = matrizDocTopico[i];
@@ -133,15 +153,17 @@ public class ServicoPipelineLegislativo {
           }
         }
         stmt.executeBatch();
-        conexao.commit();
-        System.out.printf("Atribuição de %d normas persistida na tabela 'norma_topicos'.%n", limite);
-      } catch (SQLException e) {
-        conexao.rollback();
-        throw e;
-      } finally {
-        conexao.setAutoCommit(true);
       }
+      conexao.commit();
+      int limite = Math.min(docIds.size(), matrizDocTopico.length);
+      System.out.printf("Atribuição de %d normas persistida na tabela 'norma_topicos'.%n", limite);
+    } catch (SQLException e) {
+      conexao.rollback();
+      throw e;
+    } finally {
+      conexao.setAutoCommit(true);
     }
+  }
   }
 
   private void salvarPipelineJson(DefinicaoPipeline definicao) {

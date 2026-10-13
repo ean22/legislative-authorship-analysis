@@ -12,10 +12,11 @@ import lombok.NoArgsConstructor;
 public class EmentaPreProcessada {
   private Long id;
   private long idNorma;
+  private String textoReduzido;
+  private String textrank;
   private String stopwordsTfidfTopk;
   private String tfidfTopk;
   private String resumoExtrativoTfidf;
-  private String textrank;
   private String tfidfPosicaoSentenca;
   private String tfidfMmr;
   private String tfidfSimilaridadeFrases;

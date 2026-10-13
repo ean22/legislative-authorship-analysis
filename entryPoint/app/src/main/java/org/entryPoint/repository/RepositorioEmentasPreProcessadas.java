@@ -25,10 +25,11 @@ public class RepositorioEmentasPreProcessadas {
     String sql = """
       INSERT INTO ementas_pre_processadas (
         id_norma,
+        texto_reduzido,
+        textrank,
         stopwords_tfidf_topk,
         tfidf_topk,
         resumo_extrativo_tfidf,
-        textrank,
         tfidf_posicao_sentenca,
         tfidf_mmr,
         tfidf_similaridade_frases,
@@ -38,12 +39,13 @@ public class RepositorioEmentasPreProcessadas {
         mutual_information,
         clustering_sentencas
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id_norma) DO UPDATE SET
+        texto_reduzido = excluded.texto_reduzido,
+        textrank = excluded.textrank,
         stopwords_tfidf_topk = excluded.stopwords_tfidf_topk,
         tfidf_topk = excluded.tfidf_topk,
         resumo_extrativo_tfidf = excluded.resumo_extrativo_tfidf,
-        textrank = excluded.textrank,
         tfidf_posicao_sentenca = excluded.tfidf_posicao_sentenca,
         tfidf_mmr = excluded.tfidf_mmr,
         tfidf_similaridade_frases = excluded.tfidf_similaridade_frases,
@@ -58,19 +60,21 @@ public class RepositorioEmentasPreProcessadas {
       conexao.setAutoCommit(false);
       try (PreparedStatement statement = conexao.prepareStatement(sql)) {
         for (EmentaPreProcessada item : lote) {
+          String red = item.getTextoReduzido() != null ? item.getTextoReduzido() : item.getTextrank();
           statement.setLong(1, item.getIdNorma());
-          statement.setString(2, item.getStopwordsTfidfTopk());
-          statement.setString(3, item.getTfidfTopk());
-          statement.setString(4, item.getResumoExtrativoTfidf());
-          statement.setString(5, item.getTextrank());
-          statement.setString(6, item.getTfidfPosicaoSentenca());
-          statement.setString(7, item.getTfidfMmr());
-          statement.setString(8, item.getTfidfSimilaridadeFrases());
-          statement.setString(9, item.getSvdLsa());
-          statement.setString(10, item.getTfidfFeatureSelection());
-          statement.setString(11, item.getChiSquareTermos());
-          statement.setString(12, item.getMutualInformation());
-          statement.setString(13, item.getClusteringSentencas());
+          statement.setString(2, red);
+          statement.setString(3, item.getTextrank() != null ? item.getTextrank() : red);
+          statement.setString(4, item.getStopwordsTfidfTopk());
+          statement.setString(5, item.getTfidfTopk());
+          statement.setString(6, item.getResumoExtrativoTfidf());
+          statement.setString(7, item.getTfidfPosicaoSentenca());
+          statement.setString(8, item.getTfidfMmr());
+          statement.setString(9, item.getTfidfSimilaridadeFrases());
+          statement.setString(10, item.getSvdLsa());
+          statement.setString(11, item.getTfidfFeatureSelection());
+          statement.setString(12, item.getChiSquareTermos());
+          statement.setString(13, item.getMutualInformation());
+          statement.setString(14, item.getClusteringSentencas());
           statement.addBatch();
         }
         statement.executeBatch();
@@ -97,13 +101,15 @@ public class RepositorioEmentasPreProcessadas {
   }
 
   public List<EmentaParaTopico> listarEmentasParaTopicos() throws SQLException {
+    // Utiliza a redução textual do pipeline vencedor (TextRank / texto_reduzido) com fallback para ementa original
     String sql = """
       SELECT n.id, 
-             COALESCE(e.stopwords_tfidf_topk, '') || ' ' || COALESCE(e.svd_lsa, '') AS termos
+             COALESCE(e.texto_reduzido, e.textrank, n.ementa, '') AS termos
       FROM normas n
-      JOIN ementas_pre_processadas e ON n.id = e.id_norma
-      WHERE (e.stopwords_tfidf_topk IS NOT NULL AND TRIM(e.stopwords_tfidf_topk) != '')
-         OR (e.svd_lsa IS NOT NULL AND TRIM(e.svd_lsa) != '')
+      LEFT JOIN ementas_pre_processadas e ON n.id = e.id_norma
+      WHERE (e.texto_reduzido IS NOT NULL AND TRIM(e.texto_reduzido) != '')
+         OR (e.textrank IS NOT NULL AND TRIM(e.textrank) != '')
+         OR (n.ementa IS NOT NULL AND TRIM(n.ementa) != '')
     """;
     List<EmentaParaTopico> lista = new ArrayList<>();
     try (Connection conexao = gerenciadorConexao.conectar();

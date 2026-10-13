@@ -35,10 +35,10 @@ public class MenuPrincipal {
     System.out.println("2. Testar leitura do banco");
     System.out.println("3. Extrair autores");
     System.out.println("4. Normalizar cargos (Google Gemini)");
-    System.out.println("5. Pré-processar ementas (redução textual)");
+    System.out.println("5. Pré-processar ementas (Redução Textual TextRank - Pipeline Vencedor)");
     System.out.println("6. Extrair relacionamentos entre normas (links na íntegra)");
-    System.out.println("7. Executar Topic Modeling nas normas (Baseline NMF K=12)");
-    System.out.println("8. Executar Benchmark e Definir Melhor Pipeline (Reduções, Modelos e Perfis de Autores)");
+    System.out.println("7. Executar Topic Modeling nas normas (Pipeline Vencedor: Cluster c-TF-IDF K=8)");
+    System.out.println("8. Executar Benchmark e Comparar Pipelines (Reduções, Modelos e Perfis de Autores)");
     System.out.println("9. Visualizar Pipeline Ativo Oficial para os Próximos Passos");
     System.out.println("0. Sair");
   }

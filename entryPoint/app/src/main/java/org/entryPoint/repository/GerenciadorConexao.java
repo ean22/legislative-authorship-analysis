@@ -87,10 +87,11 @@ public class GerenciadorConexao {
       CREATE TABLE IF NOT EXISTS ementas_pre_processadas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         id_norma INTEGER UNIQUE,
+        texto_reduzido TEXT,
+        textrank TEXT,
         stopwords_tfidf_topk TEXT,
         tfidf_topk TEXT,
         resumo_extrativo_tfidf TEXT,
-        textrank TEXT,
         tfidf_posicao_sentenca TEXT,
         tfidf_mmr TEXT,
         tfidf_similaridade_frases TEXT,
@@ -196,6 +197,22 @@ public class GerenciadorConexao {
       try (var stmt = conexao.createStatement()) {
         stmt.execute("ALTER TABLE topicos ADD COLUMN nome TEXT");
       } catch (SQLException ignored) {}
+
+      // Migração para garantir coluna texto_reduzido em ementas_pre_processadas (Pipeline Vencedor)
+      try (var stmt = conexao.createStatement()) {
+        stmt.execute("ALTER TABLE ementas_pre_processadas ADD COLUMN texto_reduzido TEXT");
+        stmt.execute("UPDATE ementas_pre_processadas SET texto_reduzido = textrank WHERE texto_reduzido IS NULL");
+      } catch (SQLException ignored) {}
+
+      String createRotulosTopicos = """
+        CREATE TABLE IF NOT EXISTS rotulos_topicos (
+          id INTEGER PRIMARY KEY,
+          nome TEXT NOT NULL
+        )
+      """;
+      try (PreparedStatement statement = conexao.prepareStatement(createRotulosTopicos)) {
+        statement.execute();
+      }
 
       // Migração/criação da tabela norma_topicos com id_rotulo_topico
       try (var stmt = conexao.createStatement()) {

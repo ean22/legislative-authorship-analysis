@@ -65,29 +65,20 @@ public class ServicoPreProcessamentoEmentas {
       corpus.treinar(corpusInput);
       System.out.printf("Corpus treinado com sucesso (%d documentos analisados).%n", corpus.getTotalDocumentos());
 
-      // 2. Aplicação das estratégias e geração dos registros
-      System.out.println("Aplicando estratégias de redução textual...");
+      // 2. Aplicação da redução textual vencedora (TextRank)
+      System.out.println("Aplicando redução textual vencedora (TextRank)...");
       List<EmentaPreProcessada> lote = new ArrayList<>();
       int totalProcessadas = 0;
       int tamanhoLote = 500;
 
       for (NormaComEmenta n : normas) {
         String ementaOriginal = n.ementa();
+        String textoReduzido = estrategiaTextRank.processar(ementaOriginal, corpus);
 
         EmentaPreProcessada pre = EmentaPreProcessada.builder()
             .idNorma(n.id())
-            .stopwordsTfidfTopk(estrategiaStopwordsTfidf.processar(ementaOriginal, corpus))
-            .tfidfTopk(estrategiaTfidfTopK.processar(ementaOriginal, corpus))
-            .resumoExtrativoTfidf(estrategiaResumoTfidf.processar(ementaOriginal, corpus))
-            .textrank(estrategiaTextRank.processar(ementaOriginal, corpus))
-            .tfidfPosicaoSentenca(estrategiaTfidfPosicao.processar(ementaOriginal, corpus))
-            .tfidfMmr(estrategiaTfidfMmr.processar(ementaOriginal, corpus))
-            .tfidfSimilaridadeFrases(estrategiaSimilaridadeFrases.processar(ementaOriginal, corpus))
-            .svdLsa(estrategiaSvdLsa.processar(ementaOriginal, corpus))
-            .tfidfFeatureSelection(estrategiaFeatureSelection.processar(ementaOriginal, corpus))
-            .chiSquareTermos(estrategiaChiSquare.processar(ementaOriginal, corpus))
-            .mutualInformation(estrategiaMutualInformation.processar(ementaOriginal, corpus))
-            .clusteringSentencas(estrategiaClusteringSentencas.processar(ementaOriginal, corpus))
+            .textoReduzido(textoReduzido)
+            .textrank(textoReduzido)
             .build();
 
         lote.add(pre);

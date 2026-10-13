@@ -32,14 +32,19 @@ public class RepositorioTopicos {
 
     try (Connection conexao = gerenciadorConexao.conectar()) {
       conexao.setAutoCommit(false);
-      try (PreparedStatement statement = conexao.prepareStatement(sql)) {
-        for (TopicoTematico item : topicos) {
-          statement.setInt(1, item.id());
-          statement.setString(2, item.nome());
-          statement.setString(3, String.join(", ", item.termosPrincipais()));
-          statement.addBatch();
+      try {
+        try (PreparedStatement deleteStmt = conexao.prepareStatement("DELETE FROM topicos")) {
+          deleteStmt.executeUpdate();
         }
-        statement.executeBatch();
+        try (PreparedStatement statement = conexao.prepareStatement(sql)) {
+          for (TopicoTematico item : topicos) {
+            statement.setInt(1, item.id());
+            statement.setString(2, item.nome());
+            statement.setString(3, String.join(", ", item.termosPrincipais()));
+            statement.addBatch();
+          }
+          statement.executeBatch();
+        }
         conexao.commit();
       } catch (SQLException e) {
         conexao.rollback();

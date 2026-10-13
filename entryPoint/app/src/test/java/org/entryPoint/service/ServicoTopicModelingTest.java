@@ -49,4 +49,24 @@ public class ServicoTopicModelingTest {
     assertEquals(6, resultado.topicos().size());
     assertTrue(resultado.totalTokens() > 0);
   }
+
+  @Test
+  public void testMetodosAuditoriaTopicModeling() throws SQLException {
+    ServicoTopicModeling servicoTopicModeling = new ServicoTopicModeling();
+
+    // 1. Auditoria geométrica de centroides
+    servicoTopicModeling.exibirRelatorioCentroides();
+
+    // 2. Detalhamento de c-TF-IDF
+    servicoTopicModeling.exibirRelatorioCTfIdf(6);
+
+    // 3. Auditoria NMF baseline
+    servicoTopicModeling.executarAuditoriaNmf(6, 15);
+
+    // 4. Estatísticas do banco SQLite
+    servicoTopicModeling.auditarClassificacoesBanco();
+
+    // 5. Inspecionar normas do tópico #1
+    servicoTopicModeling.inspecionarAmostraNormasPorTopico(1, 3);
+  }
 }

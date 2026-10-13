@@ -11,6 +11,15 @@ import org.entryPoint.model.TopicoTematico;
  */
 public class ClusterTopicModeling implements AlgoritmoTopicModeling {
 
+  private double[][] ultimosCentroides;
+  private int[] ultimosClusters;
+  private double[][] ultimaMatrizH;
+  private double[][] ultimaMatrizDocTopico;
+  private CorpusProcessado ultimoCorpus;
+  private List<TopicoTematico> ultimosTopicos;
+  private double[][] ultimaFrequenciaClusterTermo;
+  private int[] ultimaPresencaClusterTermo;
+
   @Override
   public ResultadoModelo executar(CorpusProcessado corpus, int k, int maxIteracoes, long seed) {
     int dSize = corpus.getNumeroDocumentos();
@@ -183,10 +192,62 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
       topicos.add(new TopicoTematico(c + 1, nome, topPalavras));
     }
 
+    this.ultimosCentroides = centroides;
+    this.ultimosClusters = clusterAtribuido;
+    this.ultimaMatrizH = H;
+    this.ultimaMatrizDocTopico = W;
+    this.ultimoCorpus = corpus;
+    this.ultimosTopicos = topicos;
+    this.ultimaFrequenciaClusterTermo = frequenciaClusterTermo;
+    this.ultimaPresencaClusterTermo = presencaClusterTermo;
+
     return new ResultadoModelo(W, H, topicos);
   }
 
-  private double similaridadeCosseno(double[] a, double[] b) {
+  public double[][] getUltimosCentroides() {
+    return ultimosCentroides;
+  }
+
+  public int[] getUltimosClusters() {
+    return ultimosClusters;
+  }
+
+  public double[][] getUltimaMatrizH() {
+    return ultimaMatrizH;
+  }
+
+  public double[][] getUltimaMatrizDocTopico() {
+    return ultimaMatrizDocTopico;
+  }
+
+  public CorpusProcessado getUltimoCorpus() {
+    return ultimoCorpus;
+  }
+
+  public List<TopicoTematico> getUltimosTopicos() {
+    return ultimosTopicos;
+  }
+
+  public record DetalheTermoCTfIdf(String termo, double scoreCTfIdf, double tfCluster, int presencaClusters) {}
+
+  public List<DetalheTermoCTfIdf> obterDetalhesCTfIdf(int clusterIdx, int limite) {
+    if (ultimaMatrizH == null || clusterIdx < 0 || clusterIdx >= ultimaMatrizH.length || ultimoCorpus == null) {
+      return List.of();
+    }
+    List<String> vocab = ultimoCorpus.vocabulario();
+    int vSize = vocab.size();
+    List<DetalheTermoCTfIdf> lista = new ArrayList<>(vSize);
+    for (int v = 0; v < vSize; v++) {
+      double score = ultimaMatrizH[clusterIdx][v];
+      double tf = ultimaFrequenciaClusterTermo != null ? ultimaFrequenciaClusterTermo[clusterIdx][v] : 0.0;
+      int presenca = ultimaPresencaClusterTermo != null ? ultimaPresencaClusterTermo[v] : 0;
+      lista.add(new DetalheTermoCTfIdf(vocab.get(v), score, tf, presenca));
+    }
+    lista.sort((a, b) -> Double.compare(b.scoreCTfIdf(), a.scoreCTfIdf()));
+    return lista.stream().limit(limite > 0 ? limite : 10).toList();
+  }
+
+  public double similaridadeCosseno(double[] a, double[] b) {
     double dot = 0.0;
     double nA = 0.0;
     double nB = 0.0;

@@ -115,4 +115,35 @@ public class RepositorioEmentasPreProcessadas {
     }
     return lista;
   }
+
+  public List<EmentaParaTopico> listarEmentasPorEstrategia(
+      org.entryPoint.benchmark.model.TipoReducaoTextual tipo,
+      int limite
+  ) throws SQLException {
+    String coluna = tipo.getColunaSql();
+    String sql;
+
+    if (tipo.isVemDaTabelaNormas()) {
+      sql = "SELECT n.id, COALESCE(" + coluna + ", '') AS termos FROM normas n " +
+            "WHERE n.ementa IS NOT NULL AND TRIM(n.ementa) != '' ORDER BY n.id";
+    } else {
+      sql = "SELECT n.id, COALESCE(" + coluna + ", '') AS termos FROM normas n " +
+            "JOIN ementas_pre_processadas e ON n.id = e.id_norma " +
+            "WHERE " + coluna + " IS NOT NULL AND TRIM(" + coluna + ") != '' ORDER BY n.id";
+    }
+
+    if (limite > 0) {
+      sql += " LIMIT " + limite;
+    }
+
+    List<EmentaParaTopico> lista = new ArrayList<>();
+    try (Connection conexao = gerenciadorConexao.conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        lista.add(new EmentaParaTopico(resultSet.getLong("id"), resultSet.getString("termos")));
+      }
+    }
+    return lista;
+  }
 }

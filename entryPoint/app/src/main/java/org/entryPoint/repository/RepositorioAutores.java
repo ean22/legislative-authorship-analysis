@@ -214,6 +214,26 @@ public class RepositorioAutores {
     return mapa;
   }
 
+  public Map<String, List<Long>> listarOrgaosComNormas() throws SQLException {
+    String sql = """
+      SELECT cargo_autor_normalizado, id_norma 
+      FROM norma_autor 
+      WHERE ativo = 1 AND cargo_autor_normalizado IS NOT NULL AND TRIM(cargo_autor_normalizado) <> ''
+      ORDER BY cargo_autor_normalizado
+    """;
+    Map<String, List<Long>> mapa = new HashMap<>();
+    try (Connection conexao = gerenciadorConexao.conectar();
+      PreparedStatement statement = conexao.prepareStatement(sql);
+      ResultSet resultSet = statement.executeQuery()) {
+      while (resultSet.next()) {
+        String orgao = resultSet.getString("cargo_autor_normalizado");
+        long idNorma = resultSet.getLong("id_norma");
+        mapa.computeIfAbsent(orgao, k -> new ArrayList<>()).add(idNorma);
+      }
+    }
+    return mapa;
+  }
+
   private String normalizarNome(String nome) {
     return nome
       .trim()

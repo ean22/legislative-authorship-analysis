@@ -252,6 +252,30 @@ public class GerenciadorConexao {
         // Coluna já existe
       }
 
+      String createPipelineAtivo = """
+        CREATE TABLE IF NOT EXISTS pipeline_ativo (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          nome TEXT NOT NULL,
+          reducao_textual TEXT NOT NULL,
+          chunking TEXT NOT NULL,
+          representacao_semantica TEXT NOT NULL,
+          algoritmo TEXT NOT NULL,
+          k INTEGER NOT NULL,
+          score_global REAL NOT NULL,
+          coerencia_umass REAL NOT NULL,
+          diversidade REAL NOT NULL,
+          estabilidade REAL NOT NULL,
+          utilidade_autoral REAL NOT NULL,
+          justificativa_escolha TEXT NOT NULL,
+          data_definicao TEXT NOT NULL,
+          ativo INTEGER NOT NULL DEFAULT 1
+        )
+      """;
+
+      try (PreparedStatement statement = conexao.prepareStatement(createPipelineAtivo)) {
+        statement.execute();
+      }
+
     } catch (SQLException e) {
       throw new RuntimeException("Erro ao criar tabelas", e);
     }

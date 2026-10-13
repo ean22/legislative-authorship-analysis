@@ -18,6 +18,7 @@ public class MenuPrincipal {
   private static final ServicoPreProcessamentoEmentas servicoPreProcessamento = new ServicoPreProcessamentoEmentas();
   private static final ServicoRelacionamentoNormas servicoRelacionamentos = new ServicoRelacionamentoNormas();
   private static final ServicoTopicModeling servicoTopicModeling = new ServicoTopicModeling();
+  private static final org.entryPoint.benchmark.ServicoBenchmark servicoBenchmark = new org.entryPoint.benchmark.ServicoBenchmark();
 
   public static void exibirSaudacao() {
     System.out.println("Bem-vindo ao sistema de análise de autoria legislativa!");
@@ -36,7 +37,9 @@ public class MenuPrincipal {
     System.out.println("4. Normalizar cargos (Google Gemini)");
     System.out.println("5. Pré-processar ementas (redução textual)");
     System.out.println("6. Extrair relacionamentos entre normas (links na íntegra)");
-    System.out.println("7. Executar Topic Modeling nas normas (NMF)");
+    System.out.println("7. Executar Topic Modeling nas normas (Baseline NMF K=12)");
+    System.out.println("8. Executar Benchmark e Definir Melhor Pipeline (Reduções, Modelos e Perfis de Autores)");
+    System.out.println("9. Visualizar Pipeline Ativo Oficial para os Próximos Passos");
     System.out.println("0. Sair");
   }
 
@@ -148,6 +151,46 @@ public class MenuPrincipal {
             servicoTopicModeling.executarTopicModeling();
           } catch (SQLException e) {
             System.err.println("Erro ao executar Topic Modeling: " + e.getMessage());
+          }
+          pularLinha();
+
+          break;
+
+        case 8:
+          try {
+            System.out.println("Escolha o modo de execução do Benchmark:");
+            System.out.println("1. Rápido (amostra de 1.500 normas para feedback ágil)");
+            System.out.println("2. Completo (todas as 14k+ normas do banco)");
+            System.out.print("Opção: ");
+            String modoStr = sc.nextLine();
+            var relatorio = "2".equals(modoStr.trim())
+                ? servicoBenchmark.executarBenchmarkCompleto()
+                : servicoBenchmark.executarBenchmarkRapido();
+
+            System.out.print("\nDeseja DEFINIR E FIXAR esta melhor combinação como o Pipeline Oficial para os próximos passos? (S/n): ");
+            String resp = sc.nextLine();
+            if (!"n".equalsIgnoreCase(resp.trim()) && !"nao".equalsIgnoreCase(resp.trim())) {
+              servicoBenchmark.definirEFixarMelhorPipeline(relatorio);
+            }
+          } catch (SQLException e) {
+            System.err.println("Erro ao executar Benchmark: " + e.getMessage());
+            e.printStackTrace();
+          }
+          pularLinha();
+
+          break;
+
+        case 9:
+          try {
+            var optPipeline = servicoBenchmark.getServicoPipeline().obterPipelineAtivo();
+            if (optPipeline.isPresent()) {
+              System.out.println(optPipeline.get().getFormatacaoVisual());
+            } else {
+              System.out.println("Nenhum pipeline ativo definido ainda.");
+              System.out.println("Execute a opção 8 para rodar o benchmark e eleger o melhor pipeline.");
+            }
+          } catch (SQLException e) {
+            System.err.println("Erro ao consultar pipeline ativo: " + e.getMessage());
           }
           pularLinha();
 

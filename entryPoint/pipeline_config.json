@@ -1,0 +1,18 @@
+{
+  "nome": "Cluster c-TF-IDF K=8",
+  "reducao_textual": "TEXTRANK",
+  "chunking": "DOCUMENT_LEVEL",
+  "representacao_semantica": "DENSE_SVD",
+  "algoritmo_topicos": "CLUSTER_C_TFIDF",
+  "k_topicos": 8,
+  "score_global": 0.7005,
+  "metricas": {
+    "coerencia_umass": -1.3648,
+    "diversidade_topicos": 0.9375,
+    "estabilidade_jaccard": 0.3983,
+    "utilidade_autoral": 0.4550
+  },
+  "justificativa_escolha": "Clustering c-TF-IDF obteve alta pureza de assuntos e vocabulário discriminante. Alta diversidade temática (94% termos únicos). Alinhamento institucional moderado (pureza: 42%).",
+  "data_definicao": "2026-10-13T10:24:51.688262011",
+  "ativo": true
+}

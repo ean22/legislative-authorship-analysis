@@ -166,31 +166,36 @@ public class GerenciadorConexao {
         statement.execute();
       }
 
-      String createRotulosTopicos = """
-        CREATE TABLE IF NOT EXISTS rotulos_topicos (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          nome TEXT UNIQUE NOT NULL
-        )
-      """;
+      // Migração da tabela topicos caso possua o esquema antigo com id_rotulo_topico NOT NULL
+      try (var stmt = conexao.createStatement()) {
+        var rs = stmt.executeQuery("PRAGMA table_info(topicos)");
+        boolean temIdRotulo = false;
+        while (rs.next()) {
+          if ("id_rotulo_topico".equalsIgnoreCase(rs.getString("name"))) {
+            temIdRotulo = true;
+            break;
+          }
+        }
+        if (temIdRotulo) {
+          stmt.execute("DROP TABLE topicos");
+        }
+      } catch (SQLException ignored) {}
 
       String createTopicos = """
         CREATE TABLE IF NOT EXISTS topicos (
           id INTEGER PRIMARY KEY,
-          id_rotulo_topico INTEGER NOT NULL,
-          termos_principais TEXT,
-          total_normas INTEGER,
-          percentual_base REAL,
-          FOREIGN KEY (id_rotulo_topico) REFERENCES rotulos_topicos(id)
+          nome TEXT,
+          termos_principais TEXT
         )
       """;
-
-      try (PreparedStatement statement = conexao.prepareStatement(createRotulosTopicos)) {
-        statement.execute();
-      }
 
       try (PreparedStatement statement = conexao.prepareStatement(createTopicos)) {
         statement.execute();
       }
+
+      try (var stmt = conexao.createStatement()) {
+        stmt.execute("ALTER TABLE topicos ADD COLUMN nome TEXT");
+      } catch (SQLException ignored) {}
 
       // Migração/criação da tabela norma_topicos com id_rotulo_topico
       try (var stmt = conexao.createStatement()) {

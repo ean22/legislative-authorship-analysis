@@ -4,26 +4,20 @@ import java.sql.SQLException;
 import java.util.Scanner;
 
 import org.entryPoint.service.ServicoAutores;
-import org.entryPoint.service.ServicoAvaliacaoClassificacao;
 import org.entryPoint.service.ServicoNormas;
 import org.entryPoint.service.ServicoNormalizacaoCargo;
-import org.entryPoint.service.ServicoPerfilAutores;
 import org.entryPoint.service.ServicoRelacionamentoNormas;
 import org.entryPoint.service.ServicoTopicModeling;
 import org.entryPoint.service.preprocessamento.ServicoPreProcessamentoEmentas;
 
 public class MenuPrincipal {
   private static final Scanner sc = new Scanner(System.in);
-  private static ServicoNormas servicoNormas = new ServicoNormas();
-  private static ServicoAutores servicoAutores = new ServicoAutores();
-  private static ServicoNormalizacaoCargo servicoNormalizacaoCargo = new ServicoNormalizacaoCargo();
-  private static ServicoPreProcessamentoEmentas servicoPreProcessamento = new ServicoPreProcessamentoEmentas();
-  private static ServicoRelacionamentoNormas servicoRelacionamentos = new ServicoRelacionamentoNormas();
-  private static ServicoTopicModeling servicoTopicModeling = new ServicoTopicModeling();
-  private static ServicoPerfilAutores servicoPerfilAutores = new ServicoPerfilAutores();
-  private static ServicoAvaliacaoClassificacao servicoAvaliacao = new ServicoAvaliacaoClassificacao();
-
-  private static ServicoTopicModeling.ResultadoTopicModeling ultimoResultadoTopicModeling = null;
+  private static final ServicoNormas servicoNormas = new ServicoNormas();
+  private static final ServicoAutores servicoAutores = new ServicoAutores();
+  private static final ServicoNormalizacaoCargo servicoNormalizacaoCargo = new ServicoNormalizacaoCargo();
+  private static final ServicoPreProcessamentoEmentas servicoPreProcessamento = new ServicoPreProcessamentoEmentas();
+  private static final ServicoRelacionamentoNormas servicoRelacionamentos = new ServicoRelacionamentoNormas();
+  private static final ServicoTopicModeling servicoTopicModeling = new ServicoTopicModeling();
 
   public static void exibirSaudacao() {
     System.out.println("Bem-vindo ao sistema de análise de autoria legislativa!");
@@ -43,8 +37,6 @@ public class MenuPrincipal {
     System.out.println("5. Pré-processar ementas (redução textual)");
     System.out.println("6. Extrair relacionamentos entre normas (links na íntegra)");
     System.out.println("7. Executar Topic Modeling nas normas (NMF)");
-    System.out.println("8. Exibir perfil temático dos autores");
-    System.out.println("9. Avaliar métricas de classificação e desempenho");
     System.out.println("0. Sair");
   }
 
@@ -153,33 +145,9 @@ public class MenuPrincipal {
 
         case 7:
           try {
-            ultimoResultadoTopicModeling = servicoTopicModeling.executarTopicModeling();
+            servicoTopicModeling.executarTopicModeling();
           } catch (SQLException e) {
             System.err.println("Erro ao executar Topic Modeling: " + e.getMessage());
-          }
-          pularLinha();
-
-          break;
-
-        case 8:
-          try {
-            servicoPerfilAutores.exibirRelatorioPerfis(50, 10);
-          } catch (SQLException e) {
-            System.err.println("Erro ao exibir perfis dos autores: " + e.getMessage());
-          }
-          pularLinha();
-
-          break;
-
-        case 9:
-          try {
-            long tempoMs = ultimoResultadoTopicModeling != null ? ultimoResultadoTopicModeling.tempoMs() : 17500L;
-            long tokens = ultimoResultadoTopicModeling != null ? ultimoResultadoTopicModeling.totalTokens() : 68000L;
-            long memoriaMb = ultimoResultadoTopicModeling != null ? ultimoResultadoTopicModeling.memoriaMb() : 38L;
-            var metricas = servicoAvaliacao.avaliarDesempenho(tempoMs, tokens, memoriaMb);
-            servicoAvaliacao.exibirRelatorioAvaliacao(metricas);
-          } catch (SQLException e) {
-            System.err.println("Erro ao avaliar métricas de classificação: " + e.getMessage());
           }
           pularLinha();
 

@@ -3,7 +3,6 @@ package org.entryPoint.repository;
 import org.entryPoint.model.EmentaParaTopico;
 import org.entryPoint.model.EmentaPreProcessada;
 import org.entryPoint.model.Norma;
-import org.entryPoint.model.NormaTopico;
 import org.entryPoint.model.RelacionamentoNorma;
 import org.entryPoint.model.TopicoTematico;
 import org.junit.jupiter.api.BeforeAll;
@@ -155,39 +154,19 @@ public class RepositoriosTest {
 
   @Test
   @Order(6)
-  @DisplayName("Testa RepositorioTopicos: rotulos, topicos e classificações")
+  @DisplayName("Testa RepositorioTopicos: persistência e listagem de tópicos")
   void testRepositorioTopicos() throws SQLException {
-    int idRotulo = repoTopicos.obterOuCriarIdRotuloTopico("Tema Teste Unitário");
-    assertTrue(idRotulo > 0);
-
-    Map<String, Integer> rotulos = repoTopicos.mapearRotulosParaIds();
-    assertTrue(rotulos.containsKey("Tema Teste Unitário"));
-
     TopicoTematico topico = new TopicoTematico(
         99,
-        idRotulo,
-        "Tema Teste Unitário",
-        List.of("termo1", "termo2", "termo3"),
-        10L,
-        1.5
+        "Educação e Creches",
+        List.of("infantil", "educação", "centro", "criação", "municipal", "escola")
     );
     repoTopicos.salvarTopicosDescobertosEmLote(List.of(topico));
 
     List<TopicoTematico> salvos = repoTopicos.listarTopicosSalvos();
     assertTrue(salvos.stream().anyMatch(t -> t.id() == 99));
-
-    NormaTopico nt = new NormaTopico(
-        999001L,
-        99,
-        idRotulo,
-        "Tema Teste Unitário",
-        0.95,
-        "termo1, termo2"
-    );
-    repoTopicos.salvarTopicosNormasEmLote(List.of(nt));
-
-    Map<Long, NormaTopico> mapaNT = repoTopicos.listarNormasTopicosComoMapa();
-    assertTrue(mapaNT.containsKey(999001L));
-    assertEquals(99, mapaNT.get(999001L).idTopico());
+    TopicoTematico salvo = salvos.stream().filter(t -> t.id() == 99).findFirst().orElseThrow();
+    assertEquals("Educação e Creches", salvo.nome());
+    assertEquals("Educação e Creches (infantil, educação, centro, criação, municipal, escola)", salvo.getDescricaoFormatada());
   }
 }

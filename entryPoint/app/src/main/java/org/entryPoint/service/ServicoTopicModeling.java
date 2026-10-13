@@ -5,14 +5,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
 import org.entryPoint.model.EmentaParaTopico;
-import org.entryPoint.model.NormaTopico;
 import org.entryPoint.model.TopicoTematico;
 import org.entryPoint.repository.RepositorioBancoDados;
 import org.entryPoint.repository.RepositorioEmentasPreProcessadas;
@@ -70,13 +69,12 @@ public class ServicoTopicModeling {
     List<EmentaParaTopico> ementas = repositorioEmentas.listarEmentasParaTopicos();
     if (ementas.isEmpty()) {
       System.err.println("Nenhuma ementa pré-processada encontrada no banco de dados.");
-      return new ResultadoTopicModeling(List.of(), List.of(), 0, 0, 0, 0);
+      return new ResultadoTopicModeling(List.of(), 0, 0, 0, 0);
     }
     System.out.printf("Total de registros carregados: %d%n", ementas.size());
 
     // 2. Tokenizar e limpar
     List<List<String>> docsBrutos = new ArrayList<>();
-    List<Long> docIdsBrutos = new ArrayList<>();
     Map<String, Integer> contagemFrequenciaDoc = new HashMap<>();
 
     for (EmentaParaTopico item : ementas) {
@@ -88,7 +86,7 @@ public class ServicoTopicModeling {
       List<String> docLimpo = new ArrayList<>();
 
       for (String t : tokens) {
-        String limpo = t.toLowerCase().replaceAll("[^\\p{L}\\p{Nd}]", "").trim();
+        String limpo = t.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{Nd}]", "").trim();
         if (limpo.length() > 2 && !limpo.matches("\\d+") && !STOPWORDS_LEGIS.contains(limpo)) {
           if (termosUnicos.add(limpo)) {
             docLimpo.add(limpo);
@@ -98,7 +96,6 @@ public class ServicoTopicModeling {
 
       if (!docLimpo.isEmpty()) {
         docsBrutos.add(docLimpo);
-        docIdsBrutos.add(item.idNorma());
         for (String w : termosUnicos) {
           contagemFrequenciaDoc.put(w, contagemFrequenciaDoc.getOrDefault(w, 0) + 1);
         }
@@ -124,7 +121,6 @@ public class ServicoTopicModeling {
 
     // Montar matriz esparsa TF-IDF
     List<Map<Integer, Double>> matrizX = new ArrayList<>();
-    List<Long> docIdsFinais = new ArrayList<>();
     int totalTokensProcessados = 0;
 
     for (int d = 0; d < docsBrutos.size(); d++) {
@@ -160,7 +156,6 @@ public class ServicoTopicModeling {
           }
         }
         matrizX.add(vetorDoc);
-        docIdsFinais.add(docIdsBrutos.get(d));
       }
     }
 
@@ -252,9 +247,8 @@ public class ServicoTopicModeling {
       }
     }
 
-    // 6. Extrair Palavras Mais Importantes por Tópico e Rótulos Automáticos
+    // 6. Extrair Palavras Mais Importantes por Tópico e Identificar Nomes
     List<TopicoTematico> topicos = new ArrayList<>();
-    List<List<String>> termosPorTopico = new ArrayList<>();
 
     for (int t = 0; t < k; t++) {
       List<TermoPeso> pesos = new ArrayList<>();
@@ -262,61 +256,15 @@ public class ServicoTopicModeling {
         pesos.add(new TermoPeso(vocabularioOrdenado.get(v), H[t][v]));
       }
       pesos.sort((a, b) -> Double.compare(b.peso, a.peso));
-      List<String> topPalavras = pesos.stream().limit(8).map(TermoPeso::termo).toList();
-      termosPorTopico.add(topPalavras);
+      List<String> topPalavras = pesos.stream().limit(6).map(TermoPeso::termo).toList();
+      String nomeTopico = inferirRotuloTema(topPalavras);
+      topicos.add(new TopicoTematico(t + 1, nomeTopico, topPalavras));
     }
 
-    // Mapear rótulos para IDs de forma consistente
-    Map<String, Integer> mapaRotuloIds = new HashMap<>();
-    for (int t = 0; t < k; t++) {
-      String rotulo = inferirRotuloTema(termosPorTopico.get(t));
-      if (!mapaRotuloIds.containsKey(rotulo)) {
-        int idRotulo = repositorioTopicos.obterOuCriarIdRotuloTopico(rotulo);
-        mapaRotuloIds.put(rotulo, idRotulo);
-      }
-    }
-
-    // 7. Atribuir cada norma ao seu tópico dominante
-    int[] contagemPorTopico = new int[k];
-    List<NormaTopico> classificacoes = new ArrayList<>();
-
-    for (int d = 0; d < dSize; d++) {
-      int melhorTopico = 0;
-      double maiorPeso = -1.0;
-      double somaPesos = 0.0;
-      for (int t = 0; t < k; t++) {
-        somaPesos += W[d][t];
-        if (W[d][t] > maiorPeso) {
-          maiorPeso = W[d][t];
-          melhorTopico = t;
-        }
-      }
-      double score = somaPesos > 0 ? maiorPeso / somaPesos : 0.0;
-      contagemPorTopico[melhorTopico]++;
-
-      long idNorma = docIdsFinais.get(d);
-      String rotulo = inferirRotuloTema(termosPorTopico.get(melhorTopico));
-      int idRotulo = mapaRotuloIds.getOrDefault(rotulo, 1);
-      String termosChave = String.join(", ", termosPorTopico.get(melhorTopico).subList(0, Math.min(5, termosPorTopico.get(melhorTopico).size())));
-
-      classificacoes.add(new NormaTopico(idNorma, melhorTopico + 1, idRotulo, rotulo, score, termosChave));
-    }
-
-    // Montar registros de TopicoTematico
-    for (int t = 0; t < k; t++) {
-      long total = contagemPorTopico[t];
-      double pct = (double) total / dSize * 100.0;
-      String rotulo = inferirRotuloTema(termosPorTopico.get(t));
-      int idRotulo = mapaRotuloIds.getOrDefault(rotulo, 1);
-      topicos.add(new TopicoTematico(t + 1, idRotulo, rotulo, termosPorTopico.get(t), total, pct));
-    }
-
-    // 8. Salvar no banco se solicitado
+    // 7. Persistir os tópicos descobertos no banco se solicitado
     if (salvarNoBanco) {
       System.out.println("Persistindo tópicos descobertos na tabela 'topicos'...");
       repositorioTopicos.salvarTopicosDescobertosEmLote(topicos);
-      System.out.println("Persistindo vínculos de normas na tabela 'norma_topicos'...");
-      repositorioTopicos.salvarTopicosNormasEmLote(classificacoes);
     }
 
     long tempoTotalMs = (System.nanoTime() - inicioTempo) / 1_000_000;
@@ -324,15 +272,14 @@ public class ServicoTopicModeling {
     long memoriaUsadaMb = Math.max(0, (memoriaFinal - memoriaInicio) / (1024 * 1024));
 
     System.out.println("\n" + "=".repeat(75));
-    System.out.printf("Topic Modeling Concluído em %d ms! (%d normas classificadas)%n", tempoTotalMs, classificacoes.size());
+    System.out.printf("Topic Modeling Concluído em %d ms! (%d tópicos identificados)%n", tempoTotalMs, topicos.size());
     System.out.println("=".repeat(75));
     for (TopicoTematico topico : topicos) {
-      System.out.println("  " + topico.getDescricaoFormatada());
+      System.out.println(topico.getDescricaoFormatada());
     }
 
     return new ResultadoTopicModeling(
       topicos,
-      classificacoes,
       tempoTotalMs,
       totalTokensProcessados,
       memoriaUsadaMb,
@@ -341,31 +288,31 @@ public class ServicoTopicModeling {
   }
 
   private String inferirRotuloTema(List<String> topPalavras) {
-    String concat = String.join(" ", topPalavras).toLowerCase();
-    if (concat.contains("utilidade") || (concat.contains("declara") && concat.contains("pública"))) {
+    String concat = String.join(" ", topPalavras).toLowerCase(Locale.ROOT);
+    if (concat.contains("utilidade") || (concat.contains("declara") && concat.contains("pública")) || concat.contains("entidade") || concat.contains("associação") || concat.contains("instituto")) {
       return "Declaração de Utilidade Pública";
-    } else if (concat.contains("infantil") || concat.contains("educação") || concat.contains("escola") || concat.contains("ensino") || concat.contains("cei")) {
-      return "Educação Infantil e Rede Escolar";
-    } else if (concat.contains("pontos") && concat.contains("referência") || concat.contains("estende") || concat.contains("oficializa")) {
-      return "Extensão e Delimitação de Vias";
-    } else if (concat.contains("denomina") || concat.contains("logradouro") || concat.contains("praça") || concat.contains("rua") || concat.contains("travessa")) {
+    } else if (concat.contains("infantil") || concat.contains("educação") || concat.contains("creche") || concat.contains("escola") || concat.contains("ensino") || concat.contains("cei") || concat.contains("criação")) {
+      return "Educação e Creches";
+    } else if (concat.contains("calendário") || concat.contains("eventos") || concat.contains("comemorado") || concat.contains("anualmente") || concat.contains("semana") || concat.contains("dia") || concat.contains("conscientização")) {
+      return "Datas Comemorativas e Calendário";
+    } else if (concat.contains("denomina") || concat.contains("logradouro") || concat.contains("praça") || concat.contains("rua") || concat.contains("especifica") || concat.contains("situado") || concat.contains("avenida")) {
       return "Denominação de Vias e Logradouros";
-    } else if (concat.contains("calendário") || concat.contains("eventos") || concat.contains("conscientização") || concat.contains("festa")) {
-      return "Calendário Oficial e Campanhas";
-    } else if (concat.contains("comemorado") || concat.contains("anualmente") || concat.contains("celebrado")) {
-      return "Datas Comemorativas e Celebrações";
-    } else if (concat.contains("zeis") || concat.contains("fundiária") || concat.contains("social") && concat.contains("interesse")) {
-      return "Habitação de Interesse Social e Regularização (ZEIS)";
-    } else if (concat.contains("imóveis") || concat.contains("imóvel") || concat.contains("particulares") || concat.contains("desafeta")) {
-      return "Bens Imóveis e Desapropriações";
-    } else if (concat.contains("preços") || concat.contains("prestados") || concat.contains("serviços") || concat.contains("tarifas")) {
-      return "Preços Públicos e Serviços Municipais";
-    } else if (concat.contains("suplementar") || concat.contains("crédito") || concat.contains("adicional") || concat.contains("orçamento") || concat.contains("finanças")) {
-      return "Orçamento e Créditos Suplementares";
-    } else if (concat.contains("saúde") || concat.contains("médic") || concat.contains("sanitár") || concat.contains("hospital")) {
-      return "Saúde Pública";
-    } else if (concat.contains("tribut") || concat.contains("iptu") || concat.contains("iss") || concat.contains("fiscal")) {
-      return "Tributação e Fiscal";
+    } else if (concat.contains("suplementar") || concat.contains("abre") || concat.contains("adicional") || concat.contains("crédito") || concat.contains("orçamento") || concat.contains("subvenções") || concat.contains("econômicas") || concat.contains("imposto")) {
+      return "Crédito Orçamentário e Finanças";
+    } else if (concat.contains("retifica") || concat.contains("confere") || concat.contains("altera") || concat.contains("redação") || concat.contains("ementa") || concat.contains("substitui") || concat.contains("anexo")) {
+      return "Legislação Complementar / Retificações";
+    } else if (concat.contains("saúde") || concat.contains("médic") || concat.contains("sanitár") || concat.contains("hospital") || concat.contains("enfermagem") || concat.contains("sus")) {
+      return "Saúde Pública e Assistência";
+    } else if (concat.contains("imóveis") || concat.contains("imóvel") || concat.contains("particulares") || concat.contains("desafeta") || concat.contains("desapropria")) {
+      return "Bens Imóveis e Patrimônio Público";
+    } else if (concat.contains("zeis") || concat.contains("fundiária") || (concat.contains("social") && concat.contains("interesse")) || concat.contains("habitação")) {
+      return "Habitação e Regularização Fundiária";
+    } else if (concat.contains("serviço") || concat.contains("preço") || concat.contains("tarifa") || concat.contains("prestados")) {
+      return "Serviços Públicos e Tarifas";
+    } else if (concat.contains("trânsito") || concat.contains("transporte") || concat.contains("veículo")) {
+      return "Transportes e Trânsito Urbano";
+    } else if (concat.contains("meio ambiente") || concat.contains("verde") || concat.contains("parque") || concat.contains("ambiental")) {
+      return "Meio Ambiente e Áreas Verdes";
     } else {
       return "Administração e Normas Gerais (" + topPalavras.get(0) + ")";
     }
@@ -375,7 +322,6 @@ public class ServicoTopicModeling {
 
   public record ResultadoTopicModeling(
     List<TopicoTematico> topicos,
-    List<NormaTopico> classificacoes,
     long tempoMs,
     long totalTokens,
     long memoriaMb,

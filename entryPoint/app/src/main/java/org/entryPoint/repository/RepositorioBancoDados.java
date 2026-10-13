@@ -5,7 +5,6 @@ import org.entryPoint.model.EmentaPreProcessada;
 import org.entryPoint.model.Norma;
 import org.entryPoint.model.NormaComEmenta;
 import org.entryPoint.model.NormaComIntegra;
-import org.entryPoint.model.NormaTopico;
 import org.entryPoint.model.RelacionamentoNorma;
 import org.entryPoint.model.TopicoTematico;
 
@@ -157,28 +156,8 @@ public class RepositorioBancoDados {
   }
 
   // Delegações para Tópicos
-  public int obterOuCriarIdRotuloTopico(String nomeRotulo) throws SQLException {
-    return repositorioTopicos.obterOuCriarIdRotuloTopico(nomeRotulo);
-  }
-
-  public Map<String, Integer> mapearRotulosParaIds() throws SQLException {
-    return repositorioTopicos.mapearRotulosParaIds();
-  }
-
   public void salvarTopicosDescobertosEmLote(List<TopicoTematico> topicos) throws SQLException {
     repositorioTopicos.salvarTopicosDescobertosEmLote(topicos);
-  }
-
-  public void salvarTopicosNormasEmLote(List<NormaTopico> lote) throws SQLException {
-    repositorioTopicos.salvarTopicosNormasEmLote(lote);
-  }
-
-  public List<NormaTopico> listarNormasTopicos() throws SQLException {
-    return repositorioTopicos.listarNormasTopicos();
-  }
-
-  public Map<Long, NormaTopico> listarNormasTopicosComoMapa() throws SQLException {
-    return repositorioTopicos.listarNormasTopicosComoMapa();
   }
 
   public List<TopicoTematico> listarTopicosSalvos() throws SQLException {

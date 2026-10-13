@@ -34,7 +34,8 @@ public final class TokenizadorUtil {
       "tiveram", "tivéssemos", "tu", "tua", "tuas", "um", "uma", "você", "vocês", "vos",
       // Termos jurídicos de fixação formal de ementas frequentemente neutros
       "dispoe", "dispõe", "art", "artigo", "lei", "decreto", "outras", "providencias", "providências",
-      "altera", "revoga", "institui", "da", "dá", "nova", "redacao", "redação", "concede"
+      "altera", "revoga", "institui", "da", "dá", "nova", "redacao", "redação", "concede",
+      "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii", "anexo", "anexos"
   )));
 
   private TokenizadorUtil() {}
@@ -56,6 +57,10 @@ public final class TokenizadorUtil {
     List<String> resultado = new ArrayList<>();
     for (String token : tokens) {
       if (token.isBlank() || token.length() <= 1) {
+        continue;
+      }
+      // Descarta números, anos, valores monetários e códigos numéricos sem valor temático
+      if (token.matches(".*\\d.*")) {
         continue;
       }
       if (removerStopwords && isStopword(token)) {

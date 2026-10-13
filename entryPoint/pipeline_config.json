@@ -1,18 +1,18 @@
 {
-  "nome": "Cluster c-TF-IDF K=8",
-  "reducao_textual": "TEXTRANK",
+  "nome": "NMF Compacto (K=6)",
+  "reducao_textual": "STOPWORDS_TFIDF",
   "chunking": "DOCUMENT_LEVEL",
-  "representacao_semantica": "DENSE_SVD",
-  "algoritmo_topicos": "CLUSTER_C_TFIDF",
-  "k_topicos": 8,
-  "score_global": 0.7005,
+  "representacao_semantica": "SPARSE_TFIDF",
+  "algoritmo_topicos": "NMF",
+  "k_topicos": 6,
+  "score_global": 0,7512,
   "metricas": {
-    "coerencia_umass": -1.3648,
-    "diversidade_topicos": 0.9375,
-    "estabilidade_jaccard": 0.3983,
-    "utilidade_autoral": 0.4550
+    "coerencia_umass": -1,5515,
+    "diversidade_topicos": 0,9167,
+    "estabilidade_jaccard": 0,7738,
+    "utilidade_autoral": 0,3950
   },
-  "justificativa_escolha": "Clustering c-TF-IDF obteve alta pureza de assuntos e vocabulário discriminante. Alta diversidade temática (94% termos únicos). Alinhamento institucional moderado (pureza: 42%).",
-  "data_definicao": "2026-10-13T10:51:40.095727907",
+  "justificativa_escolha": "NMF produziu fatorização aditiva consistente. Alta diversidade temática (92% termos únicos). Alinhamento institucional moderado (pureza: 32%).",
+  "data_definicao": "2026-10-13T15:35:11.689749002",
   "ativo": true
 }

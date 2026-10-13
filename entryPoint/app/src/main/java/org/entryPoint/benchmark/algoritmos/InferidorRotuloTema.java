@@ -1,64 +1,117 @@
 package org.entryPoint.benchmark.algoritmos;
 
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 /**
  * Utilitário para inferência de rótulos temáticos legíveis por humanos
  * a partir dos termos mais salientes de cada tópico.
+ * Utiliza pontuação ponderada por posição (rank) para evitar que termos
+ * periféricos/polissêmicos ofusquem o tema central do cluster.
  */
 public class InferidorRotuloTema {
+
+  private record CategoriaTematica(
+      String nome,
+      Set<String> palavrasChaveFortes,
+      Set<String> palavrasChaveMedias
+  ) {}
+
+  private static final List<CategoriaTematica> CATEGORIAS = List.of(
+      new CategoriaTematica(
+          "Crédito Orçamentário e Finanças",
+          Set.of("crédito", "suplementar", "adicional", "orçamento", "subvenções", "receita", "despesa", "tribut", "imposto"),
+          Set.of("abre", "abertura", "recursos", "financeira", "suplementação")
+      ),
+      new CategoriaTematica(
+          "Declaração de Utilidade Pública",
+          Set.of("utilidade", "declara", "entidade", "associação", "instituto"),
+          Set.of("pública", "beneficente", "fundação")
+      ),
+      new CategoriaTematica(
+          "Educação e Creches",
+          Set.of("educação", "infantil", "creche", "escola", "ensino", "cei", "pedagógica"),
+          Set.of("alunos", "professores", "matrícula")
+      ),
+      new CategoriaTematica(
+          "Bens Imóveis e Desapropriação",
+          Set.of("imóveis", "imóvel", "desapropriação", "desapropria", "desafeta", "patrimônio"),
+          Set.of("particulares", "necessários", "implantação", "terreno", "área")
+      ),
+      new CategoriaTematica(
+          "Denominação de Vias e Logradouros",
+          Set.of("denomina", "logradouro", "praça", "avenida", "travessa"),
+          Set.of("rua", "distrito", "situado", "situados", "oficial", "especifica")
+      ),
+      new CategoriaTematica(
+          "Datas Comemorativas e Calendário",
+          Set.of("calendário", "eventos", "comemorado", "conscientização"),
+          Set.of("incluir", "institui", "semana", "dia", "anualmente", "oficial")
+      ),
+      new CategoriaTematica(
+          "Saúde Pública e Assistência Hospitalar",
+          Set.of("saúde", "médic", "sanitár", "hospital", "sus", "enfermagem", "clínica"),
+          Set.of("atendimento", "vacinação", "medicamentos")
+      ),
+      new CategoriaTematica(
+          "Habitação e Regularização Fundiária",
+          Set.of("zeis", "fundiária", "habitação", "moradia"),
+          Set.of("social", "interesse", "assentamento")
+      ),
+      new CategoriaTematica(
+          "Transportes e Trânsito Urbano",
+          Set.of("trânsito", "transporte", "veículo", "mobilidade", "estacionamento"),
+          Set.of("linhas", "itinerário", "tarifa")
+      ),
+      new CategoriaTematica(
+          "Meio Ambiente e Áreas Verdes",
+          Set.of("meio ambiente", "parque", "verde", "ambiental", "sustentab", "preservação"),
+          Set.of("árvores", "fauna", "flora")
+      ),
+      new CategoriaTematica(
+          "Serviços Públicos e Gestão Municipal",
+          Set.of("serviços", "serviço", "concessão", "permissão", "municipais", "postos", "pontos"),
+          Set.of("funcionamento", "prestação", "fixa", "rua", "atividades", "exercício")
+      )
+  );
 
   public static String inferirRotuloTema(List<String> topPalavras) {
     if (topPalavras == null || topPalavras.isEmpty()) {
       return "Tópico Geral / Indefinido";
     }
 
-    String concat = String.join(" ", topPalavras).toLowerCase(Locale.ROOT);
+    CategoriaTematica melhorCategoria = null;
+    double melhorScore = 0.0;
 
-    if (concat.contains("utilidade") || (concat.contains("declara") && concat.contains("pública"))
-        || concat.contains("entidade") || concat.contains("associação") || concat.contains("instituto")) {
-      return "Declaração de Utilidade Pública";
-    } else if (concat.contains("infantil") || concat.contains("educação") || concat.contains("creche")
-        || concat.contains("escola") || concat.contains("ensino") || concat.contains("cei")
-        || concat.contains("criação")) {
-      return "Educação e Creches";
-    } else if (concat.contains("calendário") || concat.contains("eventos") || concat.contains("comemorado")
-        || concat.contains("anualmente") || concat.contains("semana") || concat.contains("dia")
-        || concat.contains("conscientização")) {
-      return "Datas Comemorativas e Calendário";
-    } else if (concat.contains("denomina") || concat.contains("logradouro") || concat.contains("praça")
-        || concat.contains("rua") || concat.contains("especifica") || concat.contains("situado")
-        || concat.contains("avenida")) {
-      return "Denominação de Vias e Logradouros";
-    } else if (concat.contains("suplementar") || concat.contains("abre") || concat.contains("adicional")
-        || concat.contains("crédito") || concat.contains("orçamento") || concat.contains("subvenções")
-        || concat.contains("econômicas") || concat.contains("imposto") || concat.contains("tribut")) {
-      return "Crédito Orçamentário e Finanças";
-    } else if (concat.contains("retifica") || concat.contains("confere") || concat.contains("altera")
-        || concat.contains("redação") || concat.contains("ementa") || concat.contains("substitui")
-        || concat.contains("anexo")) {
-      return "Legislação Complementar / Retificações";
-    } else if (concat.contains("saúde") || concat.contains("médic") || concat.contains("sanitár")
-        || concat.contains("hospital") || concat.contains("enfermagem") || concat.contains("sus")) {
-      return "Saúde Pública e Assistência Hospitalar";
-    } else if (concat.contains("imóveis") || concat.contains("imóvel") || concat.contains("particulares")
-        || concat.contains("desafeta") || concat.contains("desapropria") || concat.contains("patrimônio")) {
-      return "Bens Imóveis e Patrimônio Público";
-    } else if (concat.contains("zeis") || concat.contains("fundiária")
-        || (concat.contains("social") && concat.contains("interesse")) || concat.contains("habitação")) {
-      return "Habitação e Regularização Fundiária";
-    } else if (concat.contains("serviço") || concat.contains("preço") || concat.contains("tarifa")
-        || concat.contains("prestados")) {
-      return "Serviços Públicos e Tarifas";
-    } else if (concat.contains("trânsito") || concat.contains("transporte") || concat.contains("veículo")
-        || concat.contains("mobilidade")) {
-      return "Transportes e Trânsito Urbano";
-    } else if (concat.contains("meio ambiente") || concat.contains("verde") || concat.contains("parque")
-        || concat.contains("ambiental") || concat.contains("sustentab")) {
-      return "Meio Ambiente e Áreas Verdes";
-    } else {
-      return "Administração e Normas Gerais (" + topPalavras.get(0) + ")";
+    for (CategoriaTematica cat : CATEGORIAS) {
+      double score = 0.0;
+      for (int i = 0; i < topPalavras.size(); i++) {
+        String palavra = topPalavras.get(i).toLowerCase(Locale.ROOT);
+        double pesoPosicao = 1.0 / (i + 1.0);
+
+        for (String forte : cat.palavrasChaveFortes()) {
+          if (palavra.contains(forte) || forte.contains(palavra)) {
+            score += 3.0 * pesoPosicao;
+            break;
+          }
+        }
+        for (String media : cat.palavrasChaveMedias()) {
+          if (palavra.contains(media) || media.contains(palavra)) {
+            score += 1.0 * pesoPosicao;
+            break;
+          }
+        }
+      }
+
+      if (score > melhorScore) {
+        melhorScore = score;
+        melhorCategoria = cat;
+      }
     }
+
+    if (melhorCategoria != null && melhorScore >= 0.5) {
+      return melhorCategoria.nome();
+    }
+
+    return "Administração e Normas Gerais (" + topPalavras.get(0) + ")";
   }
 }

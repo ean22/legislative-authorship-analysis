@@ -133,9 +133,9 @@ public class RepositorioEmentasPreProcessadas {
       sql = "SELECT n.id, COALESCE(" + coluna + ", '') AS termos FROM normas n " +
             "WHERE n.ementa IS NOT NULL AND TRIM(n.ementa) != '' ORDER BY n.id";
     } else {
-      sql = "SELECT n.id, COALESCE(" + coluna + ", '') AS termos FROM normas n " +
-            "JOIN ementas_pre_processadas e ON n.id = e.id_norma " +
-            "WHERE " + coluna + " IS NOT NULL AND TRIM(" + coluna + ") != '' ORDER BY n.id";
+      sql = "SELECT n.id, COALESCE(NULLIF(TRIM(" + coluna + "), ''), e.texto_reduzido, e.textrank, n.ementa, '') AS termos FROM normas n " +
+            "LEFT JOIN ementas_pre_processadas e ON n.id = e.id_norma " +
+            "WHERE n.ementa IS NOT NULL AND TRIM(n.ementa) != '' ORDER BY n.id";
     }
 
     if (limite > 0) {

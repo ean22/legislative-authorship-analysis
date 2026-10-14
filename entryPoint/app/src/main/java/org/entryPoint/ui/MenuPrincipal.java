@@ -234,6 +234,7 @@ public class MenuPrincipal {
       System.out.println("5. Executar e Auditar NMF (Baseline Comparativo: Matrizes W e H, Coerência e Diversidade)");
       System.out.println("6. Auditoria de Classificações no Banco (Volumetria, % e Confiança por Tópico)");
       System.out.println("7. Inspecionar Amostra de Normas por Tópico (Validação Humana de Ementas Reais)");
+      System.out.printf("8. Configurar Estratégia de Rotulação de Tópicos [Ativa: %s]%n", org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.getModoAtivo().name());
       System.out.println("0. Voltar ao Menu Principal");
       System.out.print("Escolha uma opção: ");
 
@@ -362,6 +363,28 @@ public class MenuPrincipal {
             System.err.println("ID ou limite inválido.");
           } catch (SQLException e) {
             System.err.println("Erro ao inspecionar normas: " + e.getMessage());
+          }
+          pularLinha();
+          break;
+
+        case 8:
+          System.out.println("\nEscolha a estratégia para rotular os tópicos descobertos:");
+          System.out.println("1. Alternativa 1: LLM Google Gemini (Prompt em Lote com Raciocínio Semântico Contextual)");
+          System.out.println("2. Alternativa 2: Híbrido (Regras Léxicas + Embeddings Semânticos e Cosseno)");
+          System.out.println("3. Regras Léxicas Tradicionais (Dicionário Fixo + Posicional)");
+          System.out.print("Escolha uma opção: ");
+          String opEstrat = sc.nextLine().trim();
+          if ("1".equals(opEstrat)) {
+            org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.setModoAtivo(org.entryPoint.benchmark.algoritmos.ModoInferidorTema.LLM_GEMINI);
+            System.out.println("Estratégia ativada: " + org.entryPoint.benchmark.algoritmos.ModoInferidorTema.LLM_GEMINI.getDescricao());
+          } else if ("2".equals(opEstrat)) {
+            org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.setModoAtivo(org.entryPoint.benchmark.algoritmos.ModoInferidorTema.HIBRIDO_EMBEDDINGS);
+            System.out.println("Estratégia ativada: " + org.entryPoint.benchmark.algoritmos.ModoInferidorTema.HIBRIDO_EMBEDDINGS.getDescricao());
+          } else if ("3".equals(opEstrat)) {
+            org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.setModoAtivo(org.entryPoint.benchmark.algoritmos.ModoInferidorTema.REGRAS_LEXICAS);
+            System.out.println("Estratégia ativada: " + org.entryPoint.benchmark.algoritmos.ModoInferidorTema.REGRAS_LEXICAS.getDescricao());
+          } else {
+            System.out.println("Opção inválida. Mantida: " + org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.getModoAtivo().getDescricao());
           }
           pularLinha();
           break;

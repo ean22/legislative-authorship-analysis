@@ -180,6 +180,7 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
     // Extrair termos de cada tópico
     List<TopicoTematico> topicos = new ArrayList<>(k);
     List<String> vocabulario = corpus.vocabulario();
+    List<List<String>> listaTopPalavras = new ArrayList<>(k);
 
     for (int c = 0; c < k; c++) {
       List<TermoPeso> pesos = new ArrayList<>(vSize);
@@ -188,8 +189,13 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
       }
       pesos.sort((a, b) -> Double.compare(b.peso, a.peso));
       List<String> topPalavras = pesos.stream().limit(6).map(TermoPeso::termo).toList();
-      String nome = InferidorRotuloTema.inferirRotuloTema(topPalavras);
-      topicos.add(new TopicoTematico(c + 1, nome, topPalavras));
+      listaTopPalavras.add(topPalavras);
+    }
+
+    List<String> nomes = InferidorRotuloTema.inferirRotulosEmLote(listaTopPalavras);
+    for (int c = 0; c < k; c++) {
+      String nome = (c < nomes.size() && nomes.get(c) != null) ? nomes.get(c) : "Tópico " + (c + 1);
+      topicos.add(new TopicoTematico(c + 1, nome, listaTopPalavras.get(c)));
     }
 
     this.ultimosCentroides = centroides;

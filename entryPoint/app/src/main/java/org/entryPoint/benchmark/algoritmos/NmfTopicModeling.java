@@ -121,6 +121,7 @@ public class NmfTopicModeling implements AlgoritmoTopicModeling {
     // Extrair top termos por tópico
     List<TopicoTematico> topicos = new ArrayList<>(k);
     List<String> vocabulario = corpus.vocabulario();
+    List<List<String>> listaTopPalavras = new ArrayList<>(k);
 
     for (int t = 0; t < k; t++) {
       List<TermoPeso> pesos = new ArrayList<>(vSize);
@@ -129,8 +130,13 @@ public class NmfTopicModeling implements AlgoritmoTopicModeling {
       }
       pesos.sort((a, b) -> Double.compare(b.peso, a.peso));
       List<String> topPalavras = pesos.stream().limit(6).map(TermoPeso::termo).toList();
-      String nome = InferidorRotuloTema.inferirRotuloTema(topPalavras);
-      topicos.add(new TopicoTematico(t + 1, nome, topPalavras));
+      listaTopPalavras.add(topPalavras);
+    }
+
+    List<String> nomes = InferidorRotuloTema.inferirRotulosEmLote(listaTopPalavras);
+    for (int t = 0; t < k; t++) {
+      String nome = (t < nomes.size() && nomes.get(t) != null) ? nomes.get(t) : "Tópico " + (t + 1);
+      topicos.add(new TopicoTematico(t + 1, nome, listaTopPalavras.get(t)));
     }
 
     return new ResultadoModelo(W, H, topicos);

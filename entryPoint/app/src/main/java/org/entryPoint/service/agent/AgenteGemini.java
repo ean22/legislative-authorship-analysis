@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -128,11 +129,17 @@ public class AgenteGemini {
   }
 
   private Map<String, String> processarLoteComFallback(List<String> lote) throws Exception {
+    String prompt = construirPrompt(lote);
+    String responseBody = enviarPromptComFallback(prompt);
+    return parsearResposta(responseBody, lote);
+  }
+
+  public String enviarPromptComFallback(String prompt) throws Exception {
     Exception ultimoErro = null;
 
     // Tentar com o modelo atual
     try {
-      return processarLote(lote, this.modelo);
+      return enviarPrompt(prompt, this.modelo);
     } catch (Exception e) {
       ultimoErro = e;
     }
@@ -142,7 +149,7 @@ public class AgenteGemini {
       if (modeloCandidato.equals(this.modelo)) continue;
       try {
         System.out.printf("Tentando modelo alternativo '%s'...%n", modeloCandidato);
-        Map<String, String> resultado = processarLote(lote, modeloCandidato);
+        String resultado = enviarPrompt(prompt, modeloCandidato);
         this.modelo = modeloCandidato; // Atualizar modelo ativo
         return resultado;
       } catch (Exception e) {
@@ -150,12 +157,11 @@ public class AgenteGemini {
       }
     }
 
-    throw new RuntimeException("Erro ao processar lote no Gemini após testar modelos: " + (ultimoErro != null ? ultimoErro.getMessage() : "Desconhecido"), ultimoErro);
+    throw new RuntimeException("Erro ao processar no Gemini após testar modelos: " + (ultimoErro != null ? ultimoErro.getMessage() : "Desconhecido"), ultimoErro);
   }
 
-  private Map<String, String> processarLote(List<String> lote, String modeloAlvo) throws Exception {
+  public String enviarPrompt(String prompt, String modeloAlvo) throws Exception {
     String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modeloAlvo + ":generateContent?key=" + apiKey;
-    String prompt = construirPrompt(lote);
 
     JSONObject payload = new JSONObject();
     JSONArray contents = new JSONArray();
@@ -186,7 +192,114 @@ public class AgenteGemini {
       throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
     }
 
-    return parsearResposta(response.body(), lote);
+    return response.body();
+  }
+
+  /**
+   * Alternativa 1: Classifica em lote múltiplos tópicos temáticos utilizando raciocínio semântico contextual.
+   */
+  public Map<Integer, String> classificarTopicosTematicos(
+      Map<Integer, List<String>> topicosComPalavras,
+      List<String> categoriasSugeridas
+  ) throws Exception {
+    if (!isConfigurado()) {
+      throw new IllegalStateException("A variável de ambiente GEMINI_API_KEY não foi encontrada.");
+    }
+
+    String prompt = construirPromptRotulacaoTopicos(topicosComPalavras, categoriasSugeridas);
+    String responseBody = enviarPromptComFallback(prompt);
+    return parsearRespostaRotulacaoTopicos(responseBody, topicosComPalavras.keySet());
+  }
+
+  /**
+   * Gera embedding vetorial para um texto utilizando o modelo de embeddings do Gemini.
+   */
+  public double[] gerarEmbedding(String texto) throws Exception {
+    if (!isConfigurado()) {
+      throw new IllegalStateException("A variável de ambiente GEMINI_API_KEY não foi encontrada.");
+    }
+
+    String[] modelosEmbedding = { "gemini-embedding-001", "text-embedding-004" };
+    Exception ultimoErro = null;
+
+    for (String modeloEmb : modelosEmbedding) {
+      try {
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modeloEmb + ":embedContent?key=" + apiKey;
+        JSONObject payload = new JSONObject();
+        payload.put("model", "models/" + modeloEmb);
+        JSONObject content = new JSONObject();
+        JSONArray parts = new JSONArray();
+        JSONObject part = new JSONObject();
+        part.put("text", texto);
+        parts.put(part);
+        content.put("parts", parts);
+        payload.put("content", content);
+
+        HttpRequest request = HttpRequest.newBuilder()
+          .uri(URI.create(url))
+          .header("Content-Type", "application/json")
+          .POST(HttpRequest.BodyPublishers.ofString(payload.toString()))
+          .timeout(Duration.ofSeconds(30))
+          .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() == 200) {
+          JSONObject respJson = new JSONObject(response.body());
+          JSONObject embeddingObj = respJson.optJSONObject("embedding");
+          if (embeddingObj != null && embeddingObj.has("values")) {
+            JSONArray valuesArr = embeddingObj.getJSONArray("values");
+            double[] vetor = new double[valuesArr.length()];
+            for (int i = 0; i < valuesArr.length(); i++) {
+              vetor[i] = valuesArr.getDouble(i);
+            }
+            return vetor;
+          }
+        } else {
+          ultimoErro = new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
+        }
+      } catch (Exception e) {
+        ultimoErro = e;
+      }
+    }
+    throw new RuntimeException("Falha ao gerar embedding no Gemini: " + (ultimoErro != null ? ultimoErro.getMessage() : "Desconhecido"), ultimoErro);
+  }
+
+  public String construirPromptRotulacaoTopicos(
+      Map<Integer, List<String>> topicosComPalavras,
+      List<String> categoriasSugeridas
+  ) {
+    StringBuilder sbCategorias = new StringBuilder();
+    for (String cat : categoriasSugeridas) {
+      sbCategorias.append(" - ").append(cat).append("\n");
+    }
+
+    StringBuilder sbTopicos = new StringBuilder();
+    for (Map.Entry<Integer, List<String>> entry : topicosComPalavras.entrySet()) {
+      sbTopicos.append(String.format("Tópico %d: [%s]%n", entry.getKey(), String.join(", ", entry.getValue())));
+    }
+
+    return """
+      Você é um especialista em análise legislativa e ciência de dados aplicada ao direito público municipal brasileiro.
+      Foi executada uma modelagem de tópicos (Cluster c-TF-IDF / K-Means) sobre normas e decretos legislativos, resultando nos clusters com as palavras mais salientes abaixo.
+
+      CATEGORIAS TEMÁTICAS SUGERIDAS (REFERÊNCIA):
+      %s
+
+      TÓPICOS IDENTIFICADOS E SEUS TERMOS DOMINANTES (ORDENADOS POR RELEVÂNCIA):
+      %s
+
+      INSTRUÇÕES OBRIGATÓRIAS:
+      1. Para cada tópico, analise cuidadosamente as palavras-chave representativas.
+      2. Se as palavras corresponderem a uma das categorias temáticas sugeridas, selecione preferencialmente esse nome de categoria.
+      3. Caso os termos indiquem com clareza um tema novo relevante não listado acima (ex: Segurança Municipal, Cultura e Lazer, etc.), crie um nome formal e conciso (máximo 4 a 5 palavras).
+      4. Retorne EXCLUSIVAMENTE um JSON estruturado no formato:
+      {
+        "topicos": [
+          { "id": 1, "tema": "Nome do Tema" },
+          { "id": 2, "tema": "Nome do Tema" }
+        ]
+      }
+      """.formatted(sbCategorias.toString(), sbTopicos.toString());
   }
 
   private String construirPrompt(List<String> lote) {
@@ -267,6 +380,66 @@ public class AgenteGemini {
     }
 
     return mapa;
+  }
+
+  public static Map<Integer, String> parsearRespostaRotulacaoTopicos(String responseBody, Set<Integer> idsEsperados) {
+    Map<Integer, String> mapa = new LinkedHashMap<>();
+    try {
+      String text = responseBody;
+      try {
+        JSONObject json = new JSONObject(responseBody);
+        JSONArray candidates = json.optJSONArray("candidates");
+        if (candidates != null && !candidates.isEmpty()) {
+          JSONObject firstCandidate = candidates.getJSONObject(0);
+          JSONObject content = firstCandidate.getJSONObject("content");
+          JSONArray parts = content.getJSONArray("parts");
+
+          text = null;
+          for (int i = 0; i < parts.length(); i++) {
+            JSONObject part = parts.getJSONObject(i);
+            if (part.has("text") && !part.optBoolean("thought", false)) {
+              text = part.getString("text");
+            }
+          }
+          if (text == null && parts.length() > 0) {
+            text = parts.getJSONObject(0).optString("text", "");
+          }
+        }
+      } catch (Exception ignored) {
+        // responseBody já pode ser o texto JSON direto
+      }
+
+      String jsonLimpo = extrairJsonDeTexto(text);
+      JSONObject respostaJson = new JSONObject(jsonLimpo);
+      JSONArray topicosArr = respostaJson.optJSONArray("topicos");
+
+      if (topicosArr != null) {
+        for (int i = 0; i < topicosArr.length(); i++) {
+          JSONObject item = topicosArr.getJSONObject(i);
+          int id = item.getInt("id");
+          String tema = item.getString("tema").trim();
+          mapa.put(id, tema);
+        }
+      }
+    } catch (Exception e) {
+      System.err.println("Aviso ao processar JSON de rotulação de tópicos: " + e.getMessage());
+    }
+
+    return mapa;
+  }
+
+  public static String extrairJsonDeTexto(String text) {
+    if (text == null) return "{}";
+    String trimmed = text.trim();
+    if (trimmed.startsWith("```json")) {
+      trimmed = trimmed.substring(7);
+    } else if (trimmed.startsWith("```")) {
+      trimmed = trimmed.substring(3);
+    }
+    if (trimmed.endsWith("```")) {
+      trimmed = trimmed.substring(0, trimmed.length() - 3);
+    }
+    return trimmed.trim();
   }
 
   public static String sanitizarTexto(String texto) {

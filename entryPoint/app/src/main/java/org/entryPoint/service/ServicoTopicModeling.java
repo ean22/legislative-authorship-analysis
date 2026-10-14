@@ -74,12 +74,26 @@ public class ServicoTopicModeling {
   }
 
   public ResultadoTopicModeling executarTopicModeling(int k, int maxIteracoes, boolean salvarNoBanco) throws SQLException {
+    return executarTopicModeling(k, maxIteracoes, salvarNoBanco, org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.getModoAtivo());
+  }
+
+  public ResultadoTopicModeling executarTopicModeling(
+      int k,
+      int maxIteracoes,
+      boolean salvarNoBanco,
+      org.entryPoint.benchmark.algoritmos.ModoInferidorTema modoInferidor
+  ) throws SQLException {
+    if (modoInferidor != null) {
+      org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.setModoAtivo(modoInferidor);
+    }
+
     long inicioTempo = System.nanoTime();
     Runtime runtime = Runtime.getRuntime();
     long memoriaInicio = runtime.totalMemory() - runtime.freeMemory();
 
     System.out.println("\n" + "=".repeat(85));
     System.out.printf("Executando Topic Modeling Oficial (Pipeline: Cluster c-TF-IDF | TextRank | K=%d)...%n", k);
+    System.out.printf("Estratégia de Rotulação de Tópicos: [%s]%n", org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.getModoAtivo().getDescricao());
     System.out.println("=".repeat(85));
 
     CorpusProcessado corpus = obterOuCarregarCorpus();

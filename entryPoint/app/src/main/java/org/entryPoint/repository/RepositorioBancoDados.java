@@ -24,6 +24,7 @@ public class RepositorioBancoDados {
   private final RepositorioRelacionamentos repositorioRelacionamentos;
   private final RepositorioTopicos repositorioTopicos;
   private final RepositorioPipeline repositorioPipeline;
+  private final RepositorioPerfilPolitico repositorioPerfilPolitico;
 
   public RepositorioBancoDados() {
     this.gerenciadorConexao = new GerenciadorConexao();
@@ -33,6 +34,7 @@ public class RepositorioBancoDados {
     this.repositorioRelacionamentos = new RepositorioRelacionamentos(this.gerenciadorConexao);
     this.repositorioTopicos = new RepositorioTopicos(this.gerenciadorConexao);
     this.repositorioPipeline = new RepositorioPipeline(this.gerenciadorConexao);
+    this.repositorioPerfilPolitico = new RepositorioPerfilPolitico(this.gerenciadorConexao);
   }
 
   public RepositorioBancoDados(GerenciadorConexao gerenciadorConexao) {
@@ -43,6 +45,7 @@ public class RepositorioBancoDados {
     this.repositorioRelacionamentos = new RepositorioRelacionamentos(this.gerenciadorConexao);
     this.repositorioTopicos = new RepositorioTopicos(this.gerenciadorConexao);
     this.repositorioPipeline = new RepositorioPipeline(this.gerenciadorConexao);
+    this.repositorioPerfilPolitico = new RepositorioPerfilPolitico(this.gerenciadorConexao);
   }
 
   // Getters para repositórios específicos
@@ -72,6 +75,10 @@ public class RepositorioBancoDados {
 
   public RepositorioPipeline getRepositorioPipeline() {
     return repositorioPipeline;
+  }
+
+  public RepositorioPerfilPolitico getRepositorioPerfilPolitico() {
+    return repositorioPerfilPolitico;
   }
 
   // Delegações para Normas

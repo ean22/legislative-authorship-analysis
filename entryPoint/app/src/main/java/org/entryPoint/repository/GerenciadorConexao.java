@@ -83,6 +83,11 @@ public class GerenciadorConexao {
       )
     """;
 
+    String criarIndiceNormaAutor = """
+      CREATE INDEX IF NOT EXISTS idx_norma_autor_autor
+      ON norma_autor (id_autor)
+      """;
+
     String createEmentasPreProcessadas = """
       CREATE TABLE IF NOT EXISTS ementas_pre_processadas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,6 +153,10 @@ public class GerenciadorConexao {
       }
 
       try (PreparedStatement statement = conexao.prepareStatement(createNormaAutor)) {
+        statement.execute();
+      }
+
+      try (PreparedStatement statement = conexao.prepareStatement(criarIndiceNormaAutor)) {
         statement.execute();
       }
 

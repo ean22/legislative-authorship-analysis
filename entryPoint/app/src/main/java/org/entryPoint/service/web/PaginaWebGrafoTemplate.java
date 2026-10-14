@@ -1,0 +1,1309 @@
+package org.entryPoint.service.web;
+
+/**
+ * Fornece a interface web completa, moderna e interativa (Single Page Application)
+ * para exploração visual das redes de colaboração política e perfis legislativos.
+ */
+public class PaginaWebGrafoTemplate {
+
+  public static String gerarHtml(String jsonGrafoEmbutido, String jsonAutoresEmbutido, boolean modoServidor) {
+    String grafoData = (jsonGrafoEmbutido != null && !jsonGrafoEmbutido.isBlank()) ? jsonGrafoEmbutido : "{\"nodes\":[],\"links\":[]}";
+    String autoresData = (jsonAutoresEmbutido != null && !jsonAutoresEmbutido.isBlank()) ? jsonAutoresEmbutido : "[]";
+
+    return TEMPLATE_HTML
+        .replace("__GRAFO_DATA__", grafoData)
+        .replace("__AUTORES_DATA__", autoresData)
+        .replace("__MODO_SERVIDOR__", String.valueOf(modoServidor));
+  }
+
+  private static final String TEMPLATE_HTML = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapeamento de Coautoria e Perfis Políticos | Análise Legislativa</title>
+  
+  <!-- Fontes Modernas: Outfit (Títulos) e Inter (Interface) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Vis.js Network para Simulação Física Interativa de Grafos -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/dist/vis-network.min.js"></script>
+
+  <style>
+    :root {
+      --bg-base: #0B0F19;
+      --bg-surface: rgba(17, 24, 39, 0.85);
+      --bg-surface-elevated: rgba(30, 41, 59, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(56, 189, 248, 0.3);
+      --text-main: #F3F4F6;
+      --text-muted: #9CA3AF;
+      --text-faint: #6B7280;
+      --accent-cyan: #06B6D4;
+      --accent-blue: #3B82F6;
+      --accent-purple: #8B5CF6;
+      --accent-emerald: #10B981;
+      --accent-amber: #F59E0B;
+      --accent-rose: #F43F5E;
+      --glass-blur: blur(16px);
+      --shadow-elevation: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+      --font-display: 'Outfit', sans-serif;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* Fundo com gradiente sutil dinâmico */
+    body::before {
+      content: "";
+      position: absolute;
+      top: -20%;
+      left: -10%;
+      width: 50vw;
+      height: 50vw;
+      background: radial-gradient(circle, rgba(14, 165, 233, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::after {
+      content: "";
+      position: absolute;
+      bottom: -20%;
+      right: -10%;
+      width: 50vw;
+      height: 50vw;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Container do Grafo Interativo (Canvas) */
+    #rede-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background: radial-gradient(circle at center, #0F172A 0%, #080D1A 100%);
+    }
+
+    /* Barra Superior (Header Glassmorphism) */
+    header {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      right: 20px;
+      height: 64px;
+      background: var(--bg-surface);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 10;
+      box-shadow: var(--shadow-elevation);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #06B6D4, #3B82F6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #FFFFFF;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stats-chips {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .chip b {
+      color: #38BDF8;
+      font-weight: 600;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: var(--font-body);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--border-accent);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284C7, #2563EB);
+      border: none;
+      color: #FFFFFF;
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0369A1, #1D4ED8);
+      box-shadow: 0 0 20px rgba(37, 99, 235, 0.6);
+    }
+
+    /* Painel de Controle Flutuante (Esquerda) */
+    .control-panel {
+      position: absolute;
+      top: 96px;
+      left: 20px;
+      width: 320px;
+      background: var(--bg-surface);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 20px;
+      z-index: 10;
+      box-shadow: var(--shadow-elevation);
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
+
+    .panel-section {
+      margin-bottom: 20px;
+    }
+
+    .panel-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Campo de Busca de Autor */
+    .search-box {
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 10px 14px 10px 34px;
+      color: #FFFFFF;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      border-color: #38BDF8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-faint);
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #111827;
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      margin-top: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 20;
+      display: none;
+      box-shadow: var(--shadow-elevation);
+    }
+
+    .autocomplete-item {
+      padding: 10px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .autocomplete-item:hover {
+      background: rgba(56, 189, 248, 0.1);
+      color: #38BDF8;
+    }
+
+    /* Sliders de Filtro */
+    .slider-group {
+      margin-top: 12px;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: var(--text-muted);
+    }
+
+    .slider-label span {
+      color: #38BDF8;
+      font-weight: 600;
+    }
+
+    .custom-range {
+      width: 100%;
+      accent-color: #0284C7;
+      cursor: pointer;
+    }
+
+    /* Dropdown de Temas */
+    .select-theme {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #FFFFFF;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Legenda de Cores Temáticas */
+    .legend-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+
+    .legend-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Drawer Lateral de Detalhes do Autor (Direita) */
+    .detail-drawer {
+      position: absolute;
+      top: 96px;
+      right: 20px;
+      width: 420px;
+      background: var(--bg-surface);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 24px;
+      z-index: 10;
+      box-shadow: var(--shadow-elevation);
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+      transform: translateX(460px);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .detail-drawer.open {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 16px;
+    }
+
+    .author-name {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      color: #FFFFFF;
+      line-height: 1.2;
+    }
+
+    .author-cargo {
+      font-size: 12px;
+      color: #38BDF8;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+      border-radius: 6px;
+    }
+
+    .close-btn:hover {
+      color: #FFFFFF;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Abas do Perfil */
+    .tabs-nav {
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 16px;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      color: #38BDF8;
+      border-color: #38BDF8;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Barras de Tópicos */
+    .topic-bar-item {
+      margin-bottom: 12px;
+    }
+
+    .topic-bar-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .topic-bar-bg {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .topic-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #0284C7, #38BDF8);
+      transition: width 0.6s ease;
+    }
+
+    /* Tags de Palavras-Chave */
+    .keywords-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .keyword-tag {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      color: #7DD3FC;
+      border-radius: 12px;
+      padding: 3px 10px;
+      font-size: 11px;
+    }
+
+    /* Cards de Estatísticas */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .stat-card-title {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-card-value {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    /* Lista de Parcerias */
+    .partner-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .partner-item:hover {
+      background: rgba(56, 189, 248, 0.08);
+      border-color: rgba(56, 189, 248, 0.3);
+      transform: translateX(4px);
+    }
+
+    .partner-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .partner-cargo {
+      font-size: 10px;
+      color: var(--text-faint);
+    }
+
+    .partner-laws {
+      font-size: 12px;
+      font-weight: 700;
+      color: #38BDF8;
+    }
+
+    /* Modal de Comparação */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #111827;
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      width: 680px;
+      max-width: 90vw;
+      padding: 28px;
+      box-shadow: var(--shadow-elevation);
+    }
+
+    /* Tooltip Customizado */
+    .vis-tooltip {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #FFFFFF;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      pointer-events: none;
+      z-index: 30;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      font-family: var(--font-body);
+    }
+
+    /* Botões Flutuantes de Zoom no Canvas */
+    .zoom-controls {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .btn-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--bg-surface);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-subtle);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: var(--shadow-elevation);
+      transition: all 0.2s;
+    }
+
+    .btn-circle:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38BDF8;
+      transform: scale(1.08);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Superior -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🏛️</div>
+      <div>
+        <div class="brand-title">Rede Legislativa Interativa</div>
+        <div class="brand-subtitle">Câmara Municipal de São Paulo • Coautoria e Temas</div>
+      </div>
+    </div>
+
+    <div class="stats-chips">
+      <div class="chip">Atores no Grafo: <b id="stat-nos">0</b></div>
+      <div class="chip">Laços de Coautoria: <b id="stat-arestas">0</b></div>
+      <div class="chip">Normas Analisadas: <b>14.011</b></div>
+      <div class="chip">Tópicos c-TF-IDF: <b>8</b></div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn" id="btn-reheat" title="Reiniciar Simulação Física">⚡ Reaquecer Física</button>
+      <button class="btn" id="btn-comparar-modal">⚖️ Comparar Autores</button>
+      <button class="btn btn-primary" id="btn-export-png">📷 Salvar Imagem</button>
+    </div>
+  </header>
+
+  <!-- Container do Grafo -->
+  <div id="rede-container"></div>
+
+  <!-- Painel de Controle (Esquerda) -->
+  <div class="control-panel">
+    <div class="panel-section">
+      <div class="section-title">🔍 Localizar Autor</div>
+      <div class="search-box">
+        <span class="search-icon">🔎</span>
+        <input type="text" id="input-busca" class="search-input" placeholder="Buscar autor (ex: Haddad)...">
+        <div id="autocomplete-box" class="autocomplete-list"></div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">⚙️ Filtros da Rede</div>
+      
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Peso Mínimo de Normas</span>
+          <span id="label-peso">20</span>
+        </div>
+        <input type="range" id="range-peso" class="custom-range" min="5" max="100" value="20" step="5">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Atores Principais (Top)</span>
+          <span id="label-atores">30</span>
+        </div>
+        <input type="range" id="range-atores" class="custom-range" min="10" max="60" value="30" step="5">
+      </div>
+
+      <div style="margin-top: 14px;">
+        <div class="slider-label">Filtrar por Tema Dominante</div>
+        <select id="select-tema-filtro" class="select-theme">
+          <option value="TODOS">Todos os Eixos Temáticos</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">🎨 Eixos Temáticos (c-TF-IDF)</div>
+      <div class="legend-list" id="lista-legendas"></div>
+    </div>
+  </div>
+
+  <!-- Drawer Lateral de Detalhes do Autor (Direita) -->
+  <div id="author-drawer" class="detail-drawer">
+    <div class="drawer-header">
+      <div>
+        <div id="drawer-nome" class="author-name">Nome do Autor</div>
+        <div id="drawer-cargo" class="author-cargo">Cargo</div>
+      </div>
+      <button class="close-btn" id="btn-close-drawer">✕</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-card-title">Total de Normas</div>
+        <div id="stat-total-normas" class="stat-card-value">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Taxa de Coautoria</div>
+        <div id="stat-taxa-coautoria" class="stat-card-value">0%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Parceiros Distintos</div>
+        <div id="stat-parceiros-total" class="stat-card-value">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Especialização (HHI)</div>
+        <div id="stat-hhi" class="stat-card-value">0.00</div>
+      </div>
+    </div>
+
+    <div class="tabs-nav">
+      <button class="tab-btn active" data-tab="tab-temas">Temas</button>
+      <button class="tab-btn" data-tab="tab-parcerias">Parcerias</button>
+      <button class="tab-btn" data-tab="tab-trajetoria">Trajetória</button>
+    </div>
+
+    <!-- Aba 1: Temas -->
+    <div id="tab-temas" class="tab-content active">
+      <div class="section-title">Distribuição Temática das Normas</div>
+      <div id="drawer-lista-topicos"></div>
+
+      <div class="section-title" style="margin-top: 16px;">Vocabulário Mais Frequente</div>
+      <div id="drawer-palavras-chave" class="keywords-cloud"></div>
+    </div>
+
+    <!-- Aba 2: Parcerias -->
+    <div id="tab-parcerias" class="tab-content">
+      <div class="section-title">Principais Laços de Coautoria</div>
+      <div id="drawer-lista-parceiros"></div>
+    </div>
+
+    <!-- Aba 3: Trajetória -->
+    <div id="tab-trajetoria" class="tab-content">
+      <div class="section-title">Evolução Anual e Mandatos</div>
+      <div id="drawer-timeline" style="margin-top: 8px;"></div>
+    </div>
+
+    <div style="margin-top: 20px; display: flex; gap: 8px;">
+      <button class="btn btn-primary" id="btn-ego-network" style="flex: 1; justify-content: center;">Isolar Rede Deste Autor</button>
+      <button class="btn" id="btn-reset-ego" style="display: none;">Ver Todos</button>
+    </div>
+  </div>
+
+  <!-- Botões de Controle de Zoom Flutuantes -->
+  <div class="zoom-controls">
+    <button class="btn-circle" id="zoom-in" title="Aproximar">+</button>
+    <button class="btn-circle" id="zoom-out" title="Afastar">-</button>
+    <button class="btn-circle" id="zoom-fit" title="Enquadrar Toda a Rede">🎯</button>
+  </div>
+
+  <!-- Modal de Comparação Política -->
+  <div id="modal-comparacao" class="modal-overlay">
+    <div class="modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="font-family: var(--font-display); font-size: 18px; color: #FFFFFF;">⚖️ Comparativo de Alinhamento Político</h3>
+        <button class="close-btn" id="btn-close-modal">✕</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+        <div>
+          <label class="slider-label">Primeiro Autor</label>
+          <select id="select-comp-autor1" class="select-theme"></select>
+        </div>
+        <div>
+          <label class="slider-label">Segundo Autor</label>
+          <select id="select-comp-autor2" class="select-theme"></select>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-executar-comparacao" style="width: 100%; justify-content: center; margin-bottom: 20px;">
+        Calcular Similaridade e Convergência
+      </button>
+
+      <div id="resultado-comparacao" style="display: none;">
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 18px; text-align: center;">
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Similaridade Temática Cosseno</div>
+          <div id="comp-score-cosseno" style="font-family: var(--font-display); font-size: 38px; font-weight: 800; color: #38BDF8; margin: 8px 0;">0.00</div>
+          <div id="comp-diagnostico" style="font-size: 13px; color: var(--text-main); font-weight: 500;">-</div>
+          <div id="comp-normas-conjuntas" style="font-size: 12px; color: #9CA3AF; margin-top: 6px;">0 normas em coautoria</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dados Injetados -->
+  <script>
+    const DADOS_INICIAIS_GRAFO = __GRAFO_DATA__;
+    const DADOS_INICIAIS_AUTORES = __AUTORES_DATA__;
+    const MODO_SERVIDOR = __MODO_SERVIDOR__;
+
+    // Paleta de Cores HSL harmoniosa para cada Eixo Temático
+    const PALETA_CORES_TEMAS = {
+      "Declaração de Utilidade Pública": "#06B6D4",
+      "Bens Imóveis e Desapropriação": "#3B82F6",
+      "Datas Comemorativas e Calendário": "#F59E0B",
+      "Denominação de Vias e Logradouros": "#10B981",
+      "Serviços Públicos e Gestão Municipal": "#8B5CF6",
+      "Administração e Normas Gerais (prestados)": "#EC4899",
+      "Administração e Normas Gerais (provimento)": "#F43F5E",
+      "Educação e Cultura": "#14B8A6",
+      "Saúde e Assistência Social": "#6366F1",
+      "Geral": "#94A3B8"
+    };
+
+    function obterCorTema(tema) {
+      if (!tema) return PALETA_CORES_TEMAS["Geral"];
+      for (const [chave, cor] of Object.entries(PALETA_CORES_TEMAS)) {
+        if (tema.toLowerCase().includes(chave.toLowerCase())) return cor;
+      }
+      return PALETA_CORES_TEMAS["Geral"];
+    }
+
+    let network = null;
+    let nodesDataSet = null;
+    let edgesDataSet = null;
+    let dadosGrafoAtual = DADOS_INICIAIS_GRAFO;
+    let autorSelecionadoId = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      inicializarGrafo(DADOS_INICIAIS_GRAFO);
+      popularLegenda(DADOS_INICIAIS_GRAFO);
+      popularAutoresSelect(DADOS_INICIAIS_AUTORES);
+      configurarEventos();
+    });
+
+    function inicializarGrafo(dados) {
+      const container = document.getElementById("rede-container");
+      
+      const nodesArray = dados.nodes.map(n => {
+        const cor = obterCorTema(n.temaDominante);
+        const tamanho = Math.max(14, Math.min(42, 12 + Math.log2(Math.max(1, n.totalNormas)) * 3));
+        return {
+          id: n.id,
+          label: n.name.length > 22 ? n.name.substring(0, 20) + "..." : n.name,
+          title: `<b>${n.name}</b><br>${n.cargo || 'Autor'}<br>${n.totalNormas} normas<br>Tema: ${n.temaDominante}`,
+          value: n.totalNormas,
+          size: tamanho,
+          color: {
+            background: cor,
+            border: "#FFFFFF",
+            highlight: { background: cor, border: "#38BDF8" },
+            hover: { background: cor, border: "#38BDF8" }
+          },
+          font: { color: "#F3F4F6", face: "Inter", size: 11, strokeWidth: 2, strokeColor: "#0B0F19" },
+          borderWidth: 2,
+          shadow: { enabled: true, color: "rgba(0,0,0,0.5)", size: 10, x: 2, y: 2 },
+          dataOriginal: n
+        };
+      });
+
+      const edgesArray = dados.links.map(l => {
+        const peso = l.weight || 1;
+        const largura = Math.min(8, 1 + Math.log10(peso + 1) * 2.2);
+        return {
+          from: l.source,
+          to: l.target,
+          value: peso,
+          width: largura,
+          title: `${l.sourceName} & ${l.targetName}<br><b>${peso} normas conjuntas</b><br>${l.sharedTopics || ''}`,
+          color: { color: "rgba(148, 163, 184, 0.25)", highlight: "#38BDF8", hover: "#38BDF8" },
+          smooth: { type: "curvedCW", roundness: 0.15 }
+        };
+      });
+
+      nodesDataSet = new vis.DataSet(nodesArray);
+      edgesDataSet = new vis.DataSet(edgesArray);
+
+      const options = {
+        nodes: {
+          shape: "dot"
+        },
+        edges: {
+          selectionWidth: 3,
+          hoverWidth: 2.5
+        },
+        physics: {
+          enabled: true,
+          solver: "forceAtlas2Based",
+          forceAtlas2Based: {
+            gravitationalConstant: -70,
+            centralGravity: 0.015,
+            springLength: 120,
+            springConstant: 0.08,
+            damping: 0.4
+          },
+          stabilization: {
+            iterations: 150
+          }
+        },
+        interaction: {
+          hover: true,
+          tooltipDelay: 100,
+          hideEdgesOnDrag: false,
+          zoomView: true
+        }
+      };
+
+      network = new vis.Network(container, { nodes: nodesDataSet, edges: edgesDataSet }, options);
+
+      document.getElementById("stat-nos").innerText = nodesArray.length;
+      document.getElementById("stat-arestas").innerText = edgesArray.length;
+
+      // Evento de Clique no Nó -> Abre Detalhes
+      network.on("click", params => {
+        if (params.nodes.length > 0) {
+          const id = params.nodes[0];
+          abrirDetalhesAutor(id);
+        }
+      });
+    }
+
+    function popularLegenda(dados) {
+      const temasEncontrados = new Set();
+      dados.nodes.forEach(n => {
+        if (n.temaDominante) temasEncontrados.add(n.temaDominante);
+      });
+
+      const container = document.getElementById("lista-legendas");
+      const selectFiltro = document.getElementById("select-tema-filtro");
+      container.innerHTML = "";
+
+      temasEncontrados.forEach(tema => {
+        const cor = obterCorTema(tema);
+        const div = document.createElement("div");
+        div.className = "legend-item";
+        div.innerHTML = `<span class="color-dot" style="background: ${cor};"></span><span>${tema}</span>`;
+        div.onclick = () => destacarPorTema(tema);
+        container.appendChild(div);
+
+        const opt = document.createElement("option");
+        opt.value = tema;
+        opt.innerText = tema;
+        selectFiltro.appendChild(opt);
+      });
+    }
+
+    function popularAutoresSelect(autores) {
+      const sel1 = document.getElementById("select-comp-autor1");
+      const sel2 = document.getElementById("select-comp-autor2");
+      sel1.innerHTML = "";
+      sel2.innerHTML = "";
+
+      const lista = (autores && autores.length > 0) ? autores : dadosGrafoAtual.nodes;
+
+      lista.forEach((a, idx) => {
+        const opt1 = new Option(`${a.name} (${a.totalNormas || 0} normas)`, a.id);
+        const opt2 = new Option(`${a.name} (${a.totalNormas || 0} normas)`, a.id);
+        sel1.add(opt1);
+        sel2.add(opt2);
+      });
+
+      if (sel2.options.length > 1) sel2.selectedIndex = 1;
+    }
+
+    function destacarPorTema(tema) {
+      if (!tema || tema === "TODOS") {
+        nodesDataSet.forEach(node => {
+          nodesDataSet.update({ id: node.id, opacity: 1.0 });
+        });
+        edgesDataSet.forEach(edge => {
+          edgesDataSet.update({ id: edge.id, opacity: 1.0 });
+        });
+        return;
+      }
+
+      nodesDataSet.forEach(node => {
+        const match = node.dataOriginal && node.dataOriginal.temaDominante === tema;
+        nodesDataSet.update({
+          id: node.id,
+          opacity: match ? 1.0 : 0.15
+        });
+      });
+    }
+
+    async function abrirDetalhesAutor(id) {
+      autorSelecionadoId = id;
+      const drawer = document.getElementById("author-drawer");
+      drawer.classList.add("open");
+
+      // Buscar perfil detalhado
+      let perfil = null;
+      if (MODO_SERVIDOR) {
+        try {
+          const res = await fetch(`/api/perfil?id=${id}`);
+          if (res.ok) perfil = await res.json();
+        } catch (e) {
+          console.warn("Erro ao buscar API, usando dados locais", e);
+        }
+      }
+
+      const no = nodesDataSet.get(id);
+      if (!no) return;
+
+      document.getElementById("drawer-nome").innerText = no.dataOriginal.name;
+      document.getElementById("drawer-cargo").innerText = no.dataOriginal.cargo || "AUTOR / VEREADOR";
+      document.getElementById("stat-total-normas").innerText = no.dataOriginal.totalNormas || "0";
+      document.getElementById("stat-parceiros-total").innerText = no.dataOriginal.degree || "0";
+
+      // Renderizar Temas
+      const containerTopicos = document.getElementById("drawer-lista-topicos");
+      containerTopicos.innerHTML = "";
+
+      if (perfil && perfil.perfilTematico && perfil.perfilTematico.distribuicaoTopicos) {
+        document.getElementById("stat-hhi").innerText = perfil.perfilTematico.indiceEspecializacaoHhi.toFixed(3);
+        document.getElementById("stat-taxa-coautoria").innerText = perfil.perfilAtuacao ? perfil.perfilAtuacao.taxaCoautoria.toFixed(1) + "%" : "N/D";
+
+        perfil.perfilTematico.distribuicaoTopicos.slice(0, 5).forEach(t => {
+          containerTopicos.innerHTML += `
+            <div class="topic-bar-item">
+              <div class="topic-bar-info">
+                <span>${t.nomeTopico}</span>
+                <span><b>${t.percentual.toFixed(1)}%</b> (${t.quantidadeNormas})</span>
+              </div>
+              <div class="topic-bar-bg">
+                <div class="topic-bar-fill" style="width: ${t.percentual}%;"></div>
+              </div>
+            </div>
+          `;
+        });
+
+        // Palavras-chave
+        const containerKeywords = document.getElementById("drawer-palavras-chave");
+        containerKeywords.innerHTML = "";
+        if (perfil.perfilTematico.termosMaisFrequentes) {
+          perfil.perfilTematico.termosMaisFrequentes.forEach(kw => {
+            containerKeywords.innerHTML += `<span class="keyword-tag">${kw}</span>`;
+          });
+        }
+
+        // Parcerias
+        const containerParceiros = document.getElementById("drawer-lista-parceiros");
+        containerParceiros.innerHTML = "";
+        if (perfil.perfilColaboracao && perfil.perfilColaboracao.principaisParcerias) {
+          perfil.perfilColaboracao.principaisParcerias.slice(0, 8).forEach(p => {
+            containerParceiros.innerHTML += `
+              <div class="partner-item" onclick="focarAutor(${p.idParceiro})">
+                <div>
+                  <div class="partner-name">${p.nomeParceiro}</div>
+                  <div class="partner-cargo">${p.cargoParceiro || 'AUTOR'}</div>
+                </div>
+                <div class="partner-laws">${p.normasCompartilhadas} leis</div>
+              </div>
+            `;
+          });
+        }
+
+        // Trajetória
+        const containerTimeline = document.getElementById("drawer-timeline");
+        containerTimeline.innerHTML = "";
+        if (perfil.perfilTemporal && perfil.perfilTemporal.producaoPorAno) {
+          const anos = Object.entries(perfil.perfilTemporal.producaoPorAno);
+          anos.forEach(([ano, qtd]) => {
+            containerTimeline.innerHTML += `
+              <div style="display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
+                <span>Ano <b>${ano}</b></span>
+                <span style="color:#38BDF8;">${qtd} normas</span>
+              </div>
+            `;
+          });
+        }
+      } else {
+        // Fallback quando executado apenas com dados do grafo
+        containerTopicos.innerHTML = `<div style="font-size:12px; color:#9CA3AF;">Eixo Dominante: <b>${no.dataOriginal.temaDominante}</b></div>`;
+      }
+    }
+
+    function focarAutor(id) {
+      if (!network || !nodesDataSet.get(id)) return;
+      network.focus(id, {
+        scale: 1.2,
+        animation: { duration: 600, easingFunction: "easeInOutQuad" }
+      });
+      abrirDetalhesAutor(id);
+    }
+
+    function configurarEventos() {
+      // Sliders com debounce
+      const rangePeso = document.getElementById("range-peso");
+      const labelPeso = document.getElementById("label-peso");
+      const rangeAtores = document.getElementById("range-atores");
+      const labelAtores = document.getElementById("label-atores");
+
+      rangePeso.oninput = () => {
+        labelPeso.innerText = rangePeso.value;
+      };
+      rangePeso.onchange = () => recarregarGrafo();
+
+      rangeAtores.oninput = () => {
+        labelAtores.innerText = rangeAtores.value;
+      };
+      rangeAtores.onchange = () => recarregarGrafo();
+
+      document.getElementById("select-tema-filtro").onchange = e => {
+        destacarPorTema(e.target.value);
+      };
+
+      document.getElementById("btn-close-drawer").onclick = () => {
+        document.getElementById("author-drawer").classList.remove("open");
+      };
+
+      // Zoom Controls
+      document.getElementById("zoom-in").onclick = () => {
+        network.moveTo({ scale: network.getScale() * 1.3 });
+      };
+      document.getElementById("zoom-out").onclick = () => {
+        network.moveTo({ scale: network.getScale() * 0.7 });
+      };
+      document.getElementById("zoom-fit").onclick = () => {
+        network.fit({ animation: { duration: 500 } });
+      };
+
+      // Abas
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+          document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+          btn.classList.add("active");
+          document.getElementById(btn.dataset.tab).classList.add("active");
+        };
+      });
+
+      // Busca Autocomplete
+      const inputBusca = document.getElementById("input-busca");
+      const autoBox = document.getElementById("autocomplete-box");
+
+      inputBusca.oninput = () => {
+        const termo = inputBusca.value.trim().toLowerCase();
+        if (termo.length < 2) {
+          autoBox.style.display = "none";
+          return;
+        }
+
+        const matches = nodesDataSet.get().filter(n => n.dataOriginal.name.toLowerCase().includes(termo));
+        if (matches.length === 0) {
+          autoBox.style.display = "none";
+          return;
+        }
+
+        autoBox.innerHTML = "";
+        matches.slice(0, 6).forEach(m => {
+          const item = document.createElement("div");
+          item.className = "autocomplete-item";
+          item.innerHTML = `<span>${m.dataOriginal.name}</span><small style="color:#64748B;">${m.dataOriginal.totalNormas} normas</small>`;
+          item.onclick = () => {
+            inputBusca.value = m.dataOriginal.name;
+            autoBox.style.display = "none";
+            focarAutor(m.id);
+          };
+          autoBox.appendChild(item);
+        });
+        autoBox.style.display = "block";
+      };
+
+      // Modal Comparação
+      const modal = document.getElementById("modal-comparacao");
+      document.getElementById("btn-comparar-modal").onclick = () => modal.classList.add("open");
+      document.getElementById("btn-close-modal").onclick = () => modal.classList.remove("open");
+
+      document.getElementById("btn-executar-comparacao").onclick = async () => {
+        const id1 = document.getElementById("select-comp-autor1").value;
+        const id2 = document.getElementById("select-comp-autor2").value;
+        if (id1 === id2) {
+          alert("Selecione autores diferentes para comparar.");
+          return;
+        }
+
+        if (MODO_SERVIDOR) {
+          try {
+            const res = await fetch(`/api/comparar?id1=${id1}&id2=${id2}`);
+            if (res.ok) {
+              const dados = await res.json();
+              document.getElementById("resultado-comparacao").style.display = "block";
+              document.getElementById("comp-score-cosseno").innerText = (dados.similaridadeTematicaCosseno * 100).toFixed(1) + "%";
+              document.getElementById("comp-diagnostico").innerText = dados.diagnosticoAfinidade;
+              document.getElementById("comp-normas-conjuntas").innerText = dados.normasCompartilhadas + " normas conjuntas em coautoria";
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      };
+
+      // Reaquecer Física
+      document.getElementById("btn-reheat").onclick = () => {
+        network.startSimulation();
+      };
+
+      // Exportar Imagem PNG
+      document.getElementById("btn-export-png").onclick = () => {
+        const canvas = document.querySelector("#rede-container canvas");
+        if (canvas) {
+          const link = document.createElement("a");
+          link.download = "rede_colaboracao_legislativa.png";
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+        }
+      };
+
+      // Ego-Network Button
+      document.getElementById("btn-ego-network").onclick = async () => {
+        if (!autorSelecionadoId) return;
+        if (MODO_SERVIDOR) {
+          const res = await fetch(`/api/grafo/autor?id=${autorSelecionadoId}&minWeight=10`);
+          if (res.ok) {
+            const grafoEgo = await res.json();
+            inicializarGrafo(grafoEgo);
+            document.getElementById("btn-reset-ego").style.display = "inline-flex";
+          }
+        }
+      };
+
+      document.getElementById("btn-reset-ego").onclick = () => {
+        recarregarGrafo();
+        document.getElementById("btn-reset-ego").style.display = "none";
+      };
+    }
+
+    async function recarregarGrafo() {
+      const peso = document.getElementById("range-peso").value;
+      const atores = document.getElementById("range-atores").value;
+
+      if (MODO_SERVIDOR) {
+        try {
+          const res = await fetch(`/api/grafo?limit=${atores}&minWeight=${peso}`);
+          if (res.ok) {
+            const novosDados = await res.json();
+            dadosGrafoAtual = novosDados;
+            inicializarGrafo(novosDados);
+            popularLegenda(novosDados);
+          }
+        } catch (e) {
+          console.error("Erro ao recarregar via API:", e);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
+""";
+}

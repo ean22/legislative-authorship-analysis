@@ -156,17 +156,24 @@ public class RepositoriosTest {
   @Order(6)
   @DisplayName("Testa RepositorioTopicos: persistência e listagem de tópicos")
   void testRepositorioTopicos() throws SQLException {
-    TopicoTematico topico = new TopicoTematico(
-        99,
-        "Educação e Creches",
-        List.of("infantil", "educação", "centro", "criação", "municipal", "escola")
-    );
-    repoTopicos.salvarTopicosDescobertosEmLote(List.of(topico));
+    List<TopicoTematico> anteriores = repoTopicos.listarTopicosSalvos();
+    try {
+      TopicoTematico topico = new TopicoTematico(
+          99,
+          "Educação e Creches",
+          List.of("infantil", "educação", "centro", "criação", "municipal", "escola")
+      );
+      repoTopicos.salvarTopicosDescobertosEmLote(List.of(topico));
 
-    List<TopicoTematico> salvos = repoTopicos.listarTopicosSalvos();
-    assertTrue(salvos.stream().anyMatch(t -> t.id() == 99));
-    TopicoTematico salvo = salvos.stream().filter(t -> t.id() == 99).findFirst().orElseThrow();
-    assertEquals("Educação e Creches", salvo.nome());
-    assertEquals("Educação e Creches (infantil, educação, centro, criação, municipal, escola)", salvo.getDescricaoFormatada());
+      List<TopicoTematico> salvos = repoTopicos.listarTopicosSalvos();
+      assertTrue(salvos.stream().anyMatch(t -> t.id() == 99));
+      TopicoTematico salvo = salvos.stream().filter(t -> t.id() == 99).findFirst().orElseThrow();
+      assertEquals("Educação e Creches", salvo.nome());
+      assertEquals("Educação e Creches (infantil, educação, centro, criação, municipal, escola)", salvo.getDescricaoFormatada());
+    } finally {
+      if (!anteriores.isEmpty()) {
+        repoTopicos.salvarTopicosDescobertosEmLote(anteriores);
+      }
+    }
   }
 }

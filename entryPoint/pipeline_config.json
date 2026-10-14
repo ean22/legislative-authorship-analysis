@@ -13,6 +13,6 @@
     "utilidade_autoral": 0.4640
   },
   "justificativa_escolha": "NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alerta: baixa diversidade (42%), risco de redundância. Alinhamento institucional moderado (pureza: 41%).",
-  "data_definicao": "2026-10-13T16:18:45.681929806",
+  "data_definicao": "2026-10-13T17:37:08.875889348",
   "ativo": true
 }

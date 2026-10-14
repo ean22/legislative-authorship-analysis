@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapeamento de Coautoria e Perfis Políticos | Análise Legislativa</title>
+
+  <!-- Fontes Modernas: Outfit (Títulos) e Inter (Interface) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Vis.js Network para Simulação Física Interativa de Grafos -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/dist/vis-network.min.js"></script>
+
+  <style>
+    :root {
+      --bg-base: #0B0F19;
+      --bg-surface: rgba(17, 24, 39, 0.85);
+      --bg-surface-elevated: rgba(30, 41, 59, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(56, 189, 248, 0.3);
+      --text-main: #F3F4F6;
+      --text-muted: #9CA3AF;
+      --text-faint: #6B7280;
+      --accent-cyan: #06B6D4;
+      --accent-blue: #3B82F6;
+      --accent-purple: #8B5CF6;
+      --accent-emerald: #10B981;
+      --accent-amber: #F59E0B;
+      --accent-rose: #F43F5E;
+      --glass-blur: blur(16px);
+      --shadow-elevation: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+      --font-display: 'Outfit', sans-serif;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* Fundo com gradiente sutil dinâmico */
+    body::before {
+      content: "";
+      position: absolute;
+      top: -20%;
+      left: -10%;
+      width: 50vw;
+      height: 50vw;
+      background: radial-gradient(circle, rgba(14, 165, 233, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::after {
+      content: "";
+      position: absolute;
+      bottom: -20%;
+      right: -10%;
+      width: 50vw;
+      height: 50vw;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Container do Grafo Interativo (Canvas) */
+    #rede-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background: radial-gradient(circle at center, #0F172A 0%, #080D1A 100%);
+    }
+
+    /* Barra Superior (Header Glassmorphism) */
+    header {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      right: 20px;
+      height: 64px;
+      background: var(--bg-surface);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 10;
+      box-shadow: var(--shadow-elevation);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #06B6D4, #3B82F6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #FFFFFF;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stats-chips {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .chip b {
+      color: #38BDF8;
+      font-weight: 600;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: var(--font-body);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--border-accent);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284C7, #2563EB);
+      border: none;
+      color: #FFFFFF;
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0369A1, #1D4ED8);
+      box-shadow: 0 0 20px rgba(37, 99, 235, 0.6);
+    }
+
+    /* Painel de Controle Flutuante (Esquerda) */
+    .control-panel {
+      position: absolute;
+      top: 96px;
+      left: 20px;
+      width: 320px;
+      background: var(--bg-surface);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 20px;
+      z-index: 10;
+      box-shadow: var(--shadow-elevation);
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
+
+    .panel-section {
+      margin-bottom: 20px;
+    }
+
+    .panel-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Campo de Busca de Autor */
+    .search-box {
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 10px 14px 10px 34px;
+      color: #FFFFFF;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      border-color: #38BDF8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-faint);
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #111827;
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      margin-top: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 20;
+      display: none;
+      box-shadow: var(--shadow-elevation);
+    }
+
+    .autocomplete-item {
+      padding: 10px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .autocomplete-item:hover {
+      background: rgba(56, 189, 248, 0.1);
+      color: #38BDF8;
+    }
+
+    /* Sliders de Filtro */
+    .slider-group {
+      margin-top: 12px;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: var(--text-muted);
+    }
+
+    .slider-label span {
+      color: #38BDF8;
+      font-weight: 600;
+    }
+
+    .custom-range {
+      width: 100%;
+      accent-color: #0284C7;
+      cursor: pointer;
+    }
+
+    /* Dropdown de Temas */
+    .select-theme {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #FFFFFF;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Legenda de Cores Temáticas */
+    .legend-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+
+    .legend-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Drawer Lateral de Detalhes do Autor (Direita) */
+    .detail-drawer {
+      position: absolute;
+      top: 96px;
+      right: 20px;
+      width: 420px;
+      background: var(--bg-surface);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 24px;
+      z-index: 10;
+      box-shadow: var(--shadow-elevation);
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+      transform: translateX(460px);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .detail-drawer.open {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 16px;
+    }
+
+    .author-name {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      color: #FFFFFF;
+      line-height: 1.2;
+    }
+
+    .author-cargo {
+      font-size: 12px;
+      color: #38BDF8;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+      border-radius: 6px;
+    }
+
+    .close-btn:hover {
+      color: #FFFFFF;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Abas do Perfil */
+    .tabs-nav {
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 16px;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      color: #38BDF8;
+      border-color: #38BDF8;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Barras de Tópicos */
+    .topic-bar-item {
+      margin-bottom: 12px;
+    }
+
+    .topic-bar-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .topic-bar-bg {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .topic-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #0284C7, #38BDF8);
+      transition: width 0.6s ease;
+    }
+
+    /* Tags de Palavras-Chave */
+    .keywords-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .keyword-tag {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      color: #7DD3FC;
+      border-radius: 12px;
+      padding: 3px 10px;
+      font-size: 11px;
+    }
+
+    /* Cards de Estatísticas */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .stat-card-title {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-card-value {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    /* Lista de Parcerias */
+    .partner-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .partner-item:hover {
+      background: rgba(56, 189, 248, 0.08);
+      border-color: rgba(56, 189, 248, 0.3);
+      transform: translateX(4px);
+    }
+
+    .partner-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .partner-cargo {
+      font-size: 10px;
+      color: var(--text-faint);
+    }
+
+    .partner-laws {
+      font-size: 12px;
+      font-weight: 700;
+      color: #38BDF8;
+    }
+
+    /* Modal de Comparação */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #111827;
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      width: 680px;
+      max-width: 90vw;
+      padding: 28px;
+      box-shadow: var(--shadow-elevation);
+    }
+
+    /* Tooltip Customizado */
+    .vis-tooltip {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #FFFFFF;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      pointer-events: none;
+      z-index: 30;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      font-family: var(--font-body);
+    }
+
+    /* Botões Flutuantes de Zoom no Canvas */
+    .zoom-controls {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .btn-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--bg-surface);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-subtle);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: var(--shadow-elevation);
+      transition: all 0.2s;
+    }
+
+    .btn-circle:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38BDF8;
+      transform: scale(1.08);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Superior -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🏛️</div>
+      <div>
+        <div class="brand-title">Rede Legislativa Interativa</div>
+        <div class="brand-subtitle">Câmara Municipal de São Paulo • Coautoria e Temas</div>
+      </div>
+    </div>
+
+    <div class="stats-chips">
+      <div class="chip">Atores no Grafo: <b id="stat-nos">0</b></div>
+      <div class="chip">Laços de Coautoria: <b id="stat-arestas">0</b></div>
+      <div class="chip">Normas Analisadas: <b>14.011</b></div>
+      <div class="chip">Tópicos c-TF-IDF: <b>8</b></div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn" id="btn-reheat" title="Reiniciar Simulação Física">⚡ Reaquecer Física</button>
+      <button class="btn" id="btn-comparar-modal">⚖️ Comparar Autores</button>
+      <button class="btn btn-primary" id="btn-export-png">📷 Salvar Imagem</button>
+    </div>
+  </header>
+
+  <!-- Container do Grafo -->
+  <div id="rede-container"></div>
+
+  <!-- Painel de Controle (Esquerda) -->
+  <div class="control-panel">
+    <div class="panel-section">
+      <div class="section-title">🔍 Localizar Autor</div>
+      <div class="search-box">
+        <span class="search-icon">🔎</span>
+        <input type="text" id="input-busca" class="search-input" placeholder="Buscar autor (ex: Haddad)...">
+        <div id="autocomplete-box" class="autocomplete-list"></div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">⚙️ Filtros da Rede</div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Peso Mínimo de Normas</span>
+          <span id="label-peso">20</span>
+        </div>
+        <input type="range" id="range-peso" class="custom-range" min="5" max="100" value="20" step="5">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Atores Principais (Top)</span>
+          <span id="label-atores">30</span>
+        </div>
+        <input type="range" id="range-atores" class="custom-range" min="10" max="60" value="30" step="5">
+      </div>
+
+      <div style="margin-top: 14px;">
+        <div class="slider-label">Filtrar por Tema Dominante</div>
+        <select id="select-tema-filtro" class="select-theme">
+          <option value="TODOS">Todos os Eixos Temáticos</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">🎨 Eixos Temáticos (c-TF-IDF)</div>
+      <div class="legend-list" id="lista-legendas"></div>
+    </div>
+  </div>
+
+  <!-- Drawer Lateral de Detalhes do Autor (Direita) -->
+  <div id="author-drawer" class="detail-drawer">
+    <div class="drawer-header">
+      <div>
+        <div id="drawer-nome" class="author-name">Nome do Autor</div>
+        <div id="drawer-cargo" class="author-cargo">Cargo</div>
+      </div>
+      <button class="close-btn" id="btn-close-drawer">✕</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-card-title">Total de Normas</div>
+        <div id="stat-total-normas" class="stat-card-value">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Taxa de Coautoria</div>
+        <div id="stat-taxa-coautoria" class="stat-card-value">0%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Parceiros Distintos</div>
+        <div id="stat-parceiros-total" class="stat-card-value">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Especialização (HHI)</div>
+        <div id="stat-hhi" class="stat-card-value">0.00</div>
+      </div>
+    </div>
+
+    <div class="tabs-nav">
+      <button class="tab-btn active" data-tab="tab-temas">Temas</button>
+      <button class="tab-btn" data-tab="tab-parcerias">Parcerias</button>
+      <button class="tab-btn" data-tab="tab-trajetoria">Trajetória</button>
+    </div>
+
+    <!-- Aba 1: Temas -->
+    <div id="tab-temas" class="tab-content active">
+      <div class="section-title">Distribuição Temática das Normas</div>
+      <div id="drawer-lista-topicos"></div>
+
+      <div class="section-title" style="margin-top: 16px;">Vocabulário Mais Frequente</div>
+      <div id="drawer-palavras-chave" class="keywords-cloud"></div>
+    </div>
+
+    <!-- Aba 2: Parcerias -->
+    <div id="tab-parcerias" class="tab-content">
+      <div class="section-title">Principais Laços de Coautoria</div>
+      <div id="drawer-lista-parceiros"></div>
+    </div>
+
+    <!-- Aba 3: Trajetória -->
+    <div id="tab-trajetoria" class="tab-content">
+      <div class="section-title">Evolução Anual e Mandatos</div>
+      <div id="drawer-timeline" style="margin-top: 8px;"></div>
+    </div>
+
+    <div style="margin-top: 20px; display: flex; gap: 8px;">
+      <button class="btn btn-primary" id="btn-ego-network" style="flex: 1; justify-content: center;">Isolar Rede Deste Autor</button>
+      <button class="btn" id="btn-reset-ego" style="display: none;">Ver Todos</button>
+    </div>
+  </div>
+
+  <!-- Botões de Controle de Zoom Flutuantes -->
+  <div class="zoom-controls">
+    <button class="btn-circle" id="zoom-in" title="Aproximar">+</button>
+    <button class="btn-circle" id="zoom-out" title="Afastar">-</button>
+    <button class="btn-circle" id="zoom-fit" title="Enquadrar Toda a Rede">🎯</button>
+  </div>
+
+  <!-- Modal de Comparação Política -->
+  <div id="modal-comparacao" class="modal-overlay">
+    <div class="modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="font-family: var(--font-display); font-size: 18px; color: #FFFFFF;">⚖️ Comparativo de Alinhamento Político</h3>
+        <button class="close-btn" id="btn-close-modal">✕</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+        <div>
+          <label class="slider-label">Primeiro Autor</label>
+          <select id="select-comp-autor1" class="select-theme"></select>
+        </div>
+        <div>
+          <label class="slider-label">Segundo Autor</label>
+          <select id="select-comp-autor2" class="select-theme"></select>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-executar-comparacao" style="width: 100%; justify-content: center; margin-bottom: 20px;">
+        Calcular Similaridade e Convergência
+      </button>
+
+      <div id="resultado-comparacao" style="display: none;">
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 18px; text-align: center;">
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Similaridade Temática Cosseno</div>
+          <div id="comp-score-cosseno" style="font-family: var(--font-display); font-size: 38px; font-weight: 800; color: #38BDF8; margin: 8px 0;">0.00</div>
+          <div id="comp-diagnostico" style="font-size: 13px; color: var(--text-main); font-weight: 500;">-</div>
+          <div id="comp-normas-conjuntas" style="font-size: 12px; color: #9CA3AF; margin-top: 6px;">0 normas em coautoria</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dados Injetados -->
+  <script>
+    const DADOS_INICIAIS_GRAFO = {
+  "nodes": [
+    {"id": 2006, "name": "RICARDO NUNES", "cargo": "PREFEITO", "totalNormas": 5677, "temaDominante": "Declaração de Utilidade Pública", "degree": 131},
+    {"id": 1731, "name": "FERNANDO HADDAD", "cargo": "PREFEITO", "totalNormas": 4140, "temaDominante": "Declaração de Utilidade Pública", "degree": 135},
+    {"id": 1881, "name": "BRUNO COVAS", "cargo": "PREFEITO", "totalNormas": 2602, "temaDominante": "Declaração de Utilidade Pública", "degree": 122},
+    {"id": 1749, "name": "FRANCISCO MACENA DA SILVA", "cargo": "SECRETARIO DO GOVERNO MUNICIPAL", "totalNormas": 2224, "temaDominante": "Declaração de Utilidade Pública", "degree": 114},
+    {"id": 1867, "name": "LUIS FELIPE VIDAL ARELLANO", "cargo": "SECRETARIO MUNICIPAL DA FAZENDA", "totalNormas": 1824, "temaDominante": "Declaração de Utilidade Pública", "degree": 49},
+    {"id": 1927, "name": "RUBENS NAMAN RIZEK JUNIOR", "cargo": "SECRETARIO MUNICIPAL DE JUSTICA", "totalNormas": 1622, "temaDominante": "Declaração de Utilidade Pública", "degree": 125},
+    {"id": 2005, "name": "EUNICE APARECIDA DE JESUS PRUDENTE", "cargo": "SECRETARIA MUNICIPAL DE JUSTICA", "totalNormas": 1317, "temaDominante": "Declaração de Utilidade Pública", "degree": 86},
+    {"id": 1952, "name": "GUILHERME BUENO DE CAMARGO", "cargo": "SECRETARIO MUNICIPAL DA FAZENDA", "totalNormas": 1262, "temaDominante": "Declaração de Utilidade Pública", "degree": 41},
+    {"id": 1940, "name": "EDSON APARECIDO DOS SANTOS", "cargo": "SECRETARIO DO GOVERNO MUNICIPAL", "totalNormas": 1190, "temaDominante": "Declaração de Utilidade Pública", "degree": 127},
+    {"id": 1734, "name": "MARCOS DE BARROS CRUZ", "cargo": "SECRETARIO MUNICIPAL DE FINANCAS E DESENVOLVIMENTO ECONOMICO", "totalNormas": 1115, "temaDominante": "Declaração de Utilidade Pública", "degree": 80},
+    {"id": 1733, "name": "LEDA MARIA PAULANI", "cargo": "SECRETARIA MUNICIPAL DE PLANEJAMENTO, ORCAMENTO E GESTAO", "totalNormas": 1097, "temaDominante": "Declaração de Utilidade Pública", "degree": 77},
+    {"id": 1735, "name": "LUIS FERNANDO MASSONETTO", "cargo": "SECRETARIO MUNICIPAL DOS NEGOCIOS JURIDICOS", "totalNormas": 1051, "temaDominante": "Declaração de Utilidade Pública", "degree": 66},
+    {"id": 2033, "name": "FABRICIO COBRA ARBEX", "cargo": "SECRETARIO MUNICIPAL DA CASA CIVIL", "totalNormas": 1032, "temaDominante": "Declaração de Utilidade Pública", "degree": 84},
+    {"id": 1736, "name": "ANTONIO DONATO MADORMO", "cargo": "SECRETARIO DO GOVERNO MUNICIPAL", "totalNormas": 1020, "temaDominante": "Declaração de Utilidade Pública", "degree": 46},
+    {"id": 1954, "name": "PHILIPPE VEDOLIM DUCHATEAU", "cargo": "SECRETARIO MUNICIPAL DA FAZENDA", "totalNormas": 799, "temaDominante": "Declaração de Utilidade Pública", "degree": 24},
+    {"id": 1917, "name": "ORLANDO LINDÓRIO DE FARIA", "cargo": "SECRETARIO MUNICIPAL DA CASA CIVIL", "totalNormas": 690, "temaDominante": "Declaração de Utilidade Pública", "degree": 62},
+    {"id": 1835, "name": "ROGÉRIO CERON DE OLIVEIRA", "cargo": "SECRETARIO MUNICIPAL DE FINANCAS E DESENVOLVIMENTO ECONOMICO", "totalNormas": 606, "temaDominante": "Declaração de Utilidade Pública", "degree": 21},
+    {"id": 1874, "name": "JOÃO DORIA", "cargo": "PREFEITO", "totalNormas": 587, "temaDominante": "Declaração de Utilidade Pública", "degree": 46},
+    {"id": 1876, "name": "JULIO FRANCISCO SEMEGHINI NETO", "cargo": "SECRETARIO DO GOVERNO MUNICIPAL", "totalNormas": 537, "temaDominante": "Denominação de Vias e Logradouros", "degree": 64},
+    {"id": 2085, "name": "ANDRÉ LEMOS JORGE", "cargo": "SECRETARIO MUNICIPAL DE JUSTICA", "totalNormas": 490, "temaDominante": "Denominação de Vias e Logradouros", "degree": 51},
+    {"id": 2094, "name": "CLODOALDO PELIZZONI", "cargo": "SECRETARIO MUNICIPAL DE PLANEJAMENTO E EFICIENCIA", "totalNormas": 478, "temaDominante": "Declaração de Utilidade Pública", "degree": 20},
+    {"id": 2009, "name": "JOSÉ RICARDO ALVARENGA TRIPOLI", "cargo": "SECRETARIO MUNICIPAL DA CASA CIVIL", "totalNormas": 477, "temaDominante": "Declaração de Utilidade Pública", "degree": 40},
+    {"id": 1833, "name": "BRENO GANDELMAN", "cargo": "SECRETARIO GERAL PARLAMENTAR", "totalNormas": 422, "temaDominante": "Datas Comemorativas e Calendário", "degree": 1},
+    {"id": 1955, "name": "MAURO RICARDO MACHADO COSTA", "cargo": "SECRETARIO DO GOVERNO MUNICIPAL", "totalNormas": 417, "temaDominante": "Declaração de Utilidade Pública", "degree": 55},
+    {"id": 1878, "name": "ANDERSON POMINI", "cargo": "SECRETARIO MUNICIPAL DE JUSTICA", "totalNormas": 413, "temaDominante": "Denominação de Vias e Logradouros", "degree": 45},
+    {"id": 1877, "name": "CAIO MEGALE", "cargo": "SECRETARIO MUNICIPAL DA FAZENDA", "totalNormas": 409, "temaDominante": "Declaração de Utilidade Pública", "degree": 29},
+    {"id": 1993, "name": "MARINA MAGRO BERINGHS MARTINEZ", "cargo": "RESPONDENDO PELO CARGO DE SECRETARIA MUNICIPAL DE JUSTICA", "totalNormas": 399, "temaDominante": "Declaração de Utilidade Pública", "degree": 32},
+    {"id": 2072, "name": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "cargo": "SECRETARIO MUNICIPAL DA CASA CIVIL", "totalNormas": 364, "temaDominante": "Declaração de Utilidade Pública", "degree": 44},
+    {"id": 1783, "name": "ROBERTO NAMI GARIBE FILHO", "cargo": "RESPONDENDO PELO CARGO DE SECRETARIO DO GOVERNO MUNICIPAL", "totalNormas": 339, "temaDominante": "Declaração de Utilidade Pública", "degree": 49},
+    {"id": 1951, "name": "JOÃO JORGE DE SOUZA", "cargo": "SECRETARIO MUNICIPAL DA CASA CIVIL", "totalNormas": 324, "temaDominante": "Denominação de Vias e Logradouros", "degree": 46},
+    {"id": 2051, "name": "CLODOALDO PELISSIONI", "cargo": "SECRETARIO EXECUTIVO DE PLANEJAMENTO E EFICIENCIA", "totalNormas": 320, "temaDominante": "Declaração de Utilidade Pública", "degree": 31},
+    {"id": 2044, "name": "RICARDO EZEQUIEL TORRES", "cargo": "SECRETARIO MUNICIPAL DA FAZENDA", "totalNormas": 304, "temaDominante": "Declaração de Utilidade Pública", "degree": 12},
+    {"id": 1732, "name": "LUÍS FERNANDO MASSONETTO", "cargo": "SECRETARIO MUNICIPAL DOS NEGOCIOS JURIDICOS", "totalNormas": 290, "temaDominante": "Declaração de Utilidade Pública", "degree": 49},
+    {"id": 2058, "name": "FABIANO MARTINS DE OLIVEIRA", "cargo": "SECRETARIO MUNICIPAL DA FAZENDA - SUBSTITUTO", "totalNormas": 281, "temaDominante": "Declaração de Utilidade Pública", "degree": 28},
+    {"id": 2063, "name": "FERNANDO JOSÉ DA COSTA", "cargo": "SECRETARIO MUNICIPAL DE JUSTICA", "totalNormas": 267, "temaDominante": "Denominação de Vias e Logradouros", "degree": 33},
+    {"id": 2035, "name": "MARCELA CRISTINA ARRUDA NUNES", "cargo": "SECRETARIA MUNICIPAL DE GESTAO", "totalNormas": 264, "temaDominante": "Administração e Normas Gerais (provimento)", "degree": 61},
+    {"id": 1737, "name": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "cargo": "SECRETARIO MUNICIPAL DE HABITACAO", "totalNormas": 256, "temaDominante": "Declaração de Utilidade Pública", "degree": 28},
+    {"id": 2001, "name": "ELISABETE FRANÇA", "cargo": "SECRETARIA MUNICIPAL DE URBANISMO E LICENCIAMENTO", "totalNormas": 254, "temaDominante": "Denominação de Vias e Logradouros", "degree": 45},
+    {"id": 1738, "name": "ANTONIO CESAR RUSSI CALLEGARI", "cargo": "SECRETARIO MUNICIPAL DE EDUCACAO", "totalNormas": 246, "temaDominante": "Declaração de Utilidade Pública", "degree": 33},
+    {"id": 1946, "name": "CESAR ANGEL BOFFA DE AZEVEDO", "cargo": "SECRETARIO MUNICIPAL DE LICENCIAMENTO", "totalNormas": 242, "temaDominante": "Declaração de Utilidade Pública", "degree": 53}
+  ],
+  "links": [
+    {"source": 1731, "target": 1749, "sourceName": "FERNANDO HADDAD", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 2186, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1867, "target": 2006, "sourceName": "LUIS FELIPE VIDAL ARELLANO", "targetName": "RICARDO NUNES", "weight": 1754, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (prestados)"},
+    {"source": 2005, "target": 2006, "sourceName": "EUNICE APARECIDA DE JESUS PRUDENTE", "targetName": "RICARDO NUNES", "weight": 1227, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1940, "target": 2006, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "RICARDO NUNES", "weight": 1154, "sharedTopics": "Declaração de Utilidade Pública; Denominação de Vias e Logradouros"},
+    {"source": 1881, "target": 1927, "sourceName": "BRUNO COVAS", "targetName": "RUBENS NAMAN RIZEK JUNIOR", "weight": 1122, "sharedTopics": "Declaração de Utilidade Pública; Denominação de Vias e Logradouros"},
+    {"source": 1952, "target": 2006, "sourceName": "GUILHERME BUENO DE CAMARGO", "targetName": "RICARDO NUNES", "weight": 1107, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1731, "target": 1734, "sourceName": "FERNANDO HADDAD", "targetName": "MARCOS DE BARROS CRUZ", "weight": 1058, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1731, "target": 1733, "sourceName": "FERNANDO HADDAD", "targetName": "LEDA MARIA PAULANI", "weight": 1057, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 2006, "target": 2033, "sourceName": "RICARDO NUNES", "targetName": "FABRICIO COBRA ARBEX", "weight": 1014, "sharedTopics": "Declaração de Utilidade Pública; Denominação de Vias e Logradouros"},
+    {"source": 1731, "target": 1735, "sourceName": "FERNANDO HADDAD", "targetName": "LUIS FERNANDO MASSONETTO", "weight": 1009, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1731, "target": 1736, "sourceName": "FERNANDO HADDAD", "targetName": "ANTONIO DONATO MADORMO", "weight": 977, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1733, "target": 1734, "sourceName": "LEDA MARIA PAULANI", "targetName": "MARCOS DE BARROS CRUZ", "weight": 941, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1881, "target": 1954, "sourceName": "BRUNO COVAS", "targetName": "PHILIPPE VEDOLIM DUCHATEAU", "weight": 795, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (prestados)"},
+    {"source": 1734, "target": 1735, "sourceName": "MARCOS DE BARROS CRUZ", "targetName": "LUIS FERNANDO MASSONETTO", "weight": 721, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1733, "target": 1735, "sourceName": "LEDA MARIA PAULANI", "targetName": "LUIS FERNANDO MASSONETTO", "weight": 714, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 2005, "target": 2033, "sourceName": "EUNICE APARECIDA DE JESUS PRUDENTE", "targetName": "FABRICIO COBRA ARBEX", "weight": 697, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1881, "target": 1917, "sourceName": "BRUNO COVAS", "targetName": "ORLANDO LINDÓRIO DE FARIA", "weight": 679, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1734, "target": 1749, "sourceName": "MARCOS DE BARROS CRUZ", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 592, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1731, "target": 1835, "sourceName": "FERNANDO HADDAD", "targetName": "ROGÉRIO CERON DE OLIVEIRA", "weight": 591, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (prestados)"},
+    {"source": 1733, "target": 1749, "sourceName": "LEDA MARIA PAULANI", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 591, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 1735, "target": 1736, "sourceName": "LUIS FERNANDO MASSONETTO", "targetName": "ANTONIO DONATO MADORMO", "weight": 579, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1940, "target": 2033, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "FABRICIO COBRA ARBEX", "weight": 562, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 1927, "target": 2005, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "EUNICE APARECIDA DE JESUS PRUDENTE", "weight": 521, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1917, "target": 1927, "sourceName": "ORLANDO LINDÓRIO DE FARIA", "targetName": "RUBENS NAMAN RIZEK JUNIOR", "weight": 516, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 2006, "target": 2085, "sourceName": "RICARDO NUNES", "targetName": "ANDRÉ LEMOS JORGE", "weight": 489, "sharedTopics": "Denominação de Vias e Logradouros; Declaração de Utilidade Pública"},
+    {"source": 1927, "target": 2006, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "RICARDO NUNES", "weight": 478, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 2006, "target": 2094, "sourceName": "RICARDO NUNES", "targetName": "CLODOALDO PELIZZONI", "weight": 478, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 2006, "target": 2009, "sourceName": "RICARDO NUNES", "targetName": "JOSÉ RICARDO ALVARENGA TRIPOLI", "weight": 462, "sharedTopics": "Declaração de Utilidade Pública; Denominação de Vias e Logradouros"},
+    {"source": 1733, "target": 1736, "sourceName": "LEDA MARIA PAULANI", "targetName": "ANTONIO DONATO MADORMO", "weight": 444, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 1867, "target": 2094, "sourceName": "LUIS FELIPE VIDAL ARELLANO", "targetName": "CLODOALDO PELIZZONI", "weight": 439, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1734, "target": 1736, "sourceName": "MARCOS DE BARROS CRUZ", "targetName": "ANTONIO DONATO MADORMO", "weight": 428, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 2005, "target": 2009, "sourceName": "EUNICE APARECIDA DE JESUS PRUDENTE", "targetName": "JOSÉ RICARDO ALVARENGA TRIPOLI", "weight": 426, "sharedTopics": "Declaração de Utilidade Pública; Denominação de Vias e Logradouros"},
+    {"source": 1735, "target": 1749, "sourceName": "LUIS FERNANDO MASSONETTO", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 424, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1940, "target": 2005, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "EUNICE APARECIDA DE JESUS PRUDENTE", "weight": 424, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1881, "target": 1955, "sourceName": "BRUNO COVAS", "targetName": "MAURO RICARDO MACHADO COSTA", "weight": 414, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1881, "target": 1993, "sourceName": "BRUNO COVAS", "targetName": "MARINA MAGRO BERINGHS MARTINEZ", "weight": 399, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1917, "target": 1993, "sourceName": "ORLANDO LINDÓRIO DE FARIA", "targetName": "MARINA MAGRO BERINGHS MARTINEZ", "weight": 395, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1876, "target": 1878, "sourceName": "JULIO FRANCISCO SEMEGHINI NETO", "targetName": "ANDERSON POMINI", "weight": 388, "sharedTopics": "Denominação de Vias e Logradouros; Serviços Públicos e Gestão Municipal"},
+    {"source": 1940, "target": 2085, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "ANDRÉ LEMOS JORGE", "weight": 388, "sharedTopics": "Denominação de Vias e Logradouros; Administração e Normas Gerais (provimento)"},
+    {"source": 1927, "target": 1955, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "MAURO RICARDO MACHADO COSTA", "weight": 383, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 2006, "target": 2072, "sourceName": "RICARDO NUNES", "targetName": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "weight": 363, "sharedTopics": "Declaração de Utilidade Pública; Denominação de Vias e Logradouros"},
+    {"source": 1874, "target": 1878, "sourceName": "JOÃO DORIA", "targetName": "ANDERSON POMINI", "weight": 356, "sharedTopics": "Denominação de Vias e Logradouros; Serviços Públicos e Gestão Municipal"},
+    {"source": 1874, "target": 1876, "sourceName": "JOÃO DORIA", "targetName": "JULIO FRANCISCO SEMEGHINI NETO", "weight": 355, "sharedTopics": "Denominação de Vias e Logradouros; Serviços Públicos e Gestão Municipal"},
+    {"source": 1940, "target": 2072, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "weight": 330, "sharedTopics": "Declaração de Utilidade Pública; Denominação de Vias e Logradouros"},
+    {"source": 1731, "target": 1783, "sourceName": "FERNANDO HADDAD", "targetName": "ROBERTO NAMI GARIBE FILHO", "weight": 327, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1876, "target": 1881, "sourceName": "JULIO FRANCISCO SEMEGHINI NETO", "targetName": "BRUNO COVAS", "weight": 325, "sharedTopics": "Denominação de Vias e Logradouros; Bens Imóveis e Desapropriação"},
+    {"source": 1881, "target": 1951, "sourceName": "BRUNO COVAS", "targetName": "JOÃO JORGE DE SOUZA", "weight": 321, "sharedTopics": "Denominação de Vias e Logradouros; Declaração de Utilidade Pública"},
+    {"source": 1927, "target": 1951, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "JOÃO JORGE DE SOUZA", "weight": 315, "sharedTopics": "Denominação de Vias e Logradouros; Declaração de Utilidade Pública"},
+    {"source": 2006, "target": 2051, "sourceName": "RICARDO NUNES", "targetName": "CLODOALDO PELISSIONI", "weight": 313, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 2006, "target": 2044, "sourceName": "RICARDO NUNES", "targetName": "RICARDO EZEQUIEL TORRES", "weight": 303, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (prestados)"},
+    {"source": 1731, "target": 1732, "sourceName": "FERNANDO HADDAD", "targetName": "LUÍS FERNANDO MASSONETTO", "weight": 290, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1927, "target": 2009, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "JOSÉ RICARDO ALVARENGA TRIPOLI", "weight": 290, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1732, "target": 1749, "sourceName": "LUÍS FERNANDO MASSONETTO", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 287, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 2006, "target": 2058, "sourceName": "RICARDO NUNES", "targetName": "FABIANO MARTINS DE OLIVEIRA", "weight": 279, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (prestados)"},
+    {"source": 1927, "target": 1993, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "MARINA MAGRO BERINGHS MARTINEZ", "weight": 269, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 2033, "target": 2063, "sourceName": "FABRICIO COBRA ARBEX", "targetName": "FERNANDO JOSÉ DA COSTA", "weight": 266, "sharedTopics": "Denominação de Vias e Logradouros; Datas Comemorativas e Calendário"},
+    {"source": 2006, "target": 2035, "sourceName": "RICARDO NUNES", "targetName": "MARCELA CRISTINA ARRUDA NUNES", "weight": 263, "sharedTopics": "Administração e Normas Gerais (provimento); Administração e Normas Gerais (prestados)"},
+    {"source": 2006, "target": 2063, "sourceName": "RICARDO NUNES", "targetName": "FERNANDO JOSÉ DA COSTA", "weight": 258, "sharedTopics": "Denominação de Vias e Logradouros; Datas Comemorativas e Calendário"},
+    {"source": 1867, "target": 2051, "sourceName": "LUIS FELIPE VIDAL ARELLANO", "targetName": "CLODOALDO PELISSIONI", "weight": 257, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 1731, "target": 1737, "sourceName": "FERNANDO HADDAD", "targetName": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "weight": 253, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1732, "target": 1734, "sourceName": "LUÍS FERNANDO MASSONETTO", "targetName": "MARCOS DE BARROS CRUZ", "weight": 240, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 2001, "target": 2006, "sourceName": "ELISABETE FRANÇA", "targetName": "RICARDO NUNES", "weight": 240, "sharedTopics": "Denominação de Vias e Logradouros; Datas Comemorativas e Calendário"},
+    {"source": 1731, "target": 1738, "sourceName": "FERNANDO HADDAD", "targetName": "ANTONIO CESAR RUSSI CALLEGARI", "weight": 234, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1732, "target": 1733, "sourceName": "LUÍS FERNANDO MASSONETTO", "targetName": "LEDA MARIA PAULANI", "weight": 226, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 2072, "target": 2085, "sourceName": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "targetName": "ANDRÉ LEMOS JORGE", "weight": 226, "sharedTopics": "Administração e Normas Gerais (provimento); Declaração de Utilidade Pública"},
+    {"source": 1940, "target": 2001, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "ELISABETE FRANÇA", "weight": 224, "sharedTopics": "Denominação de Vias e Logradouros; Datas Comemorativas e Calendário"},
+    {"source": 1927, "target": 1946, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "CESAR ANGEL BOFFA DE AZEVEDO", "weight": 220, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1874, "target": 1877, "sourceName": "JOÃO DORIA", "targetName": "CAIO MEGALE", "weight": 216, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1940, "target": 2035, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "MARCELA CRISTINA ARRUDA NUNES", "weight": 207, "sharedTopics": "Administração e Normas Gerais (provimento); Datas Comemorativas e Calendário"},
+    {"source": 1951, "target": 1955, "sourceName": "JOÃO JORGE DE SOUZA", "targetName": "MAURO RICARDO MACHADO COSTA", "weight": 199, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1877, "target": 1881, "sourceName": "CAIO MEGALE", "targetName": "BRUNO COVAS", "weight": 191, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (prestados)"},
+    {"source": 1878, "target": 1881, "sourceName": "ANDERSON POMINI", "targetName": "BRUNO COVAS", "weight": 188, "sharedTopics": "Denominação de Vias e Logradouros; Bens Imóveis e Desapropriação"},
+    {"source": 1881, "target": 1946, "sourceName": "BRUNO COVAS", "targetName": "CESAR ANGEL BOFFA DE AZEVEDO", "weight": 177, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1927, "target": 2033, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "FABRICIO COBRA ARBEX", "weight": 177, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1917, "target": 1955, "sourceName": "ORLANDO LINDÓRIO DE FARIA", "targetName": "MAURO RICARDO MACHADO COSTA", "weight": 175, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1874, "target": 1881, "sourceName": "JOÃO DORIA", "targetName": "BRUNO COVAS", "weight": 172, "sharedTopics": "Denominação de Vias e Logradouros; Bens Imóveis e Desapropriação"},
+    {"source": 1940, "target": 2063, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "FERNANDO JOSÉ DA COSTA", "weight": 167, "sharedTopics": "Denominação de Vias e Logradouros; Bens Imóveis e Desapropriação"},
+    {"source": 2033, "target": 2035, "sourceName": "FABRICIO COBRA ARBEX", "targetName": "MARCELA CRISTINA ARRUDA NUNES", "weight": 166, "sharedTopics": "Administração e Normas Gerais (provimento); Administração e Normas Gerais (prestados)"},
+    {"source": 1735, "target": 1738, "sourceName": "LUIS FERNANDO MASSONETTO", "targetName": "ANTONIO CESAR RUSSI CALLEGARI", "weight": 155, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1735, "target": 1783, "sourceName": "LUIS FERNANDO MASSONETTO", "targetName": "ROBERTO NAMI GARIBE FILHO", "weight": 149, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1735, "target": 1737, "sourceName": "LUIS FERNANDO MASSONETTO", "targetName": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "weight": 142, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 2001, "target": 2085, "sourceName": "ELISABETE FRANÇA", "targetName": "ANDRÉ LEMOS JORGE", "weight": 141, "sharedTopics": "Denominação de Vias e Logradouros; Datas Comemorativas e Calendário"},
+    {"source": 1736, "target": 1738, "sourceName": "ANTONIO DONATO MADORMO", "targetName": "ANTONIO CESAR RUSSI CALLEGARI", "weight": 133, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 2005, "target": 2035, "sourceName": "EUNICE APARECIDA DE JESUS PRUDENTE", "targetName": "MARCELA CRISTINA ARRUDA NUNES", "weight": 133, "sharedTopics": "Administração e Normas Gerais (provimento); Administração e Normas Gerais (prestados)"},
+    {"source": 1736, "target": 1737, "sourceName": "ANTONIO DONATO MADORMO", "targetName": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "weight": 126, "sharedTopics": "Bens Imóveis e Desapropriação; Bens Imóveis e Desapropriação"},
+    {"source": 1733, "target": 1783, "sourceName": "LEDA MARIA PAULANI", "targetName": "ROBERTO NAMI GARIBE FILHO", "weight": 125, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 1749, "target": 1783, "sourceName": "FRANCISCO MACENA DA SILVA", "targetName": "ROBERTO NAMI GARIBE FILHO", "weight": 121, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1734, "target": 1783, "sourceName": "MARCOS DE BARROS CRUZ", "targetName": "ROBERTO NAMI GARIBE FILHO", "weight": 116, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1867, "target": 1940, "sourceName": "LUIS FELIPE VIDAL ARELLANO", "targetName": "EDSON APARECIDO DOS SANTOS", "weight": 116, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (prestados)"},
+    {"source": 1917, "target": 1946, "sourceName": "ORLANDO LINDÓRIO DE FARIA", "targetName": "CESAR ANGEL BOFFA DE AZEVEDO", "weight": 114, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1737, "target": 1749, "sourceName": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 110, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1876, "target": 1927, "sourceName": "JULIO FRANCISCO SEMEGHINI NETO", "targetName": "RUBENS NAMAN RIZEK JUNIOR", "weight": 106, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 1733, "target": 1738, "sourceName": "LEDA MARIA PAULANI", "targetName": "ANTONIO CESAR RUSSI CALLEGARI", "weight": 99, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 1881, "target": 1952, "sourceName": "BRUNO COVAS", "targetName": "GUILHERME BUENO DE CAMARGO", "weight": 99, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (prestados)"},
+    {"source": 2001, "target": 2072, "sourceName": "ELISABETE FRANÇA", "targetName": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "weight": 93, "sharedTopics": "Denominação de Vias e Logradouros; Administração e Normas Gerais (prestados)"},
+    {"source": 1734, "target": 1738, "sourceName": "MARCOS DE BARROS CRUZ", "targetName": "ANTONIO CESAR RUSSI CALLEGARI", "weight": 91, "sharedTopics": "Declaração de Utilidade Pública"},
+    {"source": 1946, "target": 1955, "sourceName": "CESAR ANGEL BOFFA DE AZEVEDO", "targetName": "MAURO RICARDO MACHADO COSTA", "weight": 91, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1940, "target": 2051, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "CLODOALDO PELISSIONI", "weight": 89, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1738, "target": 1749, "sourceName": "ANTONIO CESAR RUSSI CALLEGARI", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 79, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
+    {"source": 1881, "target": 2005, "sourceName": "BRUNO COVAS", "targetName": "EUNICE APARECIDA DE JESUS PRUDENTE", "weight": 79, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 1736, "target": 1749, "sourceName": "ANTONIO DONATO MADORMO", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 76, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 2001, "target": 2033, "sourceName": "ELISABETE FRANÇA", "targetName": "FABRICIO COBRA ARBEX", "weight": 76, "sharedTopics": "Denominação de Vias e Logradouros; Bens Imóveis e Desapropriação"},
+    {"source": 1734, "target": 1737, "sourceName": "MARCOS DE BARROS CRUZ", "targetName": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "weight": 72, "sharedTopics": "Declaração de Utilidade Pública"},
+    {"source": 2001, "target": 2063, "sourceName": "ELISABETE FRANÇA", "targetName": "FERNANDO JOSÉ DA COSTA", "weight": 70, "sharedTopics": "Denominação de Vias e Logradouros; Bens Imóveis e Desapropriação"},
+    {"source": 1946, "target": 2005, "sourceName": "CESAR ANGEL BOFFA DE AZEVEDO", "targetName": "EUNICE APARECIDA DE JESUS PRUDENTE", "weight": 68, "sharedTopics": "Declaração de Utilidade Pública; Denominação de Vias e Logradouros"},
+    {"source": 2005, "target": 2072, "sourceName": "EUNICE APARECIDA DE JESUS PRUDENTE", "targetName": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "weight": 68, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 2035, "target": 2072, "sourceName": "MARCELA CRISTINA ARRUDA NUNES", "targetName": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "weight": 68, "sharedTopics": "Administração e Normas Gerais (provimento); Administração e Normas Gerais (prestados)"},
+    {"source": 2035, "target": 2085, "sourceName": "MARCELA CRISTINA ARRUDA NUNES", "targetName": "ANDRÉ LEMOS JORGE", "weight": 68, "sharedTopics": "Administração e Normas Gerais (provimento); Administração e Normas Gerais (prestados)"},
+    {"source": 1733, "target": 1737, "sourceName": "LEDA MARIA PAULANI", "targetName": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "weight": 65, "sharedTopics": "Declaração de Utilidade Pública"},
+    {"source": 1946, "target": 2006, "sourceName": "CESAR ANGEL BOFFA DE AZEVEDO", "targetName": "RICARDO NUNES", "weight": 64, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1946, "target": 2009, "sourceName": "CESAR ANGEL BOFFA DE AZEVEDO", "targetName": "JOSÉ RICARDO ALVARENGA TRIPOLI", "weight": 61, "sharedTopics": "Denominação de Vias e Logradouros; Declaração de Utilidade Pública"},
+    {"source": 1946, "target": 1993, "sourceName": "CESAR ANGEL BOFFA DE AZEVEDO", "targetName": "MARINA MAGRO BERINGHS MARTINEZ", "weight": 57, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
+    {"source": 1927, "target": 1954, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "PHILIPPE VEDOLIM DUCHATEAU", "weight": 56, "sharedTopics": "Administração e Normas Gerais (prestados); Administração e Normas Gerais (provimento)"},
+    {"source": 1749, "target": 1835, "sourceName": "FRANCISCO MACENA DA SILVA", "targetName": "ROGÉRIO CERON DE OLIVEIRA", "weight": 53, "sharedTopics": "Administração e Normas Gerais (prestados); Bens Imóveis e Desapropriação"},
+    {"source": 2035, "target": 2063, "sourceName": "MARCELA CRISTINA ARRUDA NUNES", "targetName": "FERNANDO JOSÉ DA COSTA", "weight": 47, "sharedTopics": "Administração e Normas Gerais (provimento); Datas Comemorativas e Calendário"},
+    {"source": 1927, "target": 1952, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "GUILHERME BUENO DE CAMARGO", "weight": 44, "sharedTopics": "Administração e Normas Gerais (prestados); Serviços Públicos e Gestão Municipal"},
+    {"source": 1952, "target": 2005, "sourceName": "GUILHERME BUENO DE CAMARGO", "targetName": "EUNICE APARECIDA DE JESUS PRUDENTE", "weight": 44, "sharedTopics": "Administração e Normas Gerais (prestados); Serviços Públicos e Gestão Municipal"},
+    {"source": 1876, "target": 1877, "sourceName": "JULIO FRANCISCO SEMEGHINI NETO", "targetName": "CAIO MEGALE", "weight": 43, "sharedTopics": "Administração e Normas Gerais (prestados); Administração e Normas Gerais (provimento)"},
+    {"source": 1927, "target": 1940, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "EDSON APARECIDO DOS SANTOS", "weight": 39, "sharedTopics": "Denominação de Vias e Logradouros; Bens Imóveis e Desapropriação"},
+    {"source": 1917, "target": 1954, "sourceName": "ORLANDO LINDÓRIO DE FARIA", "targetName": "PHILIPPE VEDOLIM DUCHATEAU", "weight": 38, "sharedTopics": "Administração e Normas Gerais (provimento); Administração e Normas Gerais (prestados)"},
+    {"source": 1946, "target": 1951, "sourceName": "CESAR ANGEL BOFFA DE AZEVEDO", "targetName": "JOÃO JORGE DE SOUZA", "weight": 37, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 1877, "target": 1878, "sourceName": "CAIO MEGALE", "targetName": "ANDERSON POMINI", "weight": 36, "sharedTopics": "Serviços Públicos e Gestão Municipal; Administração e Normas Gerais (prestados)"},
+    {"source": 1954, "target": 1955, "sourceName": "PHILIPPE VEDOLIM DUCHATEAU", "targetName": "MAURO RICARDO MACHADO COSTA", "weight": 36, "sharedTopics": "Administração e Normas Gerais (prestados); Serviços Públicos e Gestão Municipal"},
+    {"source": 1927, "target": 2035, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "MARCELA CRISTINA ARRUDA NUNES", "weight": 35, "sharedTopics": "Administração e Normas Gerais (provimento); Administração e Normas Gerais (prestados)"},
+    {"source": 2058, "target": 2094, "sourceName": "FABIANO MARTINS DE OLIVEIRA", "targetName": "CLODOALDO PELIZZONI", "weight": 34, "sharedTopics": "Declaração de Utilidade Pública"},
+    {"source": 2033, "target": 2051, "sourceName": "FABRICIO COBRA ARBEX", "targetName": "CLODOALDO PELISSIONI", "weight": 32, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (provimento)"},
+    {"source": 2051, "target": 2058, "sourceName": "CLODOALDO PELISSIONI", "targetName": "FABIANO MARTINS DE OLIVEIRA", "weight": 32, "sharedTopics": "Declaração de Utilidade Pública; Administração e Normas Gerais (prestados)"},
+    {"source": 1738, "target": 1783, "sourceName": "ANTONIO CESAR RUSSI CALLEGARI", "targetName": "ROBERTO NAMI GARIBE FILHO", "weight": 31, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"}
+  ]
+}
+;
+    const DADOS_INICIAIS_AUTORES = [{"id":2006,"name":"RICARDO NUNES","cargo":"PREFEITO","totalNormas":5677},{"id":1731,"name":"FERNANDO HADDAD","cargo":"PREFEITO","totalNormas":4140},{"id":1881,"name":"BRUNO COVAS","cargo":"PREFEITO","totalNormas":2602},{"id":1749,"name":"FRANCISCO MACENA DA SILVA","cargo":"SECRETARIO DO GOVERNO MUNICIPAL","totalNormas":2224},{"id":1867,"name":"LUIS FELIPE VIDAL ARELLANO","cargo":"SECRETARIO MUNICIPAL DA FAZENDA","totalNormas":1824},{"id":1927,"name":"RUBENS NAMAN RIZEK JUNIOR","cargo":"SECRETARIO MUNICIPAL DE JUSTICA","totalNormas":1622},{"id":2005,"name":"EUNICE APARECIDA DE JESUS PRUDENTE","cargo":"SECRETARIA MUNICIPAL DE JUSTICA","totalNormas":1317},{"id":1952,"name":"GUILHERME BUENO DE CAMARGO","cargo":"SECRETARIO MUNICIPAL DA FAZENDA","totalNormas":1262},{"id":1940,"name":"EDSON APARECIDO DOS SANTOS","cargo":"SECRETARIO DO GOVERNO MUNICIPAL","totalNormas":1190},{"id":1734,"name":"MARCOS DE BARROS CRUZ","cargo":"SECRETARIO MUNICIPAL DE FINANCAS E DESENVOLVIMENTO ECONOMICO","totalNormas":1115},{"id":1733,"name":"LEDA MARIA PAULANI","cargo":"SECRETARIA MUNICIPAL DE PLANEJAMENTO, ORCAMENTO E GESTAO","totalNormas":1097},{"id":1735,"name":"LUIS FERNANDO MASSONETTO","cargo":"SECRETARIO MUNICIPAL DOS NEGOCIOS JURIDICOS","totalNormas":1051},{"id":2033,"name":"FABRICIO COBRA ARBEX","cargo":"SECRETARIO MUNICIPAL DA CASA CIVIL","totalNormas":1032},{"id":1736,"name":"ANTONIO DONATO MADORMO","cargo":"SECRETARIO DO GOVERNO MUNICIPAL","totalNormas":1020},{"id":1954,"name":"PHILIPPE VEDOLIM DUCHATEAU","cargo":"SECRETARIO MUNICIPAL DA FAZENDA","totalNormas":799},{"id":1917,"name":"ORLANDO LINDÓRIO DE FARIA","cargo":"SECRETARIO MUNICIPAL DA CASA CIVIL","totalNormas":690},{"id":1835,"name":"ROGÉRIO CERON DE OLIVEIRA","cargo":"SECRETARIO MUNICIPAL DE FINANCAS E DESENVOLVIMENTO ECONOMICO","totalNormas":606},{"id":1874,"name":"JOÃO DORIA","cargo":"PREFEITO","totalNormas":587},{"id":1876,"name":"JULIO FRANCISCO SEMEGHINI NETO","cargo":"SECRETARIO DO GOVERNO MUNICIPAL","totalNormas":537},{"id":2085,"name":"ANDRÉ LEMOS JORGE","cargo":"SECRETARIO MUNICIPAL DE JUSTICA","totalNormas":490},{"id":2094,"name":"CLODOALDO PELIZZONI","cargo":"SECRETARIO MUNICIPAL DE PLANEJAMENTO E EFICIENCIA","totalNormas":478},{"id":2009,"name":"JOSÉ RICARDO ALVARENGA TRIPOLI","cargo":"SECRETARIO MUNICIPAL DA CASA CIVIL","totalNormas":477},{"id":1833,"name":"BRENO GANDELMAN","cargo":"SECRETARIO GERAL PARLAMENTAR","totalNormas":422},{"id":1955,"name":"MAURO RICARDO MACHADO COSTA","cargo":"SECRETARIO DO GOVERNO MUNICIPAL","totalNormas":417},{"id":1878,"name":"ANDERSON POMINI","cargo":"SECRETARIO MUNICIPAL DE JUSTICA","totalNormas":413},{"id":1877,"name":"CAIO MEGALE","cargo":"SECRETARIO MUNICIPAL DA FAZENDA","totalNormas":409},{"id":1993,"name":"MARINA MAGRO BERINGHS MARTINEZ","cargo":"RESPONDENDO PELO CARGO DE SECRETARIA MUNICIPAL DE JUSTICA","totalNormas":399},{"id":2072,"name":"ENRICO VAN BLARCUM DE GRAAFF MISASI","cargo":"SECRETARIO MUNICIPAL DA CASA CIVIL","totalNormas":364},{"id":1783,"name":"ROBERTO NAMI GARIBE FILHO","cargo":"RESPONDENDO PELO CARGO DE SECRETARIO DO GOVERNO MUNICIPAL","totalNormas":339},{"id":1951,"name":"JOÃO JORGE DE SOUZA","cargo":"SECRETARIO MUNICIPAL DA CASA CIVIL","totalNormas":324},{"id":2051,"name":"CLODOALDO PELISSIONI","cargo":"SECRETARIO EXECUTIVO DE PLANEJAMENTO E EFICIENCIA","totalNormas":320},{"id":2044,"name":"RICARDO EZEQUIEL TORRES","cargo":"SECRETARIO MUNICIPAL DA FAZENDA","totalNormas":304},{"id":1732,"name":"LUÍS FERNANDO MASSONETTO","cargo":"SECRETARIO MUNICIPAL DOS NEGOCIOS JURIDICOS","totalNormas":290},{"id":2058,"name":"FABIANO MARTINS DE OLIVEIRA","cargo":"SECRETARIO MUNICIPAL DA FAZENDA - SUBSTITUTO","totalNormas":281},{"id":2063,"name":"FERNANDO JOSÉ DA COSTA","cargo":"SECRETARIO MUNICIPAL DE JUSTICA","totalNormas":267},{"id":2035,"name":"MARCELA CRISTINA ARRUDA NUNES","cargo":"SECRETARIA MUNICIPAL DE GESTAO","totalNormas":264},{"id":1737,"name":"JOSÉ FLORIANO DE AZEVEDO MARQUES NETO","cargo":"SECRETARIO MUNICIPAL DE HABITACAO","totalNormas":256},{"id":2001,"name":"ELISABETE FRANÇA","cargo":"SECRETARIA MUNICIPAL DE URBANISMO E LICENCIAMENTO","totalNormas":254},{"id":1738,"name":"ANTONIO CESAR RUSSI CALLEGARI","cargo":"SECRETARIO MUNICIPAL DE EDUCACAO","totalNormas":246},{"id":1946,"name":"CESAR ANGEL BOFFA DE AZEVEDO","cargo":"SECRETARIO MUNICIPAL DE LICENCIAMENTO","totalNormas":242}];
+    const MODO_SERVIDOR = false;
+
+    // Paleta de Cores HSL harmoniosa para cada Eixo Temático
+    const PALETA_CORES_TEMAS = {
+      "Declaração de Utilidade Pública": "#06B6D4",
+      "Bens Imóveis e Desapropriação": "#3B82F6",
+      "Datas Comemorativas e Calendário": "#F59E0B",
+      "Denominação de Vias e Logradouros": "#10B981",
+      "Serviços Públicos e Gestão Municipal": "#8B5CF6",
+      "Administração e Normas Gerais (prestados)": "#EC4899",
+      "Administração e Normas Gerais (provimento)": "#F43F5E",
+      "Educação e Cultura": "#14B8A6",
+      "Saúde e Assistência Social": "#6366F1",
+      "Geral": "#94A3B8"
+    };
+
+    function obterCorTema(tema) {
+      if (!tema) return PALETA_CORES_TEMAS["Geral"];
+      for (const [chave, cor] of Object.entries(PALETA_CORES_TEMAS)) {
+        if (tema.toLowerCase().includes(chave.toLowerCase())) return cor;
+      }
+      return PALETA_CORES_TEMAS["Geral"];
+    }
+
+    let network = null;
+    let nodesDataSet = null;
+    let edgesDataSet = null;
+    let dadosGrafoAtual = DADOS_INICIAIS_GRAFO;
+    let autorSelecionadoId = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      inicializarGrafo(DADOS_INICIAIS_GRAFO);
+      popularLegenda(DADOS_INICIAIS_GRAFO);
+      popularAutoresSelect(DADOS_INICIAIS_AUTORES);
+      configurarEventos();
+    });
+
+    function inicializarGrafo(dados) {
+      const container = document.getElementById("rede-container");
+
+      const nodesArray = dados.nodes.map(n => {
+        const cor = obterCorTema(n.temaDominante);
+        const tamanho = Math.max(14, Math.min(42, 12 + Math.log2(Math.max(1, n.totalNormas)) * 3));
+        return {
+          id: n.id,
+          label: n.name.length > 22 ? n.name.substring(0, 20) + "..." : n.name,
+          title: `<b>${n.name}</b><br>${n.cargo || 'Autor'}<br>${n.totalNormas} normas<br>Tema: ${n.temaDominante}`,
+          value: n.totalNormas,
+          size: tamanho,
+          color: {
+            background: cor,
+            border: "#FFFFFF",
+            highlight: { background: cor, border: "#38BDF8" },
+            hover: { background: cor, border: "#38BDF8" }
+          },
+          font: { color: "#F3F4F6", face: "Inter", size: 11, strokeWidth: 2, strokeColor: "#0B0F19" },
+          borderWidth: 2,
+          shadow: { enabled: true, color: "rgba(0,0,0,0.5)", size: 10, x: 2, y: 2 },
+          dataOriginal: n
+        };
+      });
+
+      const edgesArray = dados.links.map(l => {
+        const peso = l.weight || 1;
+        const largura = Math.min(8, 1 + Math.log10(peso + 1) * 2.2);
+        return {
+          from: l.source,
+          to: l.target,
+          value: peso,
+          width: largura,
+          title: `${l.sourceName} & ${l.targetName}<br><b>${peso} normas conjuntas</b><br>${l.sharedTopics || ''}`,
+          color: { color: "rgba(148, 163, 184, 0.25)", highlight: "#38BDF8", hover: "#38BDF8" },
+          smooth: { type: "curvedCW", roundness: 0.15 }
+        };
+      });
+
+      nodesDataSet = new vis.DataSet(nodesArray);
+      edgesDataSet = new vis.DataSet(edgesArray);
+
+      const options = {
+        nodes: {
+          shape: "dot"
+        },
+        edges: {
+          selectionWidth: 3,
+          hoverWidth: 2.5
+        },
+        physics: {
+          enabled: true,
+          solver: "forceAtlas2Based",
+          forceAtlas2Based: {
+            gravitationalConstant: -70,
+            centralGravity: 0.015,
+            springLength: 120,
+            springConstant: 0.08,
+            damping: 0.4
+          },
+          stabilization: {
+            iterations: 150
+          }
+        },
+        interaction: {
+          hover: true,
+          tooltipDelay: 100,
+          hideEdgesOnDrag: false,
+          zoomView: true
+        }
+      };
+
+      network = new vis.Network(container, { nodes: nodesDataSet, edges: edgesDataSet }, options);
+
+      document.getElementById("stat-nos").innerText = nodesArray.length;
+      document.getElementById("stat-arestas").innerText = edgesArray.length;
+
+      // Evento de Clique no Nó -> Abre Detalhes
+      network.on("click", params => {
+        if (params.nodes.length > 0) {
+          const id = params.nodes[0];
+          abrirDetalhesAutor(id);
+        }
+      });
+    }
+
+    function popularLegenda(dados) {
+      const temasEncontrados = new Set();
+      dados.nodes.forEach(n => {
+        if (n.temaDominante) temasEncontrados.add(n.temaDominante);
+      });
+
+      const container = document.getElementById("lista-legendas");
+      const selectFiltro = document.getElementById("select-tema-filtro");
+      container.innerHTML = "";
+
+      temasEncontrados.forEach(tema => {
+        const cor = obterCorTema(tema);
+        const div = document.createElement("div");
+        div.className = "legend-item";
+        div.innerHTML = `<span class="color-dot" style="background: ${cor};"></span><span>${tema}</span>`;
+        div.onclick = () => destacarPorTema(tema);
+        container.appendChild(div);
+
+        const opt = document.createElement("option");
+        opt.value = tema;
+        opt.innerText = tema;
+        selectFiltro.appendChild(opt);
+      });
+    }
+
+    function popularAutoresSelect(autores) {
+      const sel1 = document.getElementById("select-comp-autor1");
+      const sel2 = document.getElementById("select-comp-autor2");
+      sel1.innerHTML = "";
+      sel2.innerHTML = "";
+
+      const lista = (autores && autores.length > 0) ? autores : dadosGrafoAtual.nodes;
+
+      lista.forEach((a, idx) => {
+        const opt1 = new Option(`${a.name} (${a.totalNormas || 0} normas)`, a.id);
+        const opt2 = new Option(`${a.name} (${a.totalNormas || 0} normas)`, a.id);
+        sel1.add(opt1);
+        sel2.add(opt2);
+      });
+
+      if (sel2.options.length > 1) sel2.selectedIndex = 1;
+    }
+
+    function destacarPorTema(tema) {
+      if (!tema || tema === "TODOS") {
+        nodesDataSet.forEach(node => {
+          nodesDataSet.update({ id: node.id, opacity: 1.0 });
+        });
+        edgesDataSet.forEach(edge => {
+          edgesDataSet.update({ id: edge.id, opacity: 1.0 });
+        });
+        return;
+      }
+
+      nodesDataSet.forEach(node => {
+        const match = node.dataOriginal && node.dataOriginal.temaDominante === tema;
+        nodesDataSet.update({
+          id: node.id,
+          opacity: match ? 1.0 : 0.15
+        });
+      });
+    }
+
+    async function abrirDetalhesAutor(id) {
+      autorSelecionadoId = id;
+      const drawer = document.getElementById("author-drawer");
+      drawer.classList.add("open");
+
+      // Buscar perfil detalhado
+      let perfil = null;
+      if (MODO_SERVIDOR) {
+        try {
+          const res = await fetch(`/api/perfil?id=${id}`);
+          if (res.ok) perfil = await res.json();
+        } catch (e) {
+          console.warn("Erro ao buscar API, usando dados locais", e);
+        }
+      }
+
+      const no = nodesDataSet.get(id);
+      if (!no) return;
+
+      document.getElementById("drawer-nome").innerText = no.dataOriginal.name;
+      document.getElementById("drawer-cargo").innerText = no.dataOriginal.cargo || "AUTOR / VEREADOR";
+      document.getElementById("stat-total-normas").innerText = no.dataOriginal.totalNormas || "0";
+      document.getElementById("stat-parceiros-total").innerText = no.dataOriginal.degree || "0";
+
+      // Renderizar Temas
+      const containerTopicos = document.getElementById("drawer-lista-topicos");
+      containerTopicos.innerHTML = "";
+
+      if (perfil && perfil.perfilTematico && perfil.perfilTematico.distribuicaoTopicos) {
+        document.getElementById("stat-hhi").innerText = perfil.perfilTematico.indiceEspecializacaoHhi.toFixed(3);
+        document.getElementById("stat-taxa-coautoria").innerText = perfil.perfilAtuacao ? perfil.perfilAtuacao.taxaCoautoria.toFixed(1) + "%" : "N/D";
+
+        perfil.perfilTematico.distribuicaoTopicos.slice(0, 5).forEach(t => {
+          containerTopicos.innerHTML += `
+            <div class="topic-bar-item">
+              <div class="topic-bar-info">
+                <span>${t.nomeTopico}</span>
+                <span><b>${t.percentual.toFixed(1)}%</b> (${t.quantidadeNormas})</span>
+              </div>
+              <div class="topic-bar-bg">
+                <div class="topic-bar-fill" style="width: ${t.percentual}%;"></div>
+              </div>
+            </div>
+          `;
+        });
+
+        // Palavras-chave
+        const containerKeywords = document.getElementById("drawer-palavras-chave");
+        containerKeywords.innerHTML = "";
+        if (perfil.perfilTematico.termosMaisFrequentes) {
+          perfil.perfilTematico.termosMaisFrequentes.forEach(kw => {
+            containerKeywords.innerHTML += `<span class="keyword-tag">${kw}</span>`;
+          });
+        }
+
+        // Parcerias
+        const containerParceiros = document.getElementById("drawer-lista-parceiros");
+        containerParceiros.innerHTML = "";
+        if (perfil.perfilColaboracao && perfil.perfilColaboracao.principaisParcerias) {
+          perfil.perfilColaboracao.principaisParcerias.slice(0, 8).forEach(p => {
+            containerParceiros.innerHTML += `
+              <div class="partner-item" onclick="focarAutor(${p.idParceiro})">
+                <div>
+                  <div class="partner-name">${p.nomeParceiro}</div>
+                  <div class="partner-cargo">${p.cargoParceiro || 'AUTOR'}</div>
+                </div>
+                <div class="partner-laws">${p.normasCompartilhadas} leis</div>
+              </div>
+            `;
+          });
+        }
+
+        // Trajetória
+        const containerTimeline = document.getElementById("drawer-timeline");
+        containerTimeline.innerHTML = "";
+        if (perfil.perfilTemporal && perfil.perfilTemporal.producaoPorAno) {
+          const anos = Object.entries(perfil.perfilTemporal.producaoPorAno);
+          anos.forEach(([ano, qtd]) => {
+            containerTimeline.innerHTML += `
+              <div style="display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
+                <span>Ano <b>${ano}</b></span>
+                <span style="color:#38BDF8;">${qtd} normas</span>
+              </div>
+            `;
+          });
+        }
+      } else {
+        // Fallback quando executado apenas com dados do grafo
+        containerTopicos.innerHTML = `<div style="font-size:12px; color:#9CA3AF;">Eixo Dominante: <b>${no.dataOriginal.temaDominante}</b></div>`;
+      }
+    }
+
+    function focarAutor(id) {
+      if (!network || !nodesDataSet.get(id)) return;
+      network.focus(id, {
+        scale: 1.2,
+        animation: { duration: 600, easingFunction: "easeInOutQuad" }
+      });
+      abrirDetalhesAutor(id);
+    }
+
+    function configurarEventos() {
+      // Sliders com debounce
+      const rangePeso = document.getElementById("range-peso");
+      const labelPeso = document.getElementById("label-peso");
+      const rangeAtores = document.getElementById("range-atores");
+      const labelAtores = document.getElementById("label-atores");
+
+      rangePeso.oninput = () => {
+        labelPeso.innerText = rangePeso.value;
+      };
+      rangePeso.onchange = () => recarregarGrafo();
+
+      rangeAtores.oninput = () => {
+        labelAtores.innerText = rangeAtores.value;
+      };
+      rangeAtores.onchange = () => recarregarGrafo();
+
+      document.getElementById("select-tema-filtro").onchange = e => {
+        destacarPorTema(e.target.value);
+      };
+
+      document.getElementById("btn-close-drawer").onclick = () => {
+        document.getElementById("author-drawer").classList.remove("open");
+      };
+
+      // Zoom Controls
+      document.getElementById("zoom-in").onclick = () => {
+        network.moveTo({ scale: network.getScale() * 1.3 });
+      };
+      document.getElementById("zoom-out").onclick = () => {
+        network.moveTo({ scale: network.getScale() * 0.7 });
+      };
+      document.getElementById("zoom-fit").onclick = () => {
+        network.fit({ animation: { duration: 500 } });
+      };
+
+      // Abas
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+          document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+          btn.classList.add("active");
+          document.getElementById(btn.dataset.tab).classList.add("active");
+        };
+      });
+
+      // Busca Autocomplete
+      const inputBusca = document.getElementById("input-busca");
+      const autoBox = document.getElementById("autocomplete-box");
+
+      inputBusca.oninput = () => {
+        const termo = inputBusca.value.trim().toLowerCase();
+        if (termo.length < 2) {
+          autoBox.style.display = "none";
+          return;
+        }
+
+        const matches = nodesDataSet.get().filter(n => n.dataOriginal.name.toLowerCase().includes(termo));
+        if (matches.length === 0) {
+          autoBox.style.display = "none";
+          return;
+        }
+
+        autoBox.innerHTML = "";
+        matches.slice(0, 6).forEach(m => {
+          const item = document.createElement("div");
+          item.className = "autocomplete-item";
+          item.innerHTML = `<span>${m.dataOriginal.name}</span><small style="color:#64748B;">${m.dataOriginal.totalNormas} normas</small>`;
+          item.onclick = () => {
+            inputBusca.value = m.dataOriginal.name;
+            autoBox.style.display = "none";
+            focarAutor(m.id);
+          };
+          autoBox.appendChild(item);
+        });
+        autoBox.style.display = "block";
+      };
+
+      // Modal Comparação
+      const modal = document.getElementById("modal-comparacao");
+      document.getElementById("btn-comparar-modal").onclick = () => modal.classList.add("open");
+      document.getElementById("btn-close-modal").onclick = () => modal.classList.remove("open");
+
+      document.getElementById("btn-executar-comparacao").onclick = async () => {
+        const id1 = document.getElementById("select-comp-autor1").value;
+        const id2 = document.getElementById("select-comp-autor2").value;
+        if (id1 === id2) {
+          alert("Selecione autores diferentes para comparar.");
+          return;
+        }
+
+        if (MODO_SERVIDOR) {
+          try {
+            const res = await fetch(`/api/comparar?id1=${id1}&id2=${id2}`);
+            if (res.ok) {
+              const dados = await res.json();
+              document.getElementById("resultado-comparacao").style.display = "block";
+              document.getElementById("comp-score-cosseno").innerText = (dados.similaridadeTematicaCosseno * 100).toFixed(1) + "%";
+              document.getElementById("comp-diagnostico").innerText = dados.diagnosticoAfinidade;
+              document.getElementById("comp-normas-conjuntas").innerText = dados.normasCompartilhadas + " normas conjuntas em coautoria";
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      };
+
+      // Reaquecer Física
+      document.getElementById("btn-reheat").onclick = () => {
+        network.startSimulation();
+      };
+
+      // Exportar Imagem PNG
+      document.getElementById("btn-export-png").onclick = () => {
+        const canvas = document.querySelector("#rede-container canvas");
+        if (canvas) {
+          const link = document.createElement("a");
+          link.download = "rede_colaboracao_legislativa.png";
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+        }
+      };
+
+      // Ego-Network Button
+      document.getElementById("btn-ego-network").onclick = async () => {
+        if (!autorSelecionadoId) return;
+        if (MODO_SERVIDOR) {
+          const res = await fetch(`/api/grafo/autor?id=${autorSelecionadoId}&minWeight=10`);
+          if (res.ok) {
+            const grafoEgo = await res.json();
+            inicializarGrafo(grafoEgo);
+            document.getElementById("btn-reset-ego").style.display = "inline-flex";
+          }
+        }
+      };
+
+      document.getElementById("btn-reset-ego").onclick = () => {
+        recarregarGrafo();
+        document.getElementById("btn-reset-ego").style.display = "none";
+      };
+    }
+
+    async function recarregarGrafo() {
+      const peso = document.getElementById("range-peso").value;
+      const atores = document.getElementById("range-atores").value;
+
+      if (MODO_SERVIDOR) {
+        try {
+          const res = await fetch(`/api/grafo?limit=${atores}&minWeight=${peso}`);
+          if (res.ok) {
+            const novosDados = await res.json();
+            dadosGrafoAtual = novosDados;
+            inicializarGrafo(novosDados);
+            popularLegenda(novosDados);
+          }
+        } catch (e) {
+          console.error("Erro ao recarregar via API:", e);
+        }
+      }
+    }
+  </script>
+</body>
+</html>

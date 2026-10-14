@@ -3,12 +3,16 @@ package org.entryPoint.ui;
 import java.sql.SQLException;
 import java.util.Scanner;
 
+import java.io.File;
+import org.entryPoint.model.perfil.PerfilPoliticoAutor;
 import org.entryPoint.service.ServicoAutores;
 import org.entryPoint.service.ServicoNormas;
 import org.entryPoint.service.ServicoNormalizacaoCargo;
+import org.entryPoint.service.ServicoPerfilPolitico;
 import org.entryPoint.service.ServicoRelacionamentoNormas;
 import org.entryPoint.service.ServicoTopicModeling;
 import org.entryPoint.service.preprocessamento.ServicoPreProcessamentoEmentas;
+import org.entryPoint.service.web.ServidorWebGrafos;
 
 public class MenuPrincipal {
   private static final Scanner sc = new Scanner(System.in);
@@ -18,6 +22,8 @@ public class MenuPrincipal {
   private static final ServicoPreProcessamentoEmentas servicoPreProcessamento = new ServicoPreProcessamentoEmentas();
   private static final ServicoRelacionamentoNormas servicoRelacionamentos = new ServicoRelacionamentoNormas();
   private static final ServicoTopicModeling servicoTopicModeling = new ServicoTopicModeling();
+  private static final ServicoPerfilPolitico servicoPerfilPolitico = new ServicoPerfilPolitico();
+  private static final ServidorWebGrafos servidorWeb = new ServidorWebGrafos(servicoPerfilPolitico);
   private static final org.entryPoint.benchmark.ServicoBenchmark servicoBenchmark = new org.entryPoint.benchmark.ServicoBenchmark();
 
   public static void exibirSaudacao() {
@@ -38,8 +44,9 @@ public class MenuPrincipal {
     System.out.println("5. Pré-processar ementas (Redução Textual TextRank - Pipeline Vencedor)");
     System.out.println("6. Extrair relacionamentos entre normas (links na íntegra)");
     System.out.println("7. Topic Modeling e Auditoria Experimental (Pipeline, Clusters, Centroides, c-TF-IDF, NMF)");
-    System.out.println("8. Executar Benchmark e Comparar Pipelines (Reduções, Modelos e Perfis de Autores)");
-    System.out.println("9. Visualizar Pipeline Ativo Oficial para os Próximos Passos");
+    System.out.println("8. Perfis Políticos e Grafos de Colaboração (Temas, Atuação, Parcerias, Trajetória, Redes)");
+    System.out.println("9. Executar Benchmark e Comparar Pipelines (Reduções, Modelos e Perfis de Autores)");
+    System.out.println("10. Visualizar Pipeline Ativo Oficial para os Próximos Passos");
     System.out.println("0. Sair");
   }
 
@@ -153,6 +160,12 @@ public class MenuPrincipal {
           break;
 
         case 8:
+          controlarMenuPerfisPoliticos();
+          pularLinha();
+
+          break;
+
+        case 9:
           try {
             System.out.println("Escolha o modo de execução do Benchmark:");
             System.out.println("1. Rápido (amostra de 1.500 normas para feedback ágil)");
@@ -176,14 +189,14 @@ public class MenuPrincipal {
 
           break;
 
-        case 9:
+        case 10:
           try {
             var optPipeline = servicoBenchmark.getServicoPipeline().obterPipelineAtivo();
             if (optPipeline.isPresent()) {
               System.out.println(optPipeline.get().getFormatacaoVisual());
             } else {
               System.out.println("Nenhum pipeline ativo definido ainda.");
-              System.out.println("Execute a opção 8 para rodar o benchmark e eleger o melhor pipeline.");
+              System.out.println("Execute a opção 9 para rodar o benchmark e eleger o melhor pipeline.");
             }
           } catch (SQLException e) {
             System.err.println("Erro ao consultar pipeline ativo: " + e.getMessage());
@@ -349,6 +362,216 @@ public class MenuPrincipal {
             System.err.println("ID ou limite inválido.");
           } catch (SQLException e) {
             System.err.println("Erro ao inspecionar normas: " + e.getMessage());
+          }
+          pularLinha();
+          break;
+
+        case 0:
+          System.out.println("Retornando ao menu principal...");
+          pularLinha();
+          break;
+
+        default:
+          exibirOpcaoInvalida();
+          break;
+      }
+    } while (subOpcao != 0);
+  }
+
+  private static void controlarMenuPerfisPoliticos() {
+    int subOpcao = 0;
+    do {
+      System.out.println("=".repeat(85));
+      System.out.println("   MÓDULO DE PERFIS POLÍTICOS E GRAFOS DE COLABORAÇÃO LEGISLATIVA");
+      System.out.println("=".repeat(85));
+      System.out.println("1. Consultar Perfil Político Completo de um Autor (Por ID ou Nome)");
+      System.out.println("2. Listar Top Autores com Maior Produção Legislativa");
+      System.out.println("3. Exibir Grafo de Colaboração Política no Console (Hubs e Laços Mais Fortes)");
+      System.out.println("4. Exibir Grafo Centrado em um Autor Específico (Ego-Network)");
+      System.out.println("5. Exportar Grafo de Colaboração em Formato DOT (Graphviz)");
+      System.out.println("6. Exportar Grafo de Colaboração em Formato JSON (D3.js / Vis.js)");
+      System.out.println("7. Comparar Perfis Políticos de Dois Autores (Similaridade Temática Cosseno)");
+      System.out.println("8. Abrir Interface Web Interativa no Navegador (Servidor Local http://localhost:8080)");
+      System.out.println("9. Gerar Arquivo HTML Interativo Independente (Visualização Offline)");
+      System.out.println("0. Voltar ao Menu Principal");
+      System.out.print("Escolha uma opção: ");
+
+      try {
+        String entrada = sc.nextLine().trim();
+        if (entrada.isEmpty()) {
+          continue;
+        }
+        subOpcao = Integer.parseInt(entrada);
+      } catch (NumberFormatException e) {
+        System.out.println("Entrada inválida. Por favor, insira um número.");
+        pularLinha();
+        continue;
+      }
+
+      switch (subOpcao) {
+        case 1:
+          try {
+            System.out.print("Digite o ID ou Nome do Autor (ex: 'FERNANDO HADDAD' ou 1731): ");
+            String termo = sc.nextLine().trim();
+            if (termo.isEmpty()) break;
+
+            if (termo.matches("\\d+")) {
+              servicoPerfilPolitico.exibirPerfilAutor(Long.parseLong(termo));
+            } else {
+              servicoPerfilPolitico.exibirPerfilAutor(termo);
+            }
+          } catch (SQLException e) {
+            System.err.println("Erro ao consultar perfil do autor: " + e.getMessage());
+          }
+          pularLinha();
+          break;
+
+        case 2:
+          try {
+            System.out.print("Quantos autores deseja listar? [padrão: 15]: ");
+            String limStr = sc.nextLine().trim();
+            int limite = limStr.isEmpty() ? 15 : Integer.parseInt(limStr);
+            servicoPerfilPolitico.listarTopAutoresFormatado(limite);
+          } catch (NumberFormatException e) {
+            try {
+              servicoPerfilPolitico.listarTopAutoresFormatado(15);
+            } catch (SQLException ex) {
+              System.err.println("Erro: " + ex.getMessage());
+            }
+          } catch (SQLException e) {
+            System.err.println("Erro ao listar autores: " + e.getMessage());
+          }
+          pularLinha();
+          break;
+
+        case 3:
+          try {
+            System.out.print("Quantos atores principais incluir no grafo? [padrão: 25]: ");
+            String atoresStr = sc.nextLine().trim();
+            int limiteAtores = atoresStr.isEmpty() ? 25 : Integer.parseInt(atoresStr);
+
+            System.out.print("Peso mínimo de normas compartilhadas por aresta? [padrão: 20]: ");
+            String pesoStr = sc.nextLine().trim();
+            int pesoMin = pesoStr.isEmpty() ? 20 : Integer.parseInt(pesoStr);
+
+            var grafo = servicoPerfilPolitico.construirGrafoColaboracao(limiteAtores, pesoMin);
+            System.out.println(grafo.gerarVisualizacaoConsole(20));
+          } catch (NumberFormatException e) {
+            System.err.println("Parâmetro numérico inválido informado.");
+          } catch (SQLException e) {
+            System.err.println("Erro ao construir grafo: " + e.getMessage());
+          }
+          pularLinha();
+          break;
+
+        case 4:
+          try {
+            System.out.print("Digite o ID do autor central para o grafo ego-network: ");
+            String idStr = sc.nextLine().trim();
+            long idAutor = Long.parseLong(idStr);
+
+            System.out.print("Peso mínimo de normas compartilhadas [padrão: 10]: ");
+            String pesoStr = sc.nextLine().trim();
+            int pesoMin = pesoStr.isEmpty() ? 10 : Integer.parseInt(pesoStr);
+
+            var optGrafo = servicoPerfilPolitico.construirGrafoColaboracaoAutor(idAutor, pesoMin);
+            if (optGrafo.isPresent()) {
+              System.out.println(optGrafo.get().gerarVisualizacaoConsole(15));
+            } else {
+              System.out.println("Autor não localizado.");
+            }
+          } catch (NumberFormatException e) {
+            System.err.println("ID ou peso inválido.");
+          } catch (SQLException e) {
+            System.err.println("Erro ao gerar ego-network: " + e.getMessage());
+          }
+          pularLinha();
+          break;
+
+        case 5:
+          try {
+            System.out.print("Informe o caminho do arquivo .dot [padrão: rede_colaboracao.dot]: ");
+            String path = sc.nextLine().trim();
+            if (path.isEmpty()) path = "rede_colaboracao.dot";
+
+            var grafo = servicoPerfilPolitico.construirGrafoColaboracao(35, 15);
+            File f = servicoPerfilPolitico.exportarGrafoDot(grafo, path, 15);
+            System.out.println("Grafo exportado com sucesso em: " + f.getAbsolutePath());
+            System.out.println("Dica: você pode gerar PNG com o comando: dot -Tpng " + path + " -o rede.png");
+          } catch (Exception e) {
+            System.err.println("Erro ao exportar DOT: " + e.getMessage());
+          }
+          pularLinha();
+          break;
+
+        case 6:
+          try {
+            System.out.print("Informe o caminho do arquivo .json [padrão: rede_colaboracao.json]: ");
+            String path = sc.nextLine().trim();
+            if (path.isEmpty()) path = "rede_colaboracao.json";
+
+            var grafo = servicoPerfilPolitico.construirGrafoColaboracao(35, 15);
+            File f = servicoPerfilPolitico.exportarGrafoJson(grafo, path, 15);
+            System.out.println("Arquivo JSON exportado com sucesso em: " + f.getAbsolutePath());
+          } catch (Exception e) {
+            System.err.println("Erro ao exportar JSON: " + e.getMessage());
+          }
+          pularLinha();
+          break;
+
+        case 7:
+          try {
+            System.out.print("Digite o ID ou Nome do Autor 1 (ex: 'FERNANDO HADDAD'): ");
+            String a1 = sc.nextLine().trim();
+            System.out.print("Digite o ID ou Nome do Autor 2 (ex: 'RICARDO NUNES'): ");
+            String a2 = sc.nextLine().trim();
+
+            long id1 = a1.matches("\\d+") ? Long.parseLong(a1) : servicoPerfilPolitico.gerarPerfilAutor(a1).map(PerfilPoliticoAutor::idAutor).orElse(-1L);
+            long id2 = a2.matches("\\d+") ? Long.parseLong(a2) : servicoPerfilPolitico.gerarPerfilAutor(a2).map(PerfilPoliticoAutor::idAutor).orElse(-1L);
+
+            if (id1 <= 0 || id2 <= 0) {
+              System.out.println("Não foi possível localizar um ou ambos os autores informados.");
+              break;
+            }
+
+            var optComp = servicoPerfilPolitico.compararAutores(id1, id2);
+            if (optComp.isPresent()) {
+              System.out.println(optComp.get().gerarRelatorioComparativo());
+            }
+          } catch (Exception e) {
+            System.err.println("Erro ao comparar perfis: " + e.getMessage());
+          }
+          pularLinha();
+          break;
+
+        case 8:
+          try {
+            if (!servidorWeb.isAtivo()) {
+              int porta = servidorWeb.iniciar(8080);
+              System.out.printf("🌐 Servidor Web Interativo INICIADO com sucesso na porta %d!%n", porta);
+              System.out.printf("👉 Acesse no seu navegador: %s%n", servidorWeb.getUrlBase());
+            } else {
+              System.out.printf("🌐 Servidor Web já está em execução em: %s%n", servidorWeb.getUrlBase());
+            }
+            System.out.println("Abrindo navegador padrão...");
+            servidorWeb.abrirNavegadorPadrao();
+          } catch (Exception e) {
+            System.err.println("Erro ao iniciar servidor web: " + e.getMessage());
+          }
+          pularLinha();
+          break;
+
+        case 9:
+          try {
+            System.out.print("Informe o caminho do arquivo HTML [padrão: rede_interativa.html]: ");
+            String path = sc.nextLine().trim();
+            if (path.isEmpty()) path = "rede_interativa.html";
+            File f = servicoPerfilPolitico.gerarPaginaWebInterativa(new File(path));
+            System.out.println("✨ Arquivo HTML interativo gerado com sucesso!");
+            System.out.println("📂 Localização: " + f.getAbsolutePath());
+            System.out.println("👉 Você pode abrir este arquivo diretamente em qualquer navegador sem precisar de servidor!");
+          } catch (Exception e) {
+            System.err.println("Erro ao gerar página HTML: " + e.getMessage());
           }
           pularLinha();
           break;

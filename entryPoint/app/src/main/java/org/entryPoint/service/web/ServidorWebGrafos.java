@@ -74,6 +74,9 @@ public class ServidorWebGrafos {
     servidor.createContext("/api/perfil", new HandlerApiPerfil());
     servidor.createContext("/api/comparar", new HandlerApiComparar());
     servidor.createContext("/api/autores", new HandlerApiAutores());
+    servidor.createContext("/api/stats", new HandlerApiEstatisticas());
+    servidor.createContext("/api/estatisticas", new HandlerApiEstatisticas());
+    servidor.createContext("/api/topicos", new HandlerApiTopicos());
 
     servidor.setExecutor(null); // Executor padrão
     servidor.start();
@@ -129,25 +132,8 @@ public class ServidorWebGrafos {
         return;
       }
 
-      try {
-        var grafoInicial = servicoPerfil.construirGrafoColaboracao(30, 20);
-        String jsonGrafo = grafoInicial.exportarJsonD3(20);
-        var topAutores = servicoPerfil.gerarPerfisPrincipaisAutores(30);
-
-        StringBuilder jsonAutores = new StringBuilder("[");
-        for (int i = 0; i < topAutores.size(); i++) {
-          var a = topAutores.get(i);
-          jsonAutores.append(String.format("{\"id\":%d,\"name\":\"%s\",\"cargo\":\"%s\",\"totalNormas\":%d}",
-              a.idAutor(), escapar(a.nomeAutor()), escapar(a.cargoPrincipal()), a.perfilAtuacao().totalNormas()));
-          if (i < topAutores.size() - 1) jsonAutores.append(",");
-        }
-        jsonAutores.append("]");
-
-        String html = PaginaWebGrafoTemplate.gerarHtml(jsonGrafo, jsonAutores.toString(), true);
-        enviarResposta(exchange, 200, "text/html; charset=UTF-8", html);
-      } catch (SQLException e) {
-        enviarResposta(exchange, 500, "text/plain", "Erro ao carregar dados do banco: " + e.getMessage());
-      }
+      String html = PaginaWebGrafoTemplate.gerarHtml();
+      enviarResposta(exchange, 200, "text/html; charset=UTF-8", html);
     }
   }
 
@@ -262,6 +248,32 @@ public class ServidorWebGrafos {
         }
         sb.append("]");
         enviarResposta(exchange, 200, "application/json; charset=UTF-8", sb.toString());
+      } catch (SQLException e) {
+        enviarResposta(exchange, 500, "application/json", "{\"error\":\"" + escapar(e.getMessage()) + "\"}");
+      }
+    }
+  }
+
+  private class HandlerApiEstatisticas implements HttpHandler {
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+      try {
+        var stats = servicoPerfil.obterEstatisticasGerais();
+        String json = objectMapper.writeValueAsString(stats);
+        enviarResposta(exchange, 200, "application/json; charset=UTF-8", json);
+      } catch (SQLException e) {
+        enviarResposta(exchange, 500, "application/json", "{\"error\":\"" + escapar(e.getMessage()) + "\"}");
+      }
+    }
+  }
+
+  private class HandlerApiTopicos implements HttpHandler {
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+      try {
+        var topicos = servicoPerfil.listarTopicosBanco();
+        String json = objectMapper.writeValueAsString(topicos);
+        enviarResposta(exchange, 200, "application/json; charset=UTF-8", json);
       } catch (SQLException e) {
         enviarResposta(exchange, 500, "application/json", "{\"error\":\"" + escapar(e.getMessage()) + "\"}");
       }

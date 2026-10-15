@@ -94,6 +94,27 @@ public class ServidorWebGrafosTest {
     assertEquals(200, resComparar.statusCode());
     assertTrue(resComparar.body().contains("similaridadeTematicaCosseno"));
 
+    // 6. Testar Endpoint REST /api/stats (Estatísticas reais do Banco)
+    HttpRequest reqStats = HttpRequest.newBuilder()
+        .uri(URI.create(baseUrl + "/api/stats"))
+        .GET()
+        .build();
+    HttpResponse<String> resStats = httpClient.send(reqStats, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, resStats.statusCode());
+    assertTrue(resStats.body().contains("\"totalNormas\":"));
+    assertTrue(resStats.body().contains("\"totalAutores\":"));
+    assertTrue(resStats.body().contains("\"totalTopicos\":"));
+
+    // 7. Testar Endpoint REST /api/topicos (Tópicos reais do Banco)
+    HttpRequest reqTopicos = HttpRequest.newBuilder()
+        .uri(URI.create(baseUrl + "/api/topicos"))
+        .GET()
+        .build();
+    HttpResponse<String> resTopicos = httpClient.send(reqTopicos, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, resTopicos.statusCode());
+    assertTrue(resTopicos.body().contains("\"nome\":"));
+    assertTrue(resTopicos.body().contains("\"totalNormas\":"));
+
     // Parar servidor
     servidor.parar();
     assertFalse(servidor.isAtivo());
@@ -106,5 +127,18 @@ public class ServidorWebGrafosTest {
     assertNotNull(gerado);
     assertTrue(gerado.exists());
     assertTrue(gerado.length() > 5000, "Arquivo HTML deve conter template e dados estruturados");
+
+    String conteudoHtml = java.nio.file.Files.readString(gerado.toPath(), java.nio.charset.StandardCharsets.UTF_8);
+    assertFalse(conteudoHtml.contains("<b>14.011</b>"), "Não deve conter total de normas hardcoded");
+    assertFalse(conteudoHtml.contains("<b>8</b>"), "Não deve conter total de tópicos hardcoded");
+    assertFalse(conteudoHtml.contains("DADOS_INICIAIS_GRAFO"), "Não deve conter grafo hardcoded no script");
+    assertFalse(conteudoHtml.contains("DADOS_INICIAIS_AUTORES"), "Não deve conter autores hardcoded no script");
+    assertFalse(conteudoHtml.contains("DADOS_STATS_BANCO"), "Não deve conter estatísticas hardcoded no script");
+    assertFalse(conteudoHtml.contains("DADOS_TOPICOS_BANCO"), "Não deve conter tópicos hardcoded no script");
+    assertFalse(conteudoHtml.contains("DADOS_PERFIS_AUTORES"), "Não deve conter perfis hardcoded no script");
+    assertFalse(conteudoHtml.contains("MODO_SERVIDOR"), "Não deve conter flag MODO_SERVIDOR no script");
+    assertTrue(conteudoHtml.contains("stat-normas-total"), "Deve conter elemento dinâmico para normas do banco");
+    assertTrue(conteudoHtml.contains("/api/stats"), "Deve conter chamadas dinâmicas para a API do banco");
+    assertTrue(conteudoHtml.contains("/api/grafo"), "Deve conter chamadas dinâmicas para carregar o grafo do banco");
   }
 }

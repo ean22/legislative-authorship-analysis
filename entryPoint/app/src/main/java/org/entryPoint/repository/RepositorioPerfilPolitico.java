@@ -624,4 +624,114 @@ public class RepositorioPerfilPolitico {
       return buscarTopicosCompartilhados(conexao, idAutor1, idAutor2, limite);
     }
   }
+
+  public record EstatisticasGeraisBanco(
+      int totalNormas,
+      int totalAutores,
+      int totalTopicos,
+      int totalLacosCoautoria,
+      List<TopicoEstatistica> topicos
+  ) {}
+
+  public record TopicoEstatistica(int id, String nome, int totalNormas) {}
+
+  /**
+   * Consulta agregada de estatísticas reais do acervo legislativo no banco de dados.
+   */
+  public EstatisticasGeraisBanco buscarEstatisticasGerais() throws SQLException {
+    int totalNormas = 0;
+    int totalAutores = 0;
+    int totalTopicos = 0;
+    int totalLacos = 0;
+
+    try (Connection conexao = gerenciadorConexao.conectar()) {
+      try (PreparedStatement stmt = conexao.prepareStatement("SELECT COUNT(*) FROM normas");
+           ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) totalNormas = rs.getInt(1);
+      }
+
+      try (PreparedStatement stmt = conexao.prepareStatement("SELECT COUNT(*) FROM autores");
+           ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) totalAutores = rs.getInt(1);
+      }
+
+      try (PreparedStatement stmt = conexao.prepareStatement("SELECT COUNT(DISTINCT id_topico) FROM norma_topicos");
+           ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) totalTopicos = rs.getInt(1);
+      }
+      if (totalTopicos == 0) {
+        try (PreparedStatement stmt = conexao.prepareStatement("SELECT COUNT(*) FROM topicos");
+             ResultSet rs = stmt.executeQuery()) {
+          if (rs.next()) totalTopicos = rs.getInt(1);
+        }
+      }
+
+      String sqlLacos = """
+        SELECT COUNT(*) FROM (
+          SELECT na1.id_autor, na2.id_autor
+          FROM norma_autor na1
+          JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor < na2.id_autor
+          GROUP BY na1.id_autor, na2.id_autor
+          HAVING COUNT(DISTINCT na1.id_norma) >= 5
+        )
+      """;
+      try (PreparedStatement stmt = conexao.prepareStatement(sqlLacos);
+           ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) totalLacos = rs.getInt(1);
+      }
+    }
+
+    List<TopicoEstatistica> listaTopicos = listarTopicosComContagem();
+    return new EstatisticasGeraisBanco(totalNormas, totalAutores, totalTopicos, totalLacos, listaTopicos);
+  }
+
+  /**
+   * Lista todos os tópicos existentes no banco com o quantitativo real de normas vinculadas.
+   */
+  public List<TopicoEstatistica> listarTopicosComContagem() throws SQLException {
+    String sql = """
+      SELECT 
+        COALESCE(t.id, nt.id_topico) AS id,
+        COALESCE(t.nome, (SELECT r.nome FROM rotulos_topicos r WHERE r.id = nt.id_rotulo_topico), 'Tópico #' || COALESCE(t.id, nt.id_topico)) AS nome,
+        COUNT(nt.id_norma) AS total_normas
+      FROM topicos t
+      LEFT JOIN norma_topicos nt ON nt.id_topico = t.id
+      GROUP BY t.id, t.nome
+      ORDER BY total_normas DESC, id ASC
+    """;
+
+    List<TopicoEstatistica> lista = new ArrayList<>();
+    try (Connection conexao = gerenciadorConexao.conectar();
+         PreparedStatement stmt = conexao.prepareStatement(sql);
+         ResultSet rs = stmt.executeQuery()) {
+      while (rs.next()) {
+        int id = rs.getInt("id");
+        String nome = rs.getString("nome");
+        int qtd = rs.getInt("total_normas");
+        lista.add(new TopicoEstatistica(id, nome != null ? nome : "Tópico #" + id, qtd));
+      }
+    }
+
+    if (lista.isEmpty()) {
+      String sqlFallback = """
+        SELECT nt.id_topico AS id,
+               COALESCE((SELECT r.nome FROM rotulos_topicos r WHERE r.id = nt.id_rotulo_topico), 'Tópico #' || nt.id_topico) AS nome,
+               COUNT(*) AS total_normas
+        FROM norma_topicos nt
+        GROUP BY nt.id_topico
+        ORDER BY total_normas DESC
+      """;
+      try (Connection conexao = gerenciadorConexao.conectar();
+           PreparedStatement stmt = conexao.prepareStatement(sqlFallback);
+           ResultSet rs = stmt.executeQuery()) {
+        while (rs.next()) {
+          int id = rs.getInt("id");
+          String nome = rs.getString("nome");
+          int qtd = rs.getInt("total_normas");
+          lista.add(new TopicoEstatistica(id, nome != null ? nome : "Tópico #" + id, qtd));
+        }
+      }
+    }
+    return lista;
+  }
 }

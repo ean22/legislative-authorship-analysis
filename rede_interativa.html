@@ -670,9 +670,10 @@
 
     <div class="stats-chips">
       <div class="chip">Atores no Grafo: <b id="stat-nos">0</b></div>
-      <div class="chip">Laços de Coautoria: <b id="stat-arestas">0</b></div>
-      <div class="chip">Normas Analisadas: <b>14.011</b></div>
-      <div class="chip">Tópicos c-TF-IDF: <b>8</b></div>
+      <div class="chip">Laços no Grafo: <b id="stat-arestas">0</b></div>
+      <div class="chip">Normas no Acervo: <b id="stat-normas-total">...</b></div>
+      <div class="chip">Tópicos c-TF-IDF: <b id="stat-topicos-total">...</b></div>
+      <div class="chip">Autores Cadastrados: <b id="stat-autores-total">...</b></div>
     </div>
 
     <div class="header-actions">
@@ -682,8 +683,20 @@
     </div>
   </header>
 
-  <!-- Container do Grafo -->
-  <div id="rede-container"></div>
+   <!-- Banner de Status de Conexão com a API do Banco -->
+   <div id="status-conexao" style="display: none; position: absolute; top: 88px; left: 50%; transform: translateX(-50%); z-index: 100; background: rgba(220, 38, 38, 0.95); color: #fff; padding: 10px 20px; border-radius: 12px; font-size: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); backdrop-filter: blur(8px); align-items: center; gap: 12px;">
+     <span>⚠️ <b>API desconectada:</b> Para carregar os dados em tempo real do banco SQLite, inicie o servidor web com a <b>Opção 8</b> no menu do terminal (ou execute <code>./gradlew run</code>).</span>
+     <button class="btn" onclick="carregarDadosIniciais()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: #fff; cursor: pointer; padding: 4px 10px; border-radius: 6px; font-size: 11px;">🔄 Tentar reconectar</button>
+   </div>
+
+   <!-- Overlay de Carregamento Dinâmico -->
+   <div id="loading-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9; background: rgba(11, 15, 25, 0.7); backdrop-filter: blur(4px); align-items: center; justify-content: center; flex-direction: column; gap: 12px; pointer-events: none;">
+     <div style="font-size: 32px;">🏛️</div>
+     <div style="font-size: 13px; color: #94A3B8; font-family: var(--font-display);">Consultando dados diretamente do banco de dados...</div>
+   </div>
+
+   <!-- Container do Grafo -->
+   <div id="rede-container"></div>
 
   <!-- Painel de Controle (Esquerda) -->
   <div class="control-panel">
@@ -832,223 +845,140 @@
     </div>
   </div>
 
-  <!-- Dados Injetados -->
+  <!-- Lógica Dinâmica da Interface (Zero Dados Hardcoded) -->
   <script>
-    const DADOS_INICIAIS_GRAFO = {
-  "nodes": [
-    {"id": 2006, "name": "RICARDO NUNES", "cargo": "", "totalNormas": 5677, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 131},
-    {"id": 1731, "name": "FERNANDO HADDAD", "cargo": "", "totalNormas": 4140, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 135},
-    {"id": 1881, "name": "BRUNO COVAS", "cargo": "", "totalNormas": 2602, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 122},
-    {"id": 1749, "name": "FRANCISCO MACENA DA SILVA", "cargo": "", "totalNormas": 2224, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 114},
-    {"id": 1867, "name": "LUIS FELIPE VIDAL ARELLANO", "cargo": "", "totalNormas": 1824, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 49},
-    {"id": 1927, "name": "RUBENS NAMAN RIZEK JUNIOR", "cargo": "", "totalNormas": 1622, "temaDominante": "Declaração de Utilidade Pública", "degree": 125},
-    {"id": 2005, "name": "EUNICE APARECIDA DE JESUS PRUDENTE", "cargo": "", "totalNormas": 1317, "temaDominante": "Declaração de Utilidade Pública", "degree": 86},
-    {"id": 1952, "name": "GUILHERME BUENO DE CAMARGO", "cargo": "", "totalNormas": 1262, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 41},
-    {"id": 1940, "name": "EDSON APARECIDO DOS SANTOS", "cargo": "", "totalNormas": 1190, "temaDominante": "Declaração de Utilidade Pública", "degree": 127},
-    {"id": 1734, "name": "MARCOS DE BARROS CRUZ", "cargo": "", "totalNormas": 1115, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 80},
-    {"id": 1733, "name": "LEDA MARIA PAULANI", "cargo": "", "totalNormas": 1097, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 77},
-    {"id": 1735, "name": "LUIS FERNANDO MASSONETTO", "cargo": "", "totalNormas": 1051, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 66},
-    {"id": 2033, "name": "FABRICIO COBRA ARBEX", "cargo": "", "totalNormas": 1032, "temaDominante": "Declaração de Utilidade Pública", "degree": 84},
-    {"id": 1736, "name": "ANTONIO DONATO MADORMO", "cargo": "", "totalNormas": 1020, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 46},
-    {"id": 1954, "name": "PHILIPPE VEDOLIM DUCHATEAU", "cargo": "", "totalNormas": 799, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 24},
-    {"id": 1917, "name": "ORLANDO LINDÓRIO DE FARIA", "cargo": "", "totalNormas": 690, "temaDominante": "Serviços Públicos e Gestão Municipal", "degree": 62},
-    {"id": 1835, "name": "ROGÉRIO CERON DE OLIVEIRA", "cargo": "", "totalNormas": 606, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 21},
-    {"id": 1874, "name": "JOÃO DORIA", "cargo": "", "totalNormas": 587, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 46},
-    {"id": 1876, "name": "JULIO FRANCISCO SEMEGHINI NETO", "cargo": "", "totalNormas": 537, "temaDominante": "Serviços Públicos e Gestão Municipal", "degree": 64},
-    {"id": 2085, "name": "ANDRÉ LEMOS JORGE", "cargo": "", "totalNormas": 490, "temaDominante": "Educação e Creches", "degree": 51},
-    {"id": 2094, "name": "CLODOALDO PELIZZONI", "cargo": "", "totalNormas": 478, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 20},
-    {"id": 2009, "name": "JOSÉ RICARDO ALVARENGA TRIPOLI", "cargo": "", "totalNormas": 477, "temaDominante": "Datas Comemorativas e Calendário", "degree": 40},
-    {"id": 1833, "name": "BRENO GANDELMAN", "cargo": "", "totalNormas": 422, "temaDominante": "Datas Comemorativas e Calendário", "degree": 1},
-    {"id": 1955, "name": "MAURO RICARDO MACHADO COSTA", "cargo": "", "totalNormas": 417, "temaDominante": "Serviços Públicos e Gestão Municipal", "degree": 55},
-    {"id": 1878, "name": "ANDERSON POMINI", "cargo": "", "totalNormas": 413, "temaDominante": "Serviços Públicos e Gestão Municipal", "degree": 45},
-    {"id": 1877, "name": "CAIO MEGALE", "cargo": "", "totalNormas": 409, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 29},
-    {"id": 1993, "name": "MARINA MAGRO BERINGHS MARTINEZ", "cargo": "", "totalNormas": 399, "temaDominante": "Serviços Públicos e Gestão Municipal", "degree": 32},
-    {"id": 2072, "name": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "cargo": "", "totalNormas": 364, "temaDominante": "Declaração de Utilidade Pública", "degree": 44},
-    {"id": 1783, "name": "ROBERTO NAMI GARIBE FILHO", "cargo": "", "totalNormas": 339, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 49},
-    {"id": 1951, "name": "JOÃO JORGE DE SOUZA", "cargo": "", "totalNormas": 324, "temaDominante": "Declaração de Utilidade Pública", "degree": 46},
-    {"id": 2051, "name": "CLODOALDO PELISSIONI", "cargo": "", "totalNormas": 320, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 31},
-    {"id": 2044, "name": "RICARDO EZEQUIEL TORRES", "cargo": "", "totalNormas": 304, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 12},
-    {"id": 1732, "name": "LUÍS FERNANDO MASSONETTO", "cargo": "", "totalNormas": 290, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 49},
-    {"id": 2058, "name": "FABIANO MARTINS DE OLIVEIRA", "cargo": "", "totalNormas": 281, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 28},
-    {"id": 2063, "name": "FERNANDO JOSÉ DA COSTA", "cargo": "", "totalNormas": 267, "temaDominante": "Datas Comemorativas e Calendário", "degree": 33},
-    {"id": 2035, "name": "MARCELA CRISTINA ARRUDA NUNES", "cargo": "", "totalNormas": 264, "temaDominante": "Educação e Creches", "degree": 61},
-    {"id": 1737, "name": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "cargo": "", "totalNormas": 256, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 28},
-    {"id": 2001, "name": "ELISABETE FRANÇA", "cargo": "", "totalNormas": 254, "temaDominante": "Educação e Creches", "degree": 45},
-    {"id": 1738, "name": "ANTONIO CESAR RUSSI CALLEGARI", "cargo": "", "totalNormas": 246, "temaDominante": "Crédito Orçamentário e Finanças", "degree": 33},
-    {"id": 1946, "name": "CESAR ANGEL BOFFA DE AZEVEDO", "cargo": "", "totalNormas": 242, "temaDominante": "Denominação de Vias e Logradouros", "degree": 53}
-  ],
-  "links": [
-    {"source": 1731, "target": 1749, "sourceName": "FERNANDO HADDAD", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 2186, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1867, "target": 2006, "sourceName": "LUIS FELIPE VIDAL ARELLANO", "targetName": "RICARDO NUNES", "weight": 1754, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 2005, "target": 2006, "sourceName": "EUNICE APARECIDA DE JESUS PRUDENTE", "targetName": "RICARDO NUNES", "weight": 1227, "sharedTopics": "Declaração de Utilidade Pública; Datas Comemorativas e Calendário"},
-    {"source": 1940, "target": 2006, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "RICARDO NUNES", "weight": 1154, "sharedTopics": "Declaração de Utilidade Pública; Educação e Creches"},
-    {"source": 1881, "target": 1927, "sourceName": "BRUNO COVAS", "targetName": "RUBENS NAMAN RIZEK JUNIOR", "weight": 1122, "sharedTopics": "Serviços Públicos e Gestão Municipal; Declaração de Utilidade Pública"},
-    {"source": 1952, "target": 2006, "sourceName": "GUILHERME BUENO DE CAMARGO", "targetName": "RICARDO NUNES", "weight": 1107, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1731, "target": 1734, "sourceName": "FERNANDO HADDAD", "targetName": "MARCOS DE BARROS CRUZ", "weight": 1058, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1731, "target": 1733, "sourceName": "FERNANDO HADDAD", "targetName": "LEDA MARIA PAULANI", "weight": 1057, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 2006, "target": 2033, "sourceName": "RICARDO NUNES", "targetName": "FABRICIO COBRA ARBEX", "weight": 1014, "sharedTopics": "Declaração de Utilidade Pública; Datas Comemorativas e Calendário"},
-    {"source": 1731, "target": 1735, "sourceName": "FERNANDO HADDAD", "targetName": "LUIS FERNANDO MASSONETTO", "weight": 1009, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1731, "target": 1736, "sourceName": "FERNANDO HADDAD", "targetName": "ANTONIO DONATO MADORMO", "weight": 977, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1733, "target": 1734, "sourceName": "LEDA MARIA PAULANI", "targetName": "MARCOS DE BARROS CRUZ", "weight": 941, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1881, "target": 1954, "sourceName": "BRUNO COVAS", "targetName": "PHILIPPE VEDOLIM DUCHATEAU", "weight": 795, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1734, "target": 1735, "sourceName": "MARCOS DE BARROS CRUZ", "targetName": "LUIS FERNANDO MASSONETTO", "weight": 721, "sharedTopics": "Crédito Orçamentário e Finanças; Datas Comemorativas e Calendário"},
-    {"source": 1733, "target": 1735, "sourceName": "LEDA MARIA PAULANI", "targetName": "LUIS FERNANDO MASSONETTO", "weight": 714, "sharedTopics": "Crédito Orçamentário e Finanças; Datas Comemorativas e Calendário"},
-    {"source": 2005, "target": 2033, "sourceName": "EUNICE APARECIDA DE JESUS PRUDENTE", "targetName": "FABRICIO COBRA ARBEX", "weight": 697, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
-    {"source": 1881, "target": 1917, "sourceName": "BRUNO COVAS", "targetName": "ORLANDO LINDÓRIO DE FARIA", "weight": 679, "sharedTopics": "Serviços Públicos e Gestão Municipal; Educação e Creches"},
-    {"source": 1734, "target": 1749, "sourceName": "MARCOS DE BARROS CRUZ", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 592, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1731, "target": 1835, "sourceName": "FERNANDO HADDAD", "targetName": "ROGÉRIO CERON DE OLIVEIRA", "weight": 591, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1733, "target": 1749, "sourceName": "LEDA MARIA PAULANI", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 591, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1735, "target": 1736, "sourceName": "LUIS FERNANDO MASSONETTO", "targetName": "ANTONIO DONATO MADORMO", "weight": 579, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1940, "target": 2033, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "FABRICIO COBRA ARBEX", "weight": 562, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
-    {"source": 1927, "target": 2005, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "EUNICE APARECIDA DE JESUS PRUDENTE", "weight": 521, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
-    {"source": 1917, "target": 1927, "sourceName": "ORLANDO LINDÓRIO DE FARIA", "targetName": "RUBENS NAMAN RIZEK JUNIOR", "weight": 516, "sharedTopics": "Serviços Públicos e Gestão Municipal; Educação e Creches"},
-    {"source": 2006, "target": 2085, "sourceName": "RICARDO NUNES", "targetName": "ANDRÉ LEMOS JORGE", "weight": 489, "sharedTopics": "Educação e Creches; Declaração de Utilidade Pública"},
-    {"source": 1927, "target": 2006, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "RICARDO NUNES", "weight": 478, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
-    {"source": 2006, "target": 2094, "sourceName": "RICARDO NUNES", "targetName": "CLODOALDO PELIZZONI", "weight": 478, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 2006, "target": 2009, "sourceName": "RICARDO NUNES", "targetName": "JOSÉ RICARDO ALVARENGA TRIPOLI", "weight": 462, "sharedTopics": "Datas Comemorativas e Calendário; Declaração de Utilidade Pública"},
-    {"source": 1733, "target": 1736, "sourceName": "LEDA MARIA PAULANI", "targetName": "ANTONIO DONATO MADORMO", "weight": 444, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1867, "target": 2094, "sourceName": "LUIS FELIPE VIDAL ARELLANO", "targetName": "CLODOALDO PELIZZONI", "weight": 439, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1734, "target": 1736, "sourceName": "MARCOS DE BARROS CRUZ", "targetName": "ANTONIO DONATO MADORMO", "weight": 428, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 2005, "target": 2009, "sourceName": "EUNICE APARECIDA DE JESUS PRUDENTE", "targetName": "JOSÉ RICARDO ALVARENGA TRIPOLI", "weight": 426, "sharedTopics": "Serviços Públicos e Gestão Municipal; Declaração de Utilidade Pública"},
-    {"source": 1735, "target": 1749, "sourceName": "LUIS FERNANDO MASSONETTO", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 424, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1940, "target": 2005, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "EUNICE APARECIDA DE JESUS PRUDENTE", "weight": 424, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
-    {"source": 1881, "target": 1955, "sourceName": "BRUNO COVAS", "targetName": "MAURO RICARDO MACHADO COSTA", "weight": 414, "sharedTopics": "Serviços Públicos e Gestão Municipal; Declaração de Utilidade Pública"},
-    {"source": 1881, "target": 1993, "sourceName": "BRUNO COVAS", "targetName": "MARINA MAGRO BERINGHS MARTINEZ", "weight": 399, "sharedTopics": "Serviços Públicos e Gestão Municipal; Denominação de Vias e Logradouros"},
-    {"source": 1917, "target": 1993, "sourceName": "ORLANDO LINDÓRIO DE FARIA", "targetName": "MARINA MAGRO BERINGHS MARTINEZ", "weight": 395, "sharedTopics": "Serviços Públicos e Gestão Municipal; Denominação de Vias e Logradouros"},
-    {"source": 1876, "target": 1878, "sourceName": "JULIO FRANCISCO SEMEGHINI NETO", "targetName": "ANDERSON POMINI", "weight": 388, "sharedTopics": "Serviços Públicos e Gestão Municipal; Declaração de Utilidade Pública"},
-    {"source": 1940, "target": 2085, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "ANDRÉ LEMOS JORGE", "weight": 388, "sharedTopics": "Educação e Creches; Declaração de Utilidade Pública"},
-    {"source": 1927, "target": 1955, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "MAURO RICARDO MACHADO COSTA", "weight": 383, "sharedTopics": "Serviços Públicos e Gestão Municipal; Declaração de Utilidade Pública"},
-    {"source": 2006, "target": 2072, "sourceName": "RICARDO NUNES", "targetName": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "weight": 363, "sharedTopics": "Declaração de Utilidade Pública; Educação e Creches"},
-    {"source": 1874, "target": 1878, "sourceName": "JOÃO DORIA", "targetName": "ANDERSON POMINI", "weight": 356, "sharedTopics": "Serviços Públicos e Gestão Municipal; Declaração de Utilidade Pública"},
-    {"source": 1874, "target": 1876, "sourceName": "JOÃO DORIA", "targetName": "JULIO FRANCISCO SEMEGHINI NETO", "weight": 355, "sharedTopics": "Serviços Públicos e Gestão Municipal; Declaração de Utilidade Pública"},
-    {"source": 1940, "target": 2072, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "weight": 330, "sharedTopics": "Educação e Creches; Declaração de Utilidade Pública"},
-    {"source": 1731, "target": 1783, "sourceName": "FERNANDO HADDAD", "targetName": "ROBERTO NAMI GARIBE FILHO", "weight": 327, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1876, "target": 1881, "sourceName": "JULIO FRANCISCO SEMEGHINI NETO", "targetName": "BRUNO COVAS", "weight": 325, "sharedTopics": "Serviços Públicos e Gestão Municipal; Declaração de Utilidade Pública"},
-    {"source": 1881, "target": 1951, "sourceName": "BRUNO COVAS", "targetName": "JOÃO JORGE DE SOUZA", "weight": 321, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
-    {"source": 1927, "target": 1951, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "JOÃO JORGE DE SOUZA", "weight": 315, "sharedTopics": "Declaração de Utilidade Pública; Serviços Públicos e Gestão Municipal"},
-    {"source": 2006, "target": 2051, "sourceName": "RICARDO NUNES", "targetName": "CLODOALDO PELISSIONI", "weight": 313, "sharedTopics": "Crédito Orçamentário e Finanças; Educação e Creches"},
-    {"source": 2006, "target": 2044, "sourceName": "RICARDO NUNES", "targetName": "RICARDO EZEQUIEL TORRES", "weight": 303, "sharedTopics": "Crédito Orçamentário e Finanças; Educação e Creches"},
-    {"source": 1731, "target": 1732, "sourceName": "FERNANDO HADDAD", "targetName": "LUÍS FERNANDO MASSONETTO", "weight": 290, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1927, "target": 2009, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "JOSÉ RICARDO ALVARENGA TRIPOLI", "weight": 290, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
-    {"source": 1732, "target": 1749, "sourceName": "LUÍS FERNANDO MASSONETTO", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 287, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 2006, "target": 2058, "sourceName": "RICARDO NUNES", "targetName": "FABIANO MARTINS DE OLIVEIRA", "weight": 279, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1927, "target": 1993, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "MARINA MAGRO BERINGHS MARTINEZ", "weight": 269, "sharedTopics": "Serviços Públicos e Gestão Municipal; Educação e Creches"},
-    {"source": 2033, "target": 2063, "sourceName": "FABRICIO COBRA ARBEX", "targetName": "FERNANDO JOSÉ DA COSTA", "weight": 266, "sharedTopics": "Datas Comemorativas e Calendário; Declaração de Utilidade Pública"},
-    {"source": 2006, "target": 2035, "sourceName": "RICARDO NUNES", "targetName": "MARCELA CRISTINA ARRUDA NUNES", "weight": 263, "sharedTopics": "Educação e Creches; Declaração de Utilidade Pública"},
-    {"source": 2006, "target": 2063, "sourceName": "RICARDO NUNES", "targetName": "FERNANDO JOSÉ DA COSTA", "weight": 258, "sharedTopics": "Datas Comemorativas e Calendário; Educação e Creches"},
-    {"source": 1867, "target": 2051, "sourceName": "LUIS FELIPE VIDAL ARELLANO", "targetName": "CLODOALDO PELISSIONI", "weight": 257, "sharedTopics": "Crédito Orçamentário e Finanças; Educação e Creches"},
-    {"source": 1731, "target": 1737, "sourceName": "FERNANDO HADDAD", "targetName": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "weight": 253, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1732, "target": 1734, "sourceName": "LUÍS FERNANDO MASSONETTO", "targetName": "MARCOS DE BARROS CRUZ", "weight": 240, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 2001, "target": 2006, "sourceName": "ELISABETE FRANÇA", "targetName": "RICARDO NUNES", "weight": 240, "sharedTopics": "Educação e Creches; Denominação de Vias e Logradouros"},
-    {"source": 1731, "target": 1738, "sourceName": "FERNANDO HADDAD", "targetName": "ANTONIO CESAR RUSSI CALLEGARI", "weight": 234, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1732, "target": 1733, "sourceName": "LUÍS FERNANDO MASSONETTO", "targetName": "LEDA MARIA PAULANI", "weight": 226, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 2072, "target": 2085, "sourceName": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "targetName": "ANDRÉ LEMOS JORGE", "weight": 226, "sharedTopics": "Educação e Creches; Declaração de Utilidade Pública"},
-    {"source": 1940, "target": 2001, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "ELISABETE FRANÇA", "weight": 224, "sharedTopics": "Educação e Creches; Denominação de Vias e Logradouros"},
-    {"source": 1927, "target": 1946, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "CESAR ANGEL BOFFA DE AZEVEDO", "weight": 220, "sharedTopics": "Denominação de Vias e Logradouros; Serviços Públicos e Gestão Municipal"},
-    {"source": 1874, "target": 1877, "sourceName": "JOÃO DORIA", "targetName": "CAIO MEGALE", "weight": 216, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1940, "target": 2035, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "MARCELA CRISTINA ARRUDA NUNES", "weight": 207, "sharedTopics": "Educação e Creches; Declaração de Utilidade Pública"},
-    {"source": 1951, "target": 1955, "sourceName": "JOÃO JORGE DE SOUZA", "targetName": "MAURO RICARDO MACHADO COSTA", "weight": 199, "sharedTopics": "Datas Comemorativas e Calendário; Serviços Públicos e Gestão Municipal"},
-    {"source": 1877, "target": 1881, "sourceName": "CAIO MEGALE", "targetName": "BRUNO COVAS", "weight": 191, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1878, "target": 1881, "sourceName": "ANDERSON POMINI", "targetName": "BRUNO COVAS", "weight": 188, "sharedTopics": "Serviços Públicos e Gestão Municipal; Declaração de Utilidade Pública"},
-    {"source": 1881, "target": 1946, "sourceName": "BRUNO COVAS", "targetName": "CESAR ANGEL BOFFA DE AZEVEDO", "weight": 177, "sharedTopics": "Denominação de Vias e Logradouros; Serviços Públicos e Gestão Municipal"},
-    {"source": 1927, "target": 2033, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "FABRICIO COBRA ARBEX", "weight": 177, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
-    {"source": 1917, "target": 1955, "sourceName": "ORLANDO LINDÓRIO DE FARIA", "targetName": "MAURO RICARDO MACHADO COSTA", "weight": 175, "sharedTopics": "Educação e Creches; Serviços Públicos e Gestão Municipal"},
-    {"source": 1874, "target": 1881, "sourceName": "JOÃO DORIA", "targetName": "BRUNO COVAS", "weight": 172, "sharedTopics": "Serviços Públicos e Gestão Municipal; Declaração de Utilidade Pública"},
-    {"source": 1940, "target": 2063, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "FERNANDO JOSÉ DA COSTA", "weight": 167, "sharedTopics": "Declaração de Utilidade Pública; Educação e Creches"},
-    {"source": 2033, "target": 2035, "sourceName": "FABRICIO COBRA ARBEX", "targetName": "MARCELA CRISTINA ARRUDA NUNES", "weight": 166, "sharedTopics": "Educação e Creches; Declaração de Utilidade Pública"},
-    {"source": 1735, "target": 1738, "sourceName": "LUIS FERNANDO MASSONETTO", "targetName": "ANTONIO CESAR RUSSI CALLEGARI", "weight": 155, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1735, "target": 1783, "sourceName": "LUIS FERNANDO MASSONETTO", "targetName": "ROBERTO NAMI GARIBE FILHO", "weight": 149, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1735, "target": 1737, "sourceName": "LUIS FERNANDO MASSONETTO", "targetName": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "weight": 142, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 2001, "target": 2085, "sourceName": "ELISABETE FRANÇA", "targetName": "ANDRÉ LEMOS JORGE", "weight": 141, "sharedTopics": "Educação e Creches; Denominação de Vias e Logradouros"},
-    {"source": 1736, "target": 1738, "sourceName": "ANTONIO DONATO MADORMO", "targetName": "ANTONIO CESAR RUSSI CALLEGARI", "weight": 133, "sharedTopics": "Crédito Orçamentário e Finanças; Educação e Creches"},
-    {"source": 2005, "target": 2035, "sourceName": "EUNICE APARECIDA DE JESUS PRUDENTE", "targetName": "MARCELA CRISTINA ARRUDA NUNES", "weight": 133, "sharedTopics": "Educação e Creches; Declaração de Utilidade Pública"},
-    {"source": 1736, "target": 1737, "sourceName": "ANTONIO DONATO MADORMO", "targetName": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "weight": 126, "sharedTopics": "Bens Imóveis e Desapropriação; Crédito Orçamentário e Finanças"},
-    {"source": 1733, "target": 1783, "sourceName": "LEDA MARIA PAULANI", "targetName": "ROBERTO NAMI GARIBE FILHO", "weight": 125, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1749, "target": 1783, "sourceName": "FRANCISCO MACENA DA SILVA", "targetName": "ROBERTO NAMI GARIBE FILHO", "weight": 121, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1734, "target": 1783, "sourceName": "MARCOS DE BARROS CRUZ", "targetName": "ROBERTO NAMI GARIBE FILHO", "weight": 116, "sharedTopics": "Crédito Orçamentário e Finanças; Datas Comemorativas e Calendário"},
-    {"source": 1867, "target": 1940, "sourceName": "LUIS FELIPE VIDAL ARELLANO", "targetName": "EDSON APARECIDO DOS SANTOS", "weight": 116, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1917, "target": 1946, "sourceName": "ORLANDO LINDÓRIO DE FARIA", "targetName": "CESAR ANGEL BOFFA DE AZEVEDO", "weight": 114, "sharedTopics": "Denominação de Vias e Logradouros; Serviços Públicos e Gestão Municipal"},
-    {"source": 1737, "target": 1749, "sourceName": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 110, "sharedTopics": "Crédito Orçamentário e Finanças; Datas Comemorativas e Calendário"},
-    {"source": 1876, "target": 1927, "sourceName": "JULIO FRANCISCO SEMEGHINI NETO", "targetName": "RUBENS NAMAN RIZEK JUNIOR", "weight": 106, "sharedTopics": "Educação e Creches; Serviços Públicos e Gestão Municipal"},
-    {"source": 1733, "target": 1738, "sourceName": "LEDA MARIA PAULANI", "targetName": "ANTONIO CESAR RUSSI CALLEGARI", "weight": 99, "sharedTopics": "Crédito Orçamentário e Finanças; Declaração de Utilidade Pública"},
-    {"source": 1881, "target": 1952, "sourceName": "BRUNO COVAS", "targetName": "GUILHERME BUENO DE CAMARGO", "weight": 99, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 2001, "target": 2072, "sourceName": "ELISABETE FRANÇA", "targetName": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "weight": 93, "sharedTopics": "Denominação de Vias e Logradouros; Educação e Creches"},
-    {"source": 1734, "target": 1738, "sourceName": "MARCOS DE BARROS CRUZ", "targetName": "ANTONIO CESAR RUSSI CALLEGARI", "weight": 91, "sharedTopics": "Crédito Orçamentário e Finanças"},
-    {"source": 1946, "target": 1955, "sourceName": "CESAR ANGEL BOFFA DE AZEVEDO", "targetName": "MAURO RICARDO MACHADO COSTA", "weight": 91, "sharedTopics": "Denominação de Vias e Logradouros; Serviços Públicos e Gestão Municipal"},
-    {"source": 1940, "target": 2051, "sourceName": "EDSON APARECIDO DOS SANTOS", "targetName": "CLODOALDO PELISSIONI", "weight": 89, "sharedTopics": "Crédito Orçamentário e Finanças; Educação e Creches"},
-    {"source": 1738, "target": 1749, "sourceName": "ANTONIO CESAR RUSSI CALLEGARI", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 79, "sharedTopics": "Crédito Orçamentário e Finanças; Bens Imóveis e Desapropriação"},
-    {"source": 1881, "target": 2005, "sourceName": "BRUNO COVAS", "targetName": "EUNICE APARECIDA DE JESUS PRUDENTE", "weight": 79, "sharedTopics": "Declaração de Utilidade Pública; Datas Comemorativas e Calendário"},
-    {"source": 1736, "target": 1749, "sourceName": "ANTONIO DONATO MADORMO", "targetName": "FRANCISCO MACENA DA SILVA", "weight": 76, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 2001, "target": 2033, "sourceName": "ELISABETE FRANÇA", "targetName": "FABRICIO COBRA ARBEX", "weight": 76, "sharedTopics": "Educação e Creches; Denominação de Vias e Logradouros"},
-    {"source": 1734, "target": 1737, "sourceName": "MARCOS DE BARROS CRUZ", "targetName": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "weight": 72, "sharedTopics": "Crédito Orçamentário e Finanças; Denominação de Vias e Logradouros"},
-    {"source": 2001, "target": 2063, "sourceName": "ELISABETE FRANÇA", "targetName": "FERNANDO JOSÉ DA COSTA", "weight": 70, "sharedTopics": "Educação e Creches; Denominação de Vias e Logradouros"},
-    {"source": 1946, "target": 2005, "sourceName": "CESAR ANGEL BOFFA DE AZEVEDO", "targetName": "EUNICE APARECIDA DE JESUS PRUDENTE", "weight": 68, "sharedTopics": "Serviços Públicos e Gestão Municipal; Denominação de Vias e Logradouros"},
-    {"source": 2005, "target": 2072, "sourceName": "EUNICE APARECIDA DE JESUS PRUDENTE", "targetName": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "weight": 68, "sharedTopics": "Declaração de Utilidade Pública; Bens Imóveis e Desapropriação"},
-    {"source": 2035, "target": 2072, "sourceName": "MARCELA CRISTINA ARRUDA NUNES", "targetName": "ENRICO VAN BLARCUM DE GRAAFF MISASI", "weight": 68, "sharedTopics": "Educação e Creches; Declaração de Utilidade Pública"},
-    {"source": 2035, "target": 2085, "sourceName": "MARCELA CRISTINA ARRUDA NUNES", "targetName": "ANDRÉ LEMOS JORGE", "weight": 68, "sharedTopics": "Educação e Creches; Declaração de Utilidade Pública"},
-    {"source": 1733, "target": 1737, "sourceName": "LEDA MARIA PAULANI", "targetName": "JOSÉ FLORIANO DE AZEVEDO MARQUES NETO", "weight": 65, "sharedTopics": "Crédito Orçamentário e Finanças"},
-    {"source": 1946, "target": 2006, "sourceName": "CESAR ANGEL BOFFA DE AZEVEDO", "targetName": "RICARDO NUNES", "weight": 64, "sharedTopics": "Serviços Públicos e Gestão Municipal; Denominação de Vias e Logradouros"},
-    {"source": 1946, "target": 2009, "sourceName": "CESAR ANGEL BOFFA DE AZEVEDO", "targetName": "JOSÉ RICARDO ALVARENGA TRIPOLI", "weight": 61, "sharedTopics": "Denominação de Vias e Logradouros; Serviços Públicos e Gestão Municipal"},
-    {"source": 1946, "target": 1993, "sourceName": "CESAR ANGEL BOFFA DE AZEVEDO", "targetName": "MARINA MAGRO BERINGHS MARTINEZ", "weight": 57, "sharedTopics": "Denominação de Vias e Logradouros; Serviços Públicos e Gestão Municipal"},
-    {"source": 1927, "target": 1954, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "PHILIPPE VEDOLIM DUCHATEAU", "weight": 56, "sharedTopics": "Serviços Públicos e Gestão Municipal; Bens Imóveis e Desapropriação"},
-    {"source": 1749, "target": 1835, "sourceName": "FRANCISCO MACENA DA SILVA", "targetName": "ROGÉRIO CERON DE OLIVEIRA", "weight": 53, "sharedTopics": "Serviços Públicos e Gestão Municipal; Educação e Creches"},
-    {"source": 2035, "target": 2063, "sourceName": "MARCELA CRISTINA ARRUDA NUNES", "targetName": "FERNANDO JOSÉ DA COSTA", "weight": 47, "sharedTopics": "Declaração de Utilidade Pública; Educação e Creches"},
-    {"source": 1927, "target": 1952, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "GUILHERME BUENO DE CAMARGO", "weight": 44, "sharedTopics": "Serviços Públicos e Gestão Municipal; Bens Imóveis e Desapropriação"},
-    {"source": 1952, "target": 2005, "sourceName": "GUILHERME BUENO DE CAMARGO", "targetName": "EUNICE APARECIDA DE JESUS PRUDENTE", "weight": 44, "sharedTopics": "Serviços Públicos e Gestão Municipal; Bens Imóveis e Desapropriação"},
-    {"source": 1876, "target": 1877, "sourceName": "JULIO FRANCISCO SEMEGHINI NETO", "targetName": "CAIO MEGALE", "weight": 43, "sharedTopics": "Serviços Públicos e Gestão Municipal; Bens Imóveis e Desapropriação"},
-    {"source": 1927, "target": 1940, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "EDSON APARECIDO DOS SANTOS", "weight": 39, "sharedTopics": "Datas Comemorativas e Calendário; Crédito Orçamentário e Finanças"},
-    {"source": 1917, "target": 1954, "sourceName": "ORLANDO LINDÓRIO DE FARIA", "targetName": "PHILIPPE VEDOLIM DUCHATEAU", "weight": 38, "sharedTopics": "Serviços Públicos e Gestão Municipal; Declaração de Utilidade Pública"},
-    {"source": 1946, "target": 1951, "sourceName": "CESAR ANGEL BOFFA DE AZEVEDO", "targetName": "JOÃO JORGE DE SOUZA", "weight": 37, "sharedTopics": "Denominação de Vias e Logradouros; Serviços Públicos e Gestão Municipal"},
-    {"source": 1877, "target": 1878, "sourceName": "CAIO MEGALE", "targetName": "ANDERSON POMINI", "weight": 36, "sharedTopics": "Serviços Públicos e Gestão Municipal; Datas Comemorativas e Calendário"},
-    {"source": 1954, "target": 1955, "sourceName": "PHILIPPE VEDOLIM DUCHATEAU", "targetName": "MAURO RICARDO MACHADO COSTA", "weight": 36, "sharedTopics": "Serviços Públicos e Gestão Municipal; Bens Imóveis e Desapropriação"},
-    {"source": 1927, "target": 2035, "sourceName": "RUBENS NAMAN RIZEK JUNIOR", "targetName": "MARCELA CRISTINA ARRUDA NUNES", "weight": 35, "sharedTopics": "Declaração de Utilidade Pública; Educação e Creches"},
-    {"source": 2058, "target": 2094, "sourceName": "FABIANO MARTINS DE OLIVEIRA", "targetName": "CLODOALDO PELIZZONI", "weight": 34, "sharedTopics": "Crédito Orçamentário e Finanças"},
-    {"source": 2033, "target": 2051, "sourceName": "FABRICIO COBRA ARBEX", "targetName": "CLODOALDO PELISSIONI", "weight": 32, "sharedTopics": "Educação e Creches; Denominação de Vias e Logradouros"},
-    {"source": 2051, "target": 2058, "sourceName": "CLODOALDO PELISSIONI", "targetName": "FABIANO MARTINS DE OLIVEIRA", "weight": 32, "sharedTopics": "Crédito Orçamentário e Finanças; Serviços Públicos e Gestão Municipal"},
-    {"source": 1738, "target": 1783, "sourceName": "ANTONIO CESAR RUSSI CALLEGARI", "targetName": "ROBERTO NAMI GARIBE FILHO", "weight": 31, "sharedTopics": "Crédito Orçamentário e Finanças; Denominação de Vias e Logradouros"}
-  ]
-}
-;
-    const DADOS_INICIAIS_AUTORES = [{"id":2006,"name":"RICARDO NUNES","cargo":"PREFEITO","totalNormas":5677},{"id":1731,"name":"FERNANDO HADDAD","cargo":"PREFEITO","totalNormas":4140},{"id":1881,"name":"BRUNO COVAS","cargo":"PREFEITO.","totalNormas":2602},{"id":1749,"name":"FRANCISCO MACENA DA SILVA","cargo":"SECRETÁRIO DO GOVERNO MUNICIPAL","totalNormas":2224},{"id":1867,"name":"LUIS FELIPE VIDAL ARELLANO","cargo":"SECRETÁRIO MUNICIPAL DA FAZENDA","totalNormas":1824},{"id":1927,"name":"RUBENS NAMAN RIZEK JUNIOR","cargo":"SECRETÁRIO DE GOVERNO MUNICIPAL.","totalNormas":1622},{"id":2005,"name":"EUNICE APARECIDA DE JESUS PRUDENTE","cargo":"SECRETÁRIA MUNICIPAL DE JUSTIÇA.","totalNormas":1317},{"id":1952,"name":"GUILHERME BUENO DE CAMARGO","cargo":"SECRETÁRIO MUNICIPAL DA FAZENDA.","totalNormas":1262},{"id":1940,"name":"EDSON APARECIDO DOS SANTOS","cargo":"SECRETÁRIO DO GOVERNO MUNICIPAL","totalNormas":1190},{"id":1734,"name":"MARCOS DE BARROS CRUZ","cargo":"SECRETÁRIO MUNICIPAL DE FINANÇAS E DESENVOLVIMENTO ECONÔMICO","totalNormas":1115},{"id":1733,"name":"LEDA MARIA PAULANI","cargo":"SECRETÁRIA MUNICIPAL DE PLANEJAMENTO, ORÇAMENTO E GESTÃO","totalNormas":1097},{"id":1735,"name":"LUIS FERNANDO MASSONETTO","cargo":"SECRETÁRIO MUNICIPAL DOS NEGÓCIOS JURÍDICOS","totalNormas":1051},{"id":2033,"name":"FABRICIO COBRA ARBEX","cargo":"SECRETÁRIO MUNICIPAL DA CASA CIVIL","totalNormas":1032},{"id":1736,"name":"ANTONIO DONATO MADORMO","cargo":"SECRETÁRIO DO GOVERNO MUNICIPAL","totalNormas":1020},{"id":1954,"name":"PHILIPPE VEDOLIM DUCHATEAU","cargo":"SECRETÁRIO MUNICIPAL DA FAZENDA.","totalNormas":799},{"id":1917,"name":"ORLANDO LINDÓRIO DE FARIA","cargo":"SECRETÁRIO MUNICIPAL DA CASA CIVIL.","totalNormas":690},{"id":1835,"name":"ROGÉRIO CERON DE OLIVEIRA","cargo":"SECRETÁRIO MUNICIPAL DE FINANÇAS E DESENVOLVIMENTO ECONÔMICO","totalNormas":606},{"id":1874,"name":"JOÃO DORIA","cargo":"PREFEITO","totalNormas":587},{"id":1876,"name":"JULIO FRANCISCO SEMEGHINI NETO","cargo":"SECRETÁRIO DO GOVERNO MUNICIPAL","totalNormas":537},{"id":2085,"name":"ANDRÉ LEMOS JORGE","cargo":"SECRETÁRIO MUNICIPAL DE JUSTIÇA","totalNormas":490},{"id":2094,"name":"CLODOALDO PELIZZONI","cargo":"SECRETÁRIO MUNICIPAL DE PLANEJAMENTO E EFICIÊNCIA","totalNormas":478},{"id":2009,"name":"JOSÉ RICARDO ALVARENGA TRIPOLI","cargo":"SECRETÁRIO MUNICIPAL DA CASA CIVIL.","totalNormas":477},{"id":1833,"name":"BRENO GANDELMAN","cargo":"SECRETÁRIO GERAL PARLAMENTAR","totalNormas":422},{"id":1955,"name":"MAURO RICARDO MACHADO COSTA","cargo":"SECRETÁRIO DO GOVERNO MUNICIPAL","totalNormas":417},{"id":1878,"name":"ANDERSON POMINI","cargo":"SECRETÁRIO MUNICIPAL DE JUSTIÇA","totalNormas":413},{"id":1877,"name":"CAIO MEGALE","cargo":"SECRETÁRIO MUNICIPAL DA FAZENDA","totalNormas":409},{"id":1993,"name":"MARINA MAGRO BERINGHS MARTINEZ","cargo":"RESPONDENDO PELO CARGO DE SECRETÁRIA MUNICIPAL DE JUSTIÇA.","totalNormas":399},{"id":2072,"name":"ENRICO VAN BLARCUM DE GRAAFF MISASI","cargo":"SECRETÁRIO MUNICIPAL DA CASA CIVIL","totalNormas":364},{"id":1783,"name":"ROBERTO NAMI GARIBE FILHO","cargo":"RESPONDENDO PELO CARGO DE SECRETÁRIO DO GOVERNO MUNICIPAL","totalNormas":339},{"id":1951,"name":"JOÃO JORGE DE SOUZA","cargo":"SECRETÁRIO MUNICIPAL DA CASA CIVIL","totalNormas":324},{"id":2051,"name":"CLODOALDO PELISSIONI","cargo":"SECRETÁRIO EXECUTIVO DE PLANEJAMENTO E EFICIÊNCIA","totalNormas":320},{"id":2044,"name":"RICARDO EZEQUIEL TORRES","cargo":"SECRETÁRIO MUNICIPAL DA FAZENDA","totalNormas":304},{"id":1732,"name":"LUÍS FERNANDO MASSONETTO","cargo":"SECRETÁRIO MUNICIPAL DOS NEGÓCIOS JURÍDICOS","totalNormas":290},{"id":2058,"name":"FABIANO MARTINS DE OLIVEIRA","cargo":"SECRETÁRIO MUNICIPAL DA FAZENDA - SUBSTITUTO","totalNormas":281},{"id":2063,"name":"FERNANDO JOSÉ DA COSTA","cargo":"SECRETÁRIO MUNICIPAL DE JUSTIÇA","totalNormas":267},{"id":2035,"name":"MARCELA CRISTINA ARRUDA NUNES","cargo":"SECRETÁRIA MUNICIPAL DE GESTÃO","totalNormas":264},{"id":1737,"name":"JOSÉ FLORIANO DE AZEVEDO MARQUES NETO","cargo":"SECRETÁRIO MUNICIPAL DE HABITAÇÃO","totalNormas":256},{"id":2001,"name":"ELISABETE FRANÇA","cargo":"SECRETÁRIA MUNICIPAL DE URBANISMO E LICENCIAMENTO","totalNormas":254},{"id":1738,"name":"ANTONIO CESAR RUSSI CALLEGARI","cargo":"SECRETÁRIO MUNICIPAL DE EDUCAÇÃO","totalNormas":246},{"id":1946,"name":"CESAR ANGEL BOFFA DE AZEVEDO","cargo":"SECRETÁRIO MUNICIPAL DE LICENCIAMENTO.","totalNormas":242}];
-    const MODO_SERVIDOR = false;
+    // Determina o endpoint base: relativo no servidor HTTP ou porta 8080 caso aberto localmente
+    const API_BASE = (window.location.protocol === "http:" || window.location.protocol === "https:")
+        ? ""
+        : "http://localhost:8080";
 
-    // Paleta de Cores HSL harmoniosa para cada Eixo Temático
-    const PALETA_CORES_TEMAS = {
-      "Declaração de Utilidade Pública": "#06B6D4",
-      "Bens Imóveis e Desapropriação": "#3B82F6",
-      "Datas Comemorativas e Calendário": "#F59E0B",
-      "Denominação de Vias e Logradouros": "#10B981",
-      "Serviços Públicos e Gestão Municipal": "#8B5CF6",
-      "Administração e Normas Gerais (prestados)": "#EC4899",
-      "Administração e Normas Gerais (provimento)": "#F43F5E",
-      "Educação e Cultura": "#14B8A6",
-      "Saúde e Assistência Social": "#6366F1",
-      "Geral": "#94A3B8"
-    };
+    // Paleta HSL harmoniosa atribuída dinamicamente aos eixos temáticos do banco
+    const CORES_PALETA_BASE = [
+      "#06B6D4", "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B",
+      "#10B981", "#F43F5E", "#14B8A6", "#6366F1", "#EAB308",
+      "#A855F7", "#0EA5E9", "#84CC16", "#F97316", "#059669",
+      "#D97706", "#2563EB", "#7C3AED", "#DB2777", "#475569"
+    ];
+
+    const mapaCoresTemas = new Map();
+
+    function hashString(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash);
+    }
+
+    function registrarCoresTopicos(listaTopicos) {
+      if (!Array.isArray(listaTopicos)) return;
+      listaTopicos.forEach((t, idx) => {
+        const nome = typeof t === "string" ? t : (t.nomeTopico || t.nome);
+        if (nome && !mapaCoresTemas.has(nome)) {
+          mapaCoresTemas.set(nome, CORES_PALETA_BASE[idx % CORES_PALETA_BASE.length]);
+        }
+      });
+    }
 
     function obterCorTema(tema) {
-      if (!tema) return PALETA_CORES_TEMAS["Geral"];
-      for (const [chave, cor] of Object.entries(PALETA_CORES_TEMAS)) {
-        if (tema.toLowerCase().includes(chave.toLowerCase())) return cor;
-      }
-      return PALETA_CORES_TEMAS["Geral"];
+      if (!tema || tema === "N/D" || tema === "Geral") return "#94A3B8";
+      if (mapaCoresTemas.has(tema)) return mapaCoresTemas.get(tema);
+      const cor = CORES_PALETA_BASE[hashString(tema) % CORES_PALETA_BASE.length];
+      mapaCoresTemas.set(tema, cor);
+      return cor;
     }
 
     let network = null;
     let nodesDataSet = null;
     let edgesDataSet = null;
-    let dadosGrafoAtual = DADOS_INICIAIS_GRAFO;
+    let dadosGrafoAtual = { nodes: [], links: [] };
     let autorSelecionadoId = null;
+    let catalogoTopicosBanco = [];
 
     document.addEventListener("DOMContentLoaded", () => {
-      inicializarGrafo(DADOS_INICIAIS_GRAFO);
-      popularLegenda(DADOS_INICIAIS_GRAFO);
-      popularAutoresSelect(DADOS_INICIAIS_AUTORES);
       configurarEventos();
+      carregarDadosIniciais();
     });
+
+    async function carregarDadosIniciais() {
+      exibirCarregando(true);
+      try {
+        // 1. Carrega estatísticas gerais e catálogo de tópicos direto do banco
+        await carregarEstatisticasETopicos();
+
+        // 2. Carrega o grafo de colaboração inicial direto do banco
+        const peso = document.getElementById("range-peso") ? document.getElementById("range-peso").value : 20;
+        const atores = document.getElementById("range-atores") ? document.getElementById("range-atores").value : 30;
+        await recarregarGrafo(atores, peso);
+
+        // 3. Carrega a lista de autores para os seletores de comparação
+        await carregarAutores();
+
+        ocultarAlertaConexao();
+      } catch (e) {
+        console.warn("Aviso ao carregar dados do banco:", e);
+        exibirAlertaConexao();
+      } finally {
+        exibirCarregando(false);
+      }
+    }
+
+    function exibirCarregando(visivel) {
+      const el = document.getElementById("loading-overlay");
+      if (el) el.style.display = visivel ? "flex" : "none";
+    }
+
+    function exibirAlertaConexao() {
+      const el = document.getElementById("status-conexao");
+      if (el) el.style.display = "flex";
+    }
+
+    function ocultarAlertaConexao() {
+      const el = document.getElementById("status-conexao");
+      if (el) el.style.display = "none";
+    }
+
+    async function carregarEstatisticasETopicos() {
+      const res = await fetch(`${API_BASE}/api/stats`);
+      if (!res.ok) throw new Error("Falha HTTP " + res.status);
+      const stats = await res.json();
+
+      if (stats.totalNormas != null) {
+        const el = document.getElementById("stat-normas-total");
+        if (el) el.innerText = Number(stats.totalNormas).toLocaleString("pt-BR");
+      }
+      if (stats.totalTopicos != null) {
+        const el = document.getElementById("stat-topicos-total");
+        if (el) el.innerText = Number(stats.totalTopicos).toLocaleString("pt-BR");
+      }
+      if (stats.totalAutores != null) {
+        const el = document.getElementById("stat-autores-total");
+        if (el) el.innerText = Number(stats.totalAutores).toLocaleString("pt-BR");
+      }
+
+      if (stats.topicos && Array.isArray(stats.topicos)) {
+        catalogoTopicosBanco = stats.topicos;
+        registrarCoresTopicos(stats.topicos);
+        popularLegenda(dadosGrafoAtual, stats.topicos);
+      }
+    }
+
+    async function carregarAutores() {
+      try {
+        const res = await fetch(`${API_BASE}/api/autores?limit=50`);
+        if (res.ok) {
+          const autores = await res.json();
+          popularAutoresSelect(autores);
+        }
+      } catch (e) {
+        console.warn("Erro ao carregar autores da API:", e);
+      }
+    }
 
     function inicializarGrafo(dados) {
       const container = document.getElementById("rede-container");
+      if (!dados || !dados.nodes) return;
 
       const nodesArray = dados.nodes.map(n => {
         const cor = obterCorTema(n.temaDominante);
@@ -1072,7 +1002,7 @@
         };
       });
 
-      const edgesArray = dados.links.map(l => {
+      const edgesArray = (dados.links || []).map(l => {
         const peso = l.weight || 1;
         const largura = Math.min(8, 1 + Math.log10(peso + 1) * 2.2);
         return {
@@ -1133,27 +1063,75 @@
       });
     }
 
-    function popularLegenda(dados) {
-      const temasEncontrados = new Set();
-      dados.nodes.forEach(n => {
-        if (n.temaDominante) temasEncontrados.add(n.temaDominante);
-      });
-
+    function popularLegenda(dados, topicosBanco) {
       const container = document.getElementById("lista-legendas");
       const selectFiltro = document.getElementById("select-tema-filtro");
       container.innerHTML = "";
+      selectFiltro.innerHTML = '<option value="TODOS">Todos os Eixos Temáticos</option>';
 
-      temasEncontrados.forEach(tema => {
-        const cor = obterCorTema(tema);
+      const contagemNosPorTema = new Map();
+      if (dados && dados.nodes) {
+        dados.nodes.forEach(n => {
+          if (n.temaDominante) {
+            contagemNosPorTema.set(n.temaDominante, (contagemNosPorTema.get(n.temaDominante) || 0) + 1);
+          }
+        });
+      }
+
+      const listaParaExibir = [];
+      const nomesAdicionados = new Set();
+      const fonteTopicos = (Array.isArray(topicosBanco) && topicosBanco.length > 0)
+          ? topicosBanco
+          : catalogoTopicosBanco;
+
+      fonteTopicos.forEach(t => {
+        const nome = t.nomeTopico || t.nome;
+        if (nome && !nomesAdicionados.has(nome)) {
+          nomesAdicionados.add(nome);
+          listaParaExibir.push({
+            nome: nome,
+            totalNormasBanco: t.totalNormas != null ? t.totalNormas : (t.quantidadeNormas != null ? t.quantidadeNormas : null),
+            totalAutoresGrafo: contagemNosPorTema.get(nome) || 0
+          });
+        }
+      });
+
+      contagemNosPorTema.forEach((qtd, tema) => {
+        if (!nomesAdicionados.has(tema)) {
+          nomesAdicionados.add(tema);
+          listaParaExibir.push({
+            nome: tema,
+            totalNormasBanco: null,
+            totalAutoresGrafo: qtd
+          });
+        }
+      });
+
+      listaParaExibir.forEach(t => {
+        const cor = obterCorTema(t.nome);
         const div = document.createElement("div");
         div.className = "legend-item";
-        div.innerHTML = `<span class="color-dot" style="background: ${cor};"></span><span>${tema}</span>`;
-        div.onclick = () => destacarPorTema(tema);
+        const infoSub = t.totalNormasBanco != null
+            ? `${Number(t.totalNormasBanco).toLocaleString("pt-BR")} normas no acervo`
+            : `${t.totalAutoresGrafo} atores na rede`;
+
+        div.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; width:100%;">
+            <span class="color-dot" style="background: ${cor}; flex-shrink:0;"></span>
+            <div style="display:flex; flex-direction:column; overflow:hidden;">
+              <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;">${t.nome}</span>
+              <span style="font-size:10px; color:var(--text-muted);">${infoSub}</span>
+            </div>
+          </div>
+        `;
+        div.onclick = () => destacarPorTema(t.nome);
         container.appendChild(div);
 
         const opt = document.createElement("option");
-        opt.value = tema;
-        opt.innerText = tema;
+        opt.value = t.nome;
+        opt.innerText = t.totalNormasBanco != null
+            ? `${t.nome} (${Number(t.totalNormasBanco).toLocaleString("pt-BR")} leis)`
+            : t.nome;
         selectFiltro.appendChild(opt);
       });
     }
@@ -1164,7 +1142,7 @@
       sel1.innerHTML = "";
       sel2.innerHTML = "";
 
-      const lista = (autores && autores.length > 0) ? autores : dadosGrafoAtual.nodes;
+      const lista = (autores && autores.length > 0) ? autores : (dadosGrafoAtual ? dadosGrafoAtual.nodes : []);
 
       lista.forEach((a, idx) => {
         const opt1 = new Option(`${a.name} (${a.totalNormas || 0} normas)`, a.id);
@@ -1177,6 +1155,8 @@
     }
 
     function destacarPorTema(tema) {
+      if (!nodesDataSet || !edgesDataSet) return;
+
       if (!tema || tema === "TODOS") {
         nodesDataSet.forEach(node => {
           nodesDataSet.update({ id: node.id, opacity: 1.0 });
@@ -1201,33 +1181,46 @@
       const drawer = document.getElementById("author-drawer");
       drawer.classList.add("open");
 
-      // Buscar perfil detalhado
-      let perfil = null;
-      if (MODO_SERVIDOR) {
-        try {
-          const res = await fetch(`/api/perfil?id=${id}`);
-          if (res.ok) perfil = await res.json();
-        } catch (e) {
-          console.warn("Erro ao buscar API, usando dados locais", e);
-        }
+      const no = nodesDataSet ? nodesDataSet.get(id) : null;
+      if (no) {
+        document.getElementById("drawer-nome").innerText = no.dataOriginal.name;
+        document.getElementById("drawer-cargo").innerText = no.dataOriginal.cargo || "AUTOR / VEREADOR";
+        document.getElementById("stat-total-normas").innerText = no.dataOriginal.totalNormas || "0";
+        document.getElementById("stat-parceiros-total").innerText = no.dataOriginal.degree || "0";
       }
 
-      const no = nodesDataSet.get(id);
-      if (!no) return;
+      // Buscar perfil detalhado em tempo real diretamente do banco via API
+      try {
+        const res = await fetch(`${API_BASE}/api/perfil?id=${id}`);
+        if (res.ok) {
+          const perfil = await res.json();
+          renderizarDetalhesPerfil(perfil, no);
+        }
+      } catch (e) {
+        console.warn("Erro ao buscar perfil do autor via API:", e);
+      }
+    }
 
-      document.getElementById("drawer-nome").innerText = no.dataOriginal.name;
-      document.getElementById("drawer-cargo").innerText = no.dataOriginal.cargo || "AUTOR / VEREADOR";
-      document.getElementById("stat-total-normas").innerText = no.dataOriginal.totalNormas || "0";
-      document.getElementById("stat-parceiros-total").innerText = no.dataOriginal.degree || "0";
+    function renderizarDetalhesPerfil(perfil, no) {
+      if (!perfil) return;
+      if (perfil.cargoPrincipal) {
+        document.getElementById("drawer-cargo").innerText = perfil.cargoPrincipal;
+      }
+      if (perfil.perfilAtuacao) {
+        document.getElementById("stat-total-normas").innerText = perfil.perfilAtuacao.totalNormas;
+        document.getElementById("stat-taxa-coautoria").innerText = perfil.perfilAtuacao.taxaCoautoria.toFixed(1) + "%";
+      }
+      if (perfil.perfilColaboracao) {
+        document.getElementById("stat-parceiros-total").innerText = perfil.perfilColaboracao.totalParceirosDistintos;
+      }
+      if (perfil.perfilTematico) {
+        document.getElementById("stat-hhi").innerText = perfil.perfilTematico.indiceEspecializacaoHhi.toFixed(3);
+      }
 
       // Renderizar Temas
       const containerTopicos = document.getElementById("drawer-lista-topicos");
       containerTopicos.innerHTML = "";
-
-      if (perfil && perfil.perfilTematico && perfil.perfilTematico.distribuicaoTopicos) {
-        document.getElementById("stat-hhi").innerText = perfil.perfilTematico.indiceEspecializacaoHhi.toFixed(3);
-        document.getElementById("stat-taxa-coautoria").innerText = perfil.perfilAtuacao ? perfil.perfilAtuacao.taxaCoautoria.toFixed(1) + "%" : "N/D";
-
+      if (perfil.perfilTematico && perfil.perfilTematico.distribuicaoTopicos) {
         perfil.perfilTematico.distribuicaoTopicos.slice(0, 5).forEach(t => {
           containerTopicos.innerHTML += `
             <div class="topic-bar-item">
@@ -1241,50 +1234,47 @@
             </div>
           `;
         });
+      }
 
-        // Palavras-chave
-        const containerKeywords = document.getElementById("drawer-palavras-chave");
-        containerKeywords.innerHTML = "";
-        if (perfil.perfilTematico.termosMaisFrequentes) {
-          perfil.perfilTematico.termosMaisFrequentes.forEach(kw => {
-            containerKeywords.innerHTML += `<span class="keyword-tag">${kw}</span>`;
-          });
-        }
+      // Palavras-chave
+      const containerKeywords = document.getElementById("drawer-palavras-chave");
+      containerKeywords.innerHTML = "";
+      if (perfil.perfilTematico && perfil.perfilTematico.termosMaisFrequentes) {
+        perfil.perfilTematico.termosMaisFrequentes.forEach(kw => {
+          containerKeywords.innerHTML += `<span class="keyword-tag">${kw}</span>`;
+        });
+      }
 
-        // Parcerias
-        const containerParceiros = document.getElementById("drawer-lista-parceiros");
-        containerParceiros.innerHTML = "";
-        if (perfil.perfilColaboracao && perfil.perfilColaboracao.principaisParcerias) {
-          perfil.perfilColaboracao.principaisParcerias.slice(0, 8).forEach(p => {
-            containerParceiros.innerHTML += `
-              <div class="partner-item" onclick="focarAutor(${p.idParceiro})">
-                <div>
-                  <div class="partner-name">${p.nomeParceiro}</div>
-                  <div class="partner-cargo">${p.cargoParceiro || 'AUTOR'}</div>
-                </div>
-                <div class="partner-laws">${p.normasCompartilhadas} leis</div>
+      // Parcerias
+      const containerParceiros = document.getElementById("drawer-lista-parceiros");
+      containerParceiros.innerHTML = "";
+      if (perfil.perfilColaboracao && perfil.perfilColaboracao.principaisParcerias) {
+        perfil.perfilColaboracao.principaisParcerias.slice(0, 8).forEach(p => {
+          containerParceiros.innerHTML += `
+            <div class="partner-item" onclick="focarAutor(${p.idParceiro})">
+              <div>
+                <div class="partner-name">${p.nomeParceiro}</div>
+                <div class="partner-cargo">${p.cargoParceiro || 'AUTOR'}</div>
               </div>
-            `;
-          });
-        }
+              <div class="partner-laws">${p.normasCompartilhadas} leis</div>
+            </div>
+          `;
+        });
+      }
 
-        // Trajetória
-        const containerTimeline = document.getElementById("drawer-timeline");
-        containerTimeline.innerHTML = "";
-        if (perfil.perfilTemporal && perfil.perfilTemporal.producaoPorAno) {
-          const anos = Object.entries(perfil.perfilTemporal.producaoPorAno);
-          anos.forEach(([ano, qtd]) => {
-            containerTimeline.innerHTML += `
-              <div style="display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span>Ano <b>${ano}</b></span>
-                <span style="color:#38BDF8;">${qtd} normas</span>
-              </div>
-            `;
-          });
-        }
-      } else {
-        // Fallback quando executado apenas com dados do grafo
-        containerTopicos.innerHTML = `<div style="font-size:12px; color:#9CA3AF;">Eixo Dominante: <b>${no.dataOriginal.temaDominante}</b></div>`;
+      // Trajetória
+      const containerTimeline = document.getElementById("drawer-timeline");
+      containerTimeline.innerHTML = "";
+      if (perfil.perfilTemporal && perfil.perfilTemporal.producaoPorAno) {
+        const anos = Object.entries(perfil.perfilTemporal.producaoPorAno);
+        anos.forEach(([ano, qtd]) => {
+          containerTimeline.innerHTML += `
+            <div style="display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
+              <span>Ano <b>${ano}</b></span>
+              <span style="color:#38BDF8;">${qtd} normas</span>
+            </div>
+          `;
+        });
       }
     }
 
@@ -1324,13 +1314,13 @@
 
       // Zoom Controls
       document.getElementById("zoom-in").onclick = () => {
-        network.moveTo({ scale: network.getScale() * 1.3 });
+        if (network) network.moveTo({ scale: network.getScale() * 1.3 });
       };
       document.getElementById("zoom-out").onclick = () => {
-        network.moveTo({ scale: network.getScale() * 0.7 });
+        if (network) network.moveTo({ scale: network.getScale() * 0.7 });
       };
       document.getElementById("zoom-fit").onclick = () => {
-        network.fit({ animation: { duration: 500 } });
+        if (network) network.fit({ animation: { duration: 500 } });
       };
 
       // Abas
@@ -1354,7 +1344,7 @@
           return;
         }
 
-        const matches = nodesDataSet.get().filter(n => n.dataOriginal.name.toLowerCase().includes(termo));
+        const matches = nodesDataSet ? nodesDataSet.get().filter(n => n.dataOriginal.name.toLowerCase().includes(termo)) : [];
         if (matches.length === 0) {
           autoBox.style.display = "none";
           return;
@@ -1388,25 +1378,23 @@
           return;
         }
 
-        if (MODO_SERVIDOR) {
-          try {
-            const res = await fetch(`/api/comparar?id1=${id1}&id2=${id2}`);
-            if (res.ok) {
-              const dados = await res.json();
-              document.getElementById("resultado-comparacao").style.display = "block";
-              document.getElementById("comp-score-cosseno").innerText = (dados.similaridadeTematicaCosseno * 100).toFixed(1) + "%";
-              document.getElementById("comp-diagnostico").innerText = dados.diagnosticoAfinidade;
-              document.getElementById("comp-normas-conjuntas").innerText = dados.normasCompartilhadas + " normas conjuntas em coautoria";
-            }
-          } catch (e) {
-            console.error(e);
+        try {
+          const res = await fetch(`${API_BASE}/api/comparar?id1=${id1}&id2=${id2}`);
+          if (res.ok) {
+            const dados = await res.json();
+            document.getElementById("resultado-comparacao").style.display = "block";
+            document.getElementById("comp-score-cosseno").innerText = (dados.similaridadeTematicaCosseno * 100).toFixed(1) + "%";
+            document.getElementById("comp-diagnostico").innerText = dados.diagnosticoAfinidade;
+            document.getElementById("comp-normas-conjuntas").innerText = (dados.normasCompartilhadas || 0) + " normas conjuntas em coautoria";
           }
+        } catch (e) {
+          console.error("Erro na API de comparação:", e);
         }
       };
 
       // Reaquecer Física
       document.getElementById("btn-reheat").onclick = () => {
-        network.startSimulation();
+        if (network) network.startSimulation();
       };
 
       // Exportar Imagem PNG
@@ -1423,13 +1411,16 @@
       // Ego-Network Button
       document.getElementById("btn-ego-network").onclick = async () => {
         if (!autorSelecionadoId) return;
-        if (MODO_SERVIDOR) {
-          const res = await fetch(`/api/grafo/autor?id=${autorSelecionadoId}&minWeight=10`);
+        try {
+          const res = await fetch(`${API_BASE}/api/grafo/autor?id=${autorSelecionadoId}&minWeight=10`);
           if (res.ok) {
             const grafoEgo = await res.json();
             inicializarGrafo(grafoEgo);
+            popularLegenda(grafoEgo, catalogoTopicosBanco);
             document.getElementById("btn-reset-ego").style.display = "inline-flex";
           }
+        } catch (e) {
+          console.error("Erro ao carregar ego-network:", e);
         }
       };
 
@@ -1439,22 +1430,21 @@
       };
     }
 
-    async function recarregarGrafo() {
-      const peso = document.getElementById("range-peso").value;
-      const atores = document.getElementById("range-atores").value;
+    async function recarregarGrafo(atores, peso) {
+      if (!atores) atores = document.getElementById("range-atores").value;
+      if (!peso) peso = document.getElementById("range-peso").value;
 
-      if (MODO_SERVIDOR) {
-        try {
-          const res = await fetch(`/api/grafo?limit=${atores}&minWeight=${peso}`);
-          if (res.ok) {
-            const novosDados = await res.json();
-            dadosGrafoAtual = novosDados;
-            inicializarGrafo(novosDados);
-            popularLegenda(novosDados);
-          }
-        } catch (e) {
-          console.error("Erro ao recarregar via API:", e);
+      try {
+        const res = await fetch(`${API_BASE}/api/grafo?limit=${atores}&minWeight=${peso}`);
+        if (res.ok) {
+          const novosDados = await res.json();
+          dadosGrafoAtual = novosDados;
+          inicializarGrafo(novosDados);
+          popularLegenda(novosDados, catalogoTopicosBanco);
         }
+      } catch (e) {
+        console.error("Erro ao recarregar via API:", e);
+        throw e;
       }
     }
   </script>

@@ -6,14 +6,23 @@ package org.entryPoint.service.web;
  */
 public class PaginaWebGrafoTemplate {
 
-  public static String gerarHtml(String jsonGrafoEmbutido, String jsonAutoresEmbutido, boolean modoServidor) {
-    String grafoData = (jsonGrafoEmbutido != null && !jsonGrafoEmbutido.isBlank()) ? jsonGrafoEmbutido : "{\"nodes\":[],\"links\":[]}";
-    String autoresData = (jsonAutoresEmbutido != null && !jsonAutoresEmbutido.isBlank()) ? jsonAutoresEmbutido : "[]";
+  public static String gerarHtml() {
+    return TEMPLATE_HTML;
+  }
 
-    return TEMPLATE_HTML
-        .replace("__GRAFO_DATA__", grafoData)
-        .replace("__AUTORES_DATA__", autoresData)
-        .replace("__MODO_SERVIDOR__", String.valueOf(modoServidor));
+  public static String gerarHtml(String jsonGrafoEmbutido, String jsonAutoresEmbutido, boolean modoServidor) {
+    return TEMPLATE_HTML;
+  }
+
+  public static String gerarHtml(
+      String jsonGrafoEmbutido,
+      String jsonAutoresEmbutido,
+      String jsonStatsEmbutido,
+      String jsonTopicosEmbutido,
+      String jsonPerfisEmbutido,
+      boolean modoServidor
+  ) {
+    return TEMPLATE_HTML;
   }
 
   private static final String TEMPLATE_HTML = """
@@ -689,9 +698,10 @@ public class PaginaWebGrafoTemplate {
 
     <div class="stats-chips">
       <div class="chip">Atores no Grafo: <b id="stat-nos">0</b></div>
-      <div class="chip">Laços de Coautoria: <b id="stat-arestas">0</b></div>
-      <div class="chip">Normas Analisadas: <b>14.011</b></div>
-      <div class="chip">Tópicos c-TF-IDF: <b>8</b></div>
+      <div class="chip">Laços no Grafo: <b id="stat-arestas">0</b></div>
+      <div class="chip">Normas no Acervo: <b id="stat-normas-total">...</b></div>
+      <div class="chip">Tópicos c-TF-IDF: <b id="stat-topicos-total">...</b></div>
+      <div class="chip">Autores Cadastrados: <b id="stat-autores-total">...</b></div>
     </div>
 
     <div class="header-actions">
@@ -700,9 +710,21 @@ public class PaginaWebGrafoTemplate {
       <button class="btn btn-primary" id="btn-export-png">📷 Salvar Imagem</button>
     </div>
   </header>
-
-  <!-- Container do Grafo -->
-  <div id="rede-container"></div>
+ 
+   <!-- Banner de Status de Conexão com a API do Banco -->
+   <div id="status-conexao" style="display: none; position: absolute; top: 88px; left: 50%; transform: translateX(-50%); z-index: 100; background: rgba(220, 38, 38, 0.95); color: #fff; padding: 10px 20px; border-radius: 12px; font-size: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); backdrop-filter: blur(8px); align-items: center; gap: 12px;">
+     <span>⚠️ <b>API desconectada:</b> Para carregar os dados em tempo real do banco SQLite, inicie o servidor web com a <b>Opção 8</b> no menu do terminal (ou execute <code>./gradlew run</code>).</span>
+     <button class="btn" onclick="carregarDadosIniciais()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: #fff; cursor: pointer; padding: 4px 10px; border-radius: 6px; font-size: 11px;">🔄 Tentar reconectar</button>
+   </div>
+ 
+   <!-- Overlay de Carregamento Dinâmico -->
+   <div id="loading-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9; background: rgba(11, 15, 25, 0.7); backdrop-filter: blur(4px); align-items: center; justify-content: center; flex-direction: column; gap: 12px; pointer-events: none;">
+     <div style="font-size: 32px;">🏛️</div>
+     <div style="font-size: 13px; color: #94A3B8; font-family: var(--font-display);">Consultando dados diretamente do banco de dados...</div>
+   </div>
+ 
+   <!-- Container do Grafo -->
+   <div id="rede-container"></div>
 
   <!-- Painel de Controle (Esquerda) -->
   <div class="control-panel">
@@ -851,50 +873,141 @@ public class PaginaWebGrafoTemplate {
     </div>
   </div>
 
-  <!-- Dados Injetados -->
+  <!-- Lógica Dinâmica da Interface (Zero Dados Hardcoded) -->
   <script>
-    const DADOS_INICIAIS_GRAFO = __GRAFO_DATA__;
-    const DADOS_INICIAIS_AUTORES = __AUTORES_DATA__;
-    const MODO_SERVIDOR = __MODO_SERVIDOR__;
+    // Determina o endpoint base: relativo no servidor HTTP ou porta 8080 caso aberto localmente
+    const API_BASE = (window.location.protocol === "http:" || window.location.protocol === "https:")
+        ? ""
+        : "http://localhost:8080";
 
-    // Paleta de Cores HSL harmoniosa para cada Eixo Temático
-    const PALETA_CORES_TEMAS = {
-      "Declaração de Utilidade Pública": "#06B6D4",
-      "Bens Imóveis e Desapropriação": "#3B82F6",
-      "Datas Comemorativas e Calendário": "#F59E0B",
-      "Denominação de Vias e Logradouros": "#10B981",
-      "Serviços Públicos e Gestão Municipal": "#8B5CF6",
-      "Administração e Normas Gerais (prestados)": "#EC4899",
-      "Administração e Normas Gerais (provimento)": "#F43F5E",
-      "Educação e Cultura": "#14B8A6",
-      "Saúde e Assistência Social": "#6366F1",
-      "Geral": "#94A3B8"
-    };
+    // Paleta HSL harmoniosa atribuída dinamicamente aos eixos temáticos do banco
+    const CORES_PALETA_BASE = [
+      "#06B6D4", "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B",
+      "#10B981", "#F43F5E", "#14B8A6", "#6366F1", "#EAB308",
+      "#A855F7", "#0EA5E9", "#84CC16", "#F97316", "#059669",
+      "#D97706", "#2563EB", "#7C3AED", "#DB2777", "#475569"
+    ];
+
+    const mapaCoresTemas = new Map();
+
+    function hashString(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash);
+    }
+
+    function registrarCoresTopicos(listaTopicos) {
+      if (!Array.isArray(listaTopicos)) return;
+      listaTopicos.forEach((t, idx) => {
+        const nome = typeof t === "string" ? t : (t.nomeTopico || t.nome);
+        if (nome && !mapaCoresTemas.has(nome)) {
+          mapaCoresTemas.set(nome, CORES_PALETA_BASE[idx % CORES_PALETA_BASE.length]);
+        }
+      });
+    }
 
     function obterCorTema(tema) {
-      if (!tema) return PALETA_CORES_TEMAS["Geral"];
-      for (const [chave, cor] of Object.entries(PALETA_CORES_TEMAS)) {
-        if (tema.toLowerCase().includes(chave.toLowerCase())) return cor;
-      }
-      return PALETA_CORES_TEMAS["Geral"];
+      if (!tema || tema === "N/D" || tema === "Geral") return "#94A3B8";
+      if (mapaCoresTemas.has(tema)) return mapaCoresTemas.get(tema);
+      const cor = CORES_PALETA_BASE[hashString(tema) % CORES_PALETA_BASE.length];
+      mapaCoresTemas.set(tema, cor);
+      return cor;
     }
 
     let network = null;
     let nodesDataSet = null;
     let edgesDataSet = null;
-    let dadosGrafoAtual = DADOS_INICIAIS_GRAFO;
+    let dadosGrafoAtual = { nodes: [], links: [] };
     let autorSelecionadoId = null;
+    let catalogoTopicosBanco = [];
 
     document.addEventListener("DOMContentLoaded", () => {
-      inicializarGrafo(DADOS_INICIAIS_GRAFO);
-      popularLegenda(DADOS_INICIAIS_GRAFO);
-      popularAutoresSelect(DADOS_INICIAIS_AUTORES);
       configurarEventos();
+      carregarDadosIniciais();
     });
+
+    async function carregarDadosIniciais() {
+      exibirCarregando(true);
+      try {
+        // 1. Carrega estatísticas gerais e catálogo de tópicos direto do banco
+        await carregarEstatisticasETopicos();
+
+        // 2. Carrega o grafo de colaboração inicial direto do banco
+        const peso = document.getElementById("range-peso") ? document.getElementById("range-peso").value : 20;
+        const atores = document.getElementById("range-atores") ? document.getElementById("range-atores").value : 30;
+        await recarregarGrafo(atores, peso);
+
+        // 3. Carrega a lista de autores para os seletores de comparação
+        await carregarAutores();
+
+        ocultarAlertaConexao();
+      } catch (e) {
+        console.warn("Aviso ao carregar dados do banco:", e);
+        exibirAlertaConexao();
+      } finally {
+        exibirCarregando(false);
+      }
+    }
+
+    function exibirCarregando(visivel) {
+      const el = document.getElementById("loading-overlay");
+      if (el) el.style.display = visivel ? "flex" : "none";
+    }
+
+    function exibirAlertaConexao() {
+      const el = document.getElementById("status-conexao");
+      if (el) el.style.display = "flex";
+    }
+
+    function ocultarAlertaConexao() {
+      const el = document.getElementById("status-conexao");
+      if (el) el.style.display = "none";
+    }
+
+    async function carregarEstatisticasETopicos() {
+      const res = await fetch(`${API_BASE}/api/stats`);
+      if (!res.ok) throw new Error("Falha HTTP " + res.status);
+      const stats = await res.json();
+
+      if (stats.totalNormas != null) {
+        const el = document.getElementById("stat-normas-total");
+        if (el) el.innerText = Number(stats.totalNormas).toLocaleString("pt-BR");
+      }
+      if (stats.totalTopicos != null) {
+        const el = document.getElementById("stat-topicos-total");
+        if (el) el.innerText = Number(stats.totalTopicos).toLocaleString("pt-BR");
+      }
+      if (stats.totalAutores != null) {
+        const el = document.getElementById("stat-autores-total");
+        if (el) el.innerText = Number(stats.totalAutores).toLocaleString("pt-BR");
+      }
+
+      if (stats.topicos && Array.isArray(stats.topicos)) {
+        catalogoTopicosBanco = stats.topicos;
+        registrarCoresTopicos(stats.topicos);
+        popularLegenda(dadosGrafoAtual, stats.topicos);
+      }
+    }
+
+    async function carregarAutores() {
+      try {
+        const res = await fetch(`${API_BASE}/api/autores?limit=50`);
+        if (res.ok) {
+          const autores = await res.json();
+          popularAutoresSelect(autores);
+        }
+      } catch (e) {
+        console.warn("Erro ao carregar autores da API:", e);
+      }
+    }
 
     function inicializarGrafo(dados) {
       const container = document.getElementById("rede-container");
-      
+      if (!dados || !dados.nodes) return;
+
       const nodesArray = dados.nodes.map(n => {
         const cor = obterCorTema(n.temaDominante);
         const tamanho = Math.max(14, Math.min(42, 12 + Math.log2(Math.max(1, n.totalNormas)) * 3));
@@ -917,7 +1030,7 @@ public class PaginaWebGrafoTemplate {
         };
       });
 
-      const edgesArray = dados.links.map(l => {
+      const edgesArray = (dados.links || []).map(l => {
         const peso = l.weight || 1;
         const largura = Math.min(8, 1 + Math.log10(peso + 1) * 2.2);
         return {
@@ -978,27 +1091,75 @@ public class PaginaWebGrafoTemplate {
       });
     }
 
-    function popularLegenda(dados) {
-      const temasEncontrados = new Set();
-      dados.nodes.forEach(n => {
-        if (n.temaDominante) temasEncontrados.add(n.temaDominante);
-      });
-
+    function popularLegenda(dados, topicosBanco) {
       const container = document.getElementById("lista-legendas");
       const selectFiltro = document.getElementById("select-tema-filtro");
       container.innerHTML = "";
+      selectFiltro.innerHTML = '<option value="TODOS">Todos os Eixos Temáticos</option>';
 
-      temasEncontrados.forEach(tema => {
-        const cor = obterCorTema(tema);
+      const contagemNosPorTema = new Map();
+      if (dados && dados.nodes) {
+        dados.nodes.forEach(n => {
+          if (n.temaDominante) {
+            contagemNosPorTema.set(n.temaDominante, (contagemNosPorTema.get(n.temaDominante) || 0) + 1);
+          }
+        });
+      }
+
+      const listaParaExibir = [];
+      const nomesAdicionados = new Set();
+      const fonteTopicos = (Array.isArray(topicosBanco) && topicosBanco.length > 0)
+          ? topicosBanco
+          : catalogoTopicosBanco;
+
+      fonteTopicos.forEach(t => {
+        const nome = t.nomeTopico || t.nome;
+        if (nome && !nomesAdicionados.has(nome)) {
+          nomesAdicionados.add(nome);
+          listaParaExibir.push({
+            nome: nome,
+            totalNormasBanco: t.totalNormas != null ? t.totalNormas : (t.quantidadeNormas != null ? t.quantidadeNormas : null),
+            totalAutoresGrafo: contagemNosPorTema.get(nome) || 0
+          });
+        }
+      });
+
+      contagemNosPorTema.forEach((qtd, tema) => {
+        if (!nomesAdicionados.has(tema)) {
+          nomesAdicionados.add(tema);
+          listaParaExibir.push({
+            nome: tema,
+            totalNormasBanco: null,
+            totalAutoresGrafo: qtd
+          });
+        }
+      });
+
+      listaParaExibir.forEach(t => {
+        const cor = obterCorTema(t.nome);
         const div = document.createElement("div");
         div.className = "legend-item";
-        div.innerHTML = `<span class="color-dot" style="background: ${cor};"></span><span>${tema}</span>`;
-        div.onclick = () => destacarPorTema(tema);
+        const infoSub = t.totalNormasBanco != null
+            ? `${Number(t.totalNormasBanco).toLocaleString("pt-BR")} normas no acervo`
+            : `${t.totalAutoresGrafo} atores na rede`;
+
+        div.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; width:100%;">
+            <span class="color-dot" style="background: ${cor}; flex-shrink:0;"></span>
+            <div style="display:flex; flex-direction:column; overflow:hidden;">
+              <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;">${t.nome}</span>
+              <span style="font-size:10px; color:var(--text-muted);">${infoSub}</span>
+            </div>
+          </div>
+        `;
+        div.onclick = () => destacarPorTema(t.nome);
         container.appendChild(div);
 
         const opt = document.createElement("option");
-        opt.value = tema;
-        opt.innerText = tema;
+        opt.value = t.nome;
+        opt.innerText = t.totalNormasBanco != null
+            ? `${t.nome} (${Number(t.totalNormasBanco).toLocaleString("pt-BR")} leis)`
+            : t.nome;
         selectFiltro.appendChild(opt);
       });
     }
@@ -1009,7 +1170,7 @@ public class PaginaWebGrafoTemplate {
       sel1.innerHTML = "";
       sel2.innerHTML = "";
 
-      const lista = (autores && autores.length > 0) ? autores : dadosGrafoAtual.nodes;
+      const lista = (autores && autores.length > 0) ? autores : (dadosGrafoAtual ? dadosGrafoAtual.nodes : []);
 
       lista.forEach((a, idx) => {
         const opt1 = new Option(`${a.name} (${a.totalNormas || 0} normas)`, a.id);
@@ -1022,6 +1183,8 @@ public class PaginaWebGrafoTemplate {
     }
 
     function destacarPorTema(tema) {
+      if (!nodesDataSet || !edgesDataSet) return;
+
       if (!tema || tema === "TODOS") {
         nodesDataSet.forEach(node => {
           nodesDataSet.update({ id: node.id, opacity: 1.0 });
@@ -1046,33 +1209,46 @@ public class PaginaWebGrafoTemplate {
       const drawer = document.getElementById("author-drawer");
       drawer.classList.add("open");
 
-      // Buscar perfil detalhado
-      let perfil = null;
-      if (MODO_SERVIDOR) {
-        try {
-          const res = await fetch(`/api/perfil?id=${id}`);
-          if (res.ok) perfil = await res.json();
-        } catch (e) {
-          console.warn("Erro ao buscar API, usando dados locais", e);
-        }
+      const no = nodesDataSet ? nodesDataSet.get(id) : null;
+      if (no) {
+        document.getElementById("drawer-nome").innerText = no.dataOriginal.name;
+        document.getElementById("drawer-cargo").innerText = no.dataOriginal.cargo || "AUTOR / VEREADOR";
+        document.getElementById("stat-total-normas").innerText = no.dataOriginal.totalNormas || "0";
+        document.getElementById("stat-parceiros-total").innerText = no.dataOriginal.degree || "0";
       }
 
-      const no = nodesDataSet.get(id);
-      if (!no) return;
+      // Buscar perfil detalhado em tempo real diretamente do banco via API
+      try {
+        const res = await fetch(`${API_BASE}/api/perfil?id=${id}`);
+        if (res.ok) {
+          const perfil = await res.json();
+          renderizarDetalhesPerfil(perfil, no);
+        }
+      } catch (e) {
+        console.warn("Erro ao buscar perfil do autor via API:", e);
+      }
+    }
 
-      document.getElementById("drawer-nome").innerText = no.dataOriginal.name;
-      document.getElementById("drawer-cargo").innerText = no.dataOriginal.cargo || "AUTOR / VEREADOR";
-      document.getElementById("stat-total-normas").innerText = no.dataOriginal.totalNormas || "0";
-      document.getElementById("stat-parceiros-total").innerText = no.dataOriginal.degree || "0";
+    function renderizarDetalhesPerfil(perfil, no) {
+      if (!perfil) return;
+      if (perfil.cargoPrincipal) {
+        document.getElementById("drawer-cargo").innerText = perfil.cargoPrincipal;
+      }
+      if (perfil.perfilAtuacao) {
+        document.getElementById("stat-total-normas").innerText = perfil.perfilAtuacao.totalNormas;
+        document.getElementById("stat-taxa-coautoria").innerText = perfil.perfilAtuacao.taxaCoautoria.toFixed(1) + "%";
+      }
+      if (perfil.perfilColaboracao) {
+        document.getElementById("stat-parceiros-total").innerText = perfil.perfilColaboracao.totalParceirosDistintos;
+      }
+      if (perfil.perfilTematico) {
+        document.getElementById("stat-hhi").innerText = perfil.perfilTematico.indiceEspecializacaoHhi.toFixed(3);
+      }
 
       // Renderizar Temas
       const containerTopicos = document.getElementById("drawer-lista-topicos");
       containerTopicos.innerHTML = "";
-
-      if (perfil && perfil.perfilTematico && perfil.perfilTematico.distribuicaoTopicos) {
-        document.getElementById("stat-hhi").innerText = perfil.perfilTematico.indiceEspecializacaoHhi.toFixed(3);
-        document.getElementById("stat-taxa-coautoria").innerText = perfil.perfilAtuacao ? perfil.perfilAtuacao.taxaCoautoria.toFixed(1) + "%" : "N/D";
-
+      if (perfil.perfilTematico && perfil.perfilTematico.distribuicaoTopicos) {
         perfil.perfilTematico.distribuicaoTopicos.slice(0, 5).forEach(t => {
           containerTopicos.innerHTML += `
             <div class="topic-bar-item">
@@ -1086,50 +1262,47 @@ public class PaginaWebGrafoTemplate {
             </div>
           `;
         });
+      }
 
-        // Palavras-chave
-        const containerKeywords = document.getElementById("drawer-palavras-chave");
-        containerKeywords.innerHTML = "";
-        if (perfil.perfilTematico.termosMaisFrequentes) {
-          perfil.perfilTematico.termosMaisFrequentes.forEach(kw => {
-            containerKeywords.innerHTML += `<span class="keyword-tag">${kw}</span>`;
-          });
-        }
+      // Palavras-chave
+      const containerKeywords = document.getElementById("drawer-palavras-chave");
+      containerKeywords.innerHTML = "";
+      if (perfil.perfilTematico && perfil.perfilTematico.termosMaisFrequentes) {
+        perfil.perfilTematico.termosMaisFrequentes.forEach(kw => {
+          containerKeywords.innerHTML += `<span class="keyword-tag">${kw}</span>`;
+        });
+      }
 
-        // Parcerias
-        const containerParceiros = document.getElementById("drawer-lista-parceiros");
-        containerParceiros.innerHTML = "";
-        if (perfil.perfilColaboracao && perfil.perfilColaboracao.principaisParcerias) {
-          perfil.perfilColaboracao.principaisParcerias.slice(0, 8).forEach(p => {
-            containerParceiros.innerHTML += `
-              <div class="partner-item" onclick="focarAutor(${p.idParceiro})">
-                <div>
-                  <div class="partner-name">${p.nomeParceiro}</div>
-                  <div class="partner-cargo">${p.cargoParceiro || 'AUTOR'}</div>
-                </div>
-                <div class="partner-laws">${p.normasCompartilhadas} leis</div>
+      // Parcerias
+      const containerParceiros = document.getElementById("drawer-lista-parceiros");
+      containerParceiros.innerHTML = "";
+      if (perfil.perfilColaboracao && perfil.perfilColaboracao.principaisParcerias) {
+        perfil.perfilColaboracao.principaisParcerias.slice(0, 8).forEach(p => {
+          containerParceiros.innerHTML += `
+            <div class="partner-item" onclick="focarAutor(${p.idParceiro})">
+              <div>
+                <div class="partner-name">${p.nomeParceiro}</div>
+                <div class="partner-cargo">${p.cargoParceiro || 'AUTOR'}</div>
               </div>
-            `;
-          });
-        }
+              <div class="partner-laws">${p.normasCompartilhadas} leis</div>
+            </div>
+          `;
+        });
+      }
 
-        // Trajetória
-        const containerTimeline = document.getElementById("drawer-timeline");
-        containerTimeline.innerHTML = "";
-        if (perfil.perfilTemporal && perfil.perfilTemporal.producaoPorAno) {
-          const anos = Object.entries(perfil.perfilTemporal.producaoPorAno);
-          anos.forEach(([ano, qtd]) => {
-            containerTimeline.innerHTML += `
-              <div style="display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span>Ano <b>${ano}</b></span>
-                <span style="color:#38BDF8;">${qtd} normas</span>
-              </div>
-            `;
-          });
-        }
-      } else {
-        // Fallback quando executado apenas com dados do grafo
-        containerTopicos.innerHTML = `<div style="font-size:12px; color:#9CA3AF;">Eixo Dominante: <b>${no.dataOriginal.temaDominante}</b></div>`;
+      // Trajetória
+      const containerTimeline = document.getElementById("drawer-timeline");
+      containerTimeline.innerHTML = "";
+      if (perfil.perfilTemporal && perfil.perfilTemporal.producaoPorAno) {
+        const anos = Object.entries(perfil.perfilTemporal.producaoPorAno);
+        anos.forEach(([ano, qtd]) => {
+          containerTimeline.innerHTML += `
+            <div style="display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
+              <span>Ano <b>${ano}</b></span>
+              <span style="color:#38BDF8;">${qtd} normas</span>
+            </div>
+          `;
+        });
       }
     }
 
@@ -1169,13 +1342,13 @@ public class PaginaWebGrafoTemplate {
 
       // Zoom Controls
       document.getElementById("zoom-in").onclick = () => {
-        network.moveTo({ scale: network.getScale() * 1.3 });
+        if (network) network.moveTo({ scale: network.getScale() * 1.3 });
       };
       document.getElementById("zoom-out").onclick = () => {
-        network.moveTo({ scale: network.getScale() * 0.7 });
+        if (network) network.moveTo({ scale: network.getScale() * 0.7 });
       };
       document.getElementById("zoom-fit").onclick = () => {
-        network.fit({ animation: { duration: 500 } });
+        if (network) network.fit({ animation: { duration: 500 } });
       };
 
       // Abas
@@ -1199,7 +1372,7 @@ public class PaginaWebGrafoTemplate {
           return;
         }
 
-        const matches = nodesDataSet.get().filter(n => n.dataOriginal.name.toLowerCase().includes(termo));
+        const matches = nodesDataSet ? nodesDataSet.get().filter(n => n.dataOriginal.name.toLowerCase().includes(termo)) : [];
         if (matches.length === 0) {
           autoBox.style.display = "none";
           return;
@@ -1233,25 +1406,23 @@ public class PaginaWebGrafoTemplate {
           return;
         }
 
-        if (MODO_SERVIDOR) {
-          try {
-            const res = await fetch(`/api/comparar?id1=${id1}&id2=${id2}`);
-            if (res.ok) {
-              const dados = await res.json();
-              document.getElementById("resultado-comparacao").style.display = "block";
-              document.getElementById("comp-score-cosseno").innerText = (dados.similaridadeTematicaCosseno * 100).toFixed(1) + "%";
-              document.getElementById("comp-diagnostico").innerText = dados.diagnosticoAfinidade;
-              document.getElementById("comp-normas-conjuntas").innerText = dados.normasCompartilhadas + " normas conjuntas em coautoria";
-            }
-          } catch (e) {
-            console.error(e);
+        try {
+          const res = await fetch(`${API_BASE}/api/comparar?id1=${id1}&id2=${id2}`);
+          if (res.ok) {
+            const dados = await res.json();
+            document.getElementById("resultado-comparacao").style.display = "block";
+            document.getElementById("comp-score-cosseno").innerText = (dados.similaridadeTematicaCosseno * 100).toFixed(1) + "%";
+            document.getElementById("comp-diagnostico").innerText = dados.diagnosticoAfinidade;
+            document.getElementById("comp-normas-conjuntas").innerText = (dados.normasCompartilhadas || 0) + " normas conjuntas em coautoria";
           }
+        } catch (e) {
+          console.error("Erro na API de comparação:", e);
         }
       };
 
       // Reaquecer Física
       document.getElementById("btn-reheat").onclick = () => {
-        network.startSimulation();
+        if (network) network.startSimulation();
       };
 
       // Exportar Imagem PNG
@@ -1268,13 +1439,16 @@ public class PaginaWebGrafoTemplate {
       // Ego-Network Button
       document.getElementById("btn-ego-network").onclick = async () => {
         if (!autorSelecionadoId) return;
-        if (MODO_SERVIDOR) {
-          const res = await fetch(`/api/grafo/autor?id=${autorSelecionadoId}&minWeight=10`);
+        try {
+          const res = await fetch(`${API_BASE}/api/grafo/autor?id=${autorSelecionadoId}&minWeight=10`);
           if (res.ok) {
             const grafoEgo = await res.json();
             inicializarGrafo(grafoEgo);
+            popularLegenda(grafoEgo, catalogoTopicosBanco);
             document.getElementById("btn-reset-ego").style.display = "inline-flex";
           }
+        } catch (e) {
+          console.error("Erro ao carregar ego-network:", e);
         }
       };
 
@@ -1284,22 +1458,21 @@ public class PaginaWebGrafoTemplate {
       };
     }
 
-    async function recarregarGrafo() {
-      const peso = document.getElementById("range-peso").value;
-      const atores = document.getElementById("range-atores").value;
+    async function recarregarGrafo(atores, peso) {
+      if (!atores) atores = document.getElementById("range-atores").value;
+      if (!peso) peso = document.getElementById("range-peso").value;
 
-      if (MODO_SERVIDOR) {
-        try {
-          const res = await fetch(`/api/grafo?limit=${atores}&minWeight=${peso}`);
-          if (res.ok) {
-            const novosDados = await res.json();
-            dadosGrafoAtual = novosDados;
-            inicializarGrafo(novosDados);
-            popularLegenda(novosDados);
-          }
-        } catch (e) {
-          console.error("Erro ao recarregar via API:", e);
+      try {
+        const res = await fetch(`${API_BASE}/api/grafo?limit=${atores}&minWeight=${peso}`);
+        if (res.ok) {
+          const novosDados = await res.json();
+          dadosGrafoAtual = novosDados;
+          inicializarGrafo(novosDados);
+          popularLegenda(novosDados, catalogoTopicosBanco);
         }
+      } catch (e) {
+        console.error("Erro ao recarregar via API:", e);
+        throw e;
       }
     }
   </script>

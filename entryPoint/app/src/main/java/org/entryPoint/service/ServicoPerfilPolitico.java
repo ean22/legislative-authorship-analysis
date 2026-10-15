@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,6 +33,7 @@ import java.util.Optional;
  */
 public class ServicoPerfilPolitico {
   private final RepositorioPerfilPolitico repositorioPerfil;
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   public ServicoPerfilPolitico() {
     this(new RepositorioPerfilPolitico());
@@ -411,30 +413,23 @@ public class ServicoPerfilPolitico {
     return f;
   }
 
+  public RepositorioPerfilPolitico.EstatisticasGeraisBanco obterEstatisticasGerais() throws SQLException {
+    return repositorioPerfil.buscarEstatisticasGerais();
+  }
+
+  public List<RepositorioPerfilPolitico.TopicoEstatistica> listarTopicosBanco() throws SQLException {
+    return repositorioPerfil.listarTopicosComContagem();
+  }
+
   /**
-   * Gera uma página web completa e autocontida (HTML + CSS + JS) para visualização offline interativa do grafo.
+   * Gera uma página web completa e autocontida (HTML + CSS + JS) para visualização offline interativa do grafo
+   * com estatísticas, tópicos e perfis extraídos diretamente do banco de dados (zero dados mockados).
    */
   public File gerarPaginaWebInterativa(File destino) throws SQLException, IOException {
     if (destino.getParentFile() != null) {
       destino.getParentFile().mkdirs();
     }
-
-    var grafo = construirGrafoColaboracao(40, 15);
-    String jsonGrafo = grafo.exportarJsonD3(15);
-    var topAutores = gerarPerfisPrincipaisAutores(40);
-
-    StringBuilder jsonAutores = new StringBuilder("[");
-    for (int i = 0; i < topAutores.size(); i++) {
-      var a = topAutores.get(i);
-      String nome = a.nomeAutor() != null ? a.nomeAutor().replace("\"", "\\\"") : "";
-      String cargo = a.cargoPrincipal() != null ? a.cargoPrincipal().replace("\"", "\\\"") : "";
-      jsonAutores.append(String.format("{\"id\":%d,\"name\":\"%s\",\"cargo\":\"%s\",\"totalNormas\":%d}",
-          a.idAutor(), nome, cargo, a.perfilAtuacao().totalNormas()));
-      if (i < topAutores.size() - 1) jsonAutores.append(",");
-    }
-    jsonAutores.append("]");
-
-    String html = org.entryPoint.service.web.PaginaWebGrafoTemplate.gerarHtml(jsonGrafo, jsonAutores.toString(), false);
+    String html = org.entryPoint.service.web.PaginaWebGrafoTemplate.gerarHtml();
     try (FileWriter writer = new FileWriter(destino, StandardCharsets.UTF_8)) {
       writer.write(html);
     }

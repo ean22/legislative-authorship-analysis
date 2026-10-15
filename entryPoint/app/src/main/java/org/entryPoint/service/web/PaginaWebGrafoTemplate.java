@@ -706,6 +706,7 @@ public class PaginaWebGrafoTemplate {
 
     <div class="header-actions">
       <button class="btn" id="btn-reheat" title="Reiniciar Simulação Física">⚡ Reaquecer Física</button>
+      <button class="btn" id="btn-scatter-modal" title="Ver Dispersão de Perfis de Autores">📊 Dispersão de Perfis</button>
       <button class="btn" id="btn-comparar-modal">⚖️ Comparar Autores</button>
       <button class="btn btn-primary" id="btn-export-png">📷 Salvar Imagem</button>
     </div>
@@ -822,7 +823,12 @@ public class PaginaWebGrafoTemplate {
 
     <!-- Aba 3: Trajetória -->
     <div id="tab-trajetoria" class="tab-content">
-      <div class="section-title">Evolução Anual e Mandatos</div>
+      <div class="section-title">Produção Individual ao Longo do Tempo (Por Tema)</div>
+      <div id="drawer-stacked-bar-container" style="margin-top: 10px; margin-bottom: 14px; background: rgba(15,23,42,0.6); padding: 12px; border-radius: 8px; border: 1px solid var(--border-subtle);">
+        <div id="drawer-stacked-bar-chart" style="width: 100%; min-height: 150px;"></div>
+        <div id="drawer-chart-legend" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; font-size: 11px;"></div>
+      </div>
+      <div class="section-title" style="margin-top: 14px;">Detalhamento Anual</div>
       <div id="drawer-timeline" style="margin-top: 8px;"></div>
     </div>
 
@@ -873,6 +879,39 @@ public class PaginaWebGrafoTemplate {
     </div>
   </div>
 
+  <!-- Modal de Dispersão de Perfis de Autores (Scatter Plot: HHI vs Coautoria) -->
+  <div id="modal-scatter" class="modal-overlay">
+    <div class="modal-card" style="width: 860px; max-width: 95vw; max-height: 92vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: 18px; color: #FFFFFF;">📊 Dispersão de Perfis: Especialização (HHI) vs Coautoria</h3>
+          <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Posicionamento analítico dos autores legislativos. O eixo horizontal reflete o foco temático (HHI); o vertical reflete o grau de articulação em coautoria. Clique em um ponto para focar no autor.</p>
+        </div>
+        <button class="close-btn" id="btn-close-scatter">✕</button>
+      </div>
+
+      <!-- Filtros do Scatter Plot -->
+      <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 14px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px;">
+          <input type="text" id="scatter-busca" class="search-input" placeholder="Buscar autor no gráfico..." style="padding: 8px 12px; font-size: 12px;">
+        </div>
+        <div style="flex: 1; min-width: 220px;">
+          <select id="scatter-filtro-tema" class="select-theme" style="padding: 8px 12px; font-size: 12px;">
+            <option value="TODOS">Todos os Eixos Temáticos</option>
+          </select>
+        </div>
+        <div class="chip" id="scatter-badge-total" style="font-size: 11px;">0 autores mapeados</div>
+      </div>
+
+      <!-- SVG Canvas do Scatter Plot -->
+      <div style="position: relative; background: radial-gradient(circle at center, #0F172A 0%, #080D1A 100%); border-radius: 12px; border: 1px solid var(--border-subtle); padding: 12px; overflow: hidden;">
+        <div id="scatter-plot-svg" style="width: 100%; height: 380px;"></div>
+        <!-- Tooltip flutuante do Scatter Plot -->
+        <div id="scatter-tooltip" style="display: none; position: absolute; pointer-events: none; z-index: 50; background: rgba(15, 23, 42, 0.96); border: 1px solid #38BDF8; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #F3F4F6; box-shadow: 0 10px 25px rgba(0,0,0,0.6); backdrop-filter: blur(8px); max-width: 280px;"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Lógica Dinâmica da Interface (Zero Dados Hardcoded) -->
   <script>
     // Determina o endpoint base: relativo no servidor HTTP ou porta 8080 caso aberto localmente
@@ -880,12 +919,21 @@ public class PaginaWebGrafoTemplate {
         ? ""
         : "http://localhost:8080";
 
-    // Paleta HSL harmoniosa atribuída dinamicamente aos eixos temáticos do banco
+    // Mapeamento categórico de alto contraste para os 7 eixos temáticos oficiais
+    const CORES_TOPICOS_MAPEADOS = {
+      "Crédito Orçamentário e Finanças": "#F59E0B",      // Âmbar Dourado
+      "Declaração de Utilidade Pública": "#A855F7",      // Roxo / Púrpura
+      "Educação e Creches": "#06B6D4",                   // Ciano Elétrico
+      "Bens Imóveis e Desapropriação": "#F97316",        // Laranja Coral
+      "Serviços Públicos e Gestão Municipal": "#10B981", // Verde Esmeralda
+      "Serviços Públicos e Gestão": "#10B981",           // Variação
+      "Denominação de Vias e Logradouros": "#F43F5E",    // Rosa Choque / Carmesim
+      "Datas Comemorativas e Calendário": "#3B82F6"      // Azul Real
+    };
+
     const CORES_PALETA_BASE = [
-      "#06B6D4", "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B",
-      "#10B981", "#F43F5E", "#14B8A6", "#6366F1", "#EAB308",
-      "#A855F7", "#0EA5E9", "#84CC16", "#F97316", "#059669",
-      "#D97706", "#2563EB", "#7C3AED", "#DB2777", "#475569"
+      "#F59E0B", "#A855F7", "#06B6D4", "#F97316", "#10B981", "#F43F5E", "#3B82F6",
+      "#14B8A6", "#E11D48", "#84CC16", "#6366F1", "#EC4899", "#0EA5E9", "#EAB308"
     ];
 
     const mapaCoresTemas = new Map();
@@ -904,13 +952,18 @@ public class PaginaWebGrafoTemplate {
       listaTopicos.forEach((t, idx) => {
         const nome = typeof t === "string" ? t : (t.nomeTopico || t.nome);
         if (nome && !mapaCoresTemas.has(nome)) {
-          mapaCoresTemas.set(nome, CORES_PALETA_BASE[idx % CORES_PALETA_BASE.length]);
+          if (CORES_TOPICOS_MAPEADOS[nome]) {
+            mapaCoresTemas.set(nome, CORES_TOPICOS_MAPEADOS[nome]);
+          } else {
+            mapaCoresTemas.set(nome, CORES_PALETA_BASE[idx % CORES_PALETA_BASE.length]);
+          }
         }
       });
     }
 
     function obterCorTema(tema) {
-      if (!tema || tema === "N/D" || tema === "Geral") return "#94A3B8";
+      if (!tema || tema === "N/D" || tema === "Geral" || tema === "Indefinido") return "#94A3B8";
+      if (CORES_TOPICOS_MAPEADOS[tema]) return CORES_TOPICOS_MAPEADOS[tema];
       if (mapaCoresTemas.has(tema)) return mapaCoresTemas.get(tema);
       const cor = CORES_PALETA_BASE[hashString(tema) % CORES_PALETA_BASE.length];
       mapaCoresTemas.set(tema, cor);
@@ -1250,6 +1303,7 @@ public class PaginaWebGrafoTemplate {
       containerTopicos.innerHTML = "";
       if (perfil.perfilTematico && perfil.perfilTematico.distribuicaoTopicos) {
         perfil.perfilTematico.distribuicaoTopicos.slice(0, 5).forEach(t => {
+          const corTema = obterCorTema(t.nomeTopico);
           containerTopicos.innerHTML += `
             <div class="topic-bar-item">
               <div class="topic-bar-info">
@@ -1257,7 +1311,7 @@ public class PaginaWebGrafoTemplate {
                 <span><b>${t.percentual.toFixed(1)}%</b> (${t.quantidadeNormas})</span>
               </div>
               <div class="topic-bar-bg">
-                <div class="topic-bar-fill" style="width: ${t.percentual}%;"></div>
+                <div class="topic-bar-fill" style="width: ${t.percentual}%; background: ${corTema};"></div>
               </div>
             </div>
           `;
@@ -1290,7 +1344,9 @@ public class PaginaWebGrafoTemplate {
         });
       }
 
-      // Trajetória
+      // Trajetória (Gráfico de Barras Empilhadas por Tema + Linha do Tempo)
+      renderizarStackedBarChart(perfil.perfilTemporal);
+
       const containerTimeline = document.getElementById("drawer-timeline");
       containerTimeline.innerHTML = "";
       if (perfil.perfilTemporal && perfil.perfilTemporal.producaoPorAno) {
@@ -1398,6 +1454,13 @@ public class PaginaWebGrafoTemplate {
       document.getElementById("btn-comparar-modal").onclick = () => modal.classList.add("open");
       document.getElementById("btn-close-modal").onclick = () => modal.classList.remove("open");
 
+      // Modal Dispersão de Perfis (Scatter Plot)
+      const modalScatter = document.getElementById("modal-scatter");
+      document.getElementById("btn-scatter-modal").onclick = () => abrirModalScatter();
+      document.getElementById("btn-close-scatter").onclick = () => modalScatter.classList.remove("open");
+      document.getElementById("scatter-busca").oninput = () => desenharScatterPlot();
+      document.getElementById("scatter-filtro-tema").onchange = () => desenharScatterPlot();
+
       document.getElementById("btn-executar-comparacao").onclick = async () => {
         const id1 = document.getElementById("select-comp-autor1").value;
         const id2 = document.getElementById("select-comp-autor2").value;
@@ -1474,6 +1537,285 @@ public class PaginaWebGrafoTemplate {
         console.error("Erro ao recarregar via API:", e);
         throw e;
       }
+    }
+
+    function renderizarStackedBarChart(perfilTemporal) {
+      const container = document.getElementById("drawer-stacked-bar-chart");
+      const legendContainer = document.getElementById("drawer-chart-legend");
+      if (!container) return;
+      container.innerHTML = "";
+      if (legendContainer) legendContainer.innerHTML = "";
+
+      if (!perfilTemporal || (!perfilTemporal.temasPorAno && !perfilTemporal.producaoPorAno)) {
+        container.innerHTML = '<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:20px 0;">Sem histórico temporal de normas.</div>';
+        return;
+      }
+
+      const temasPorAno = perfilTemporal.temasPorAno || {};
+      const producaoPorAno = perfilTemporal.producaoPorAno || {};
+      const anos = Array.from(new Set([
+        ...Object.keys(temasPorAno),
+        ...Object.keys(producaoPorAno)
+      ])).map(Number).sort((a, b) => a - b);
+
+      if (anos.length === 0) {
+        container.innerHTML = '<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:20px 0;">Sem histórico temporal de normas.</div>';
+        return;
+      }
+
+      let maxQtd = 1;
+      const dadosAnos = anos.map(ano => {
+        const temas = temasPorAno[ano] || {};
+        let total = 0;
+        const segmentos = [];
+        for (const [tema, qtd] of Object.entries(temas)) {
+          total += qtd;
+          segmentos.push({ tema, qtd });
+        }
+        if (total === 0 && producaoPorAno[ano]) {
+          total = producaoPorAno[ano];
+          segmentos.push({ tema: "Geral", qtd: total });
+        }
+        if (total > maxQtd) maxQtd = total;
+        return { ano, total, segmentos };
+      });
+
+      const w = 310;
+      const h = 150;
+      const padL = 28;
+      const padR = 10;
+      const padT = 16;
+      const padB = 26;
+      const plotW = w - padL - padR;
+      const plotH = h - padT - padB;
+
+      const slotW = plotW / anos.length;
+      const barW = Math.max(8, Math.min(24, slotW * 0.72));
+
+      let svg = `<svg viewBox="0 0 ${w} ${h}" width="100%" height="100%" style="overflow:visible;">`;
+
+      [0.25, 0.5, 0.75, 1.0].forEach(frac => {
+        const y = padT + plotH * (1 - frac);
+        const val = Math.round(maxQtd * frac);
+        svg += `<line x1="${padL}" y1="${y}" x2="${w - padR}" y2="${y}" stroke="rgba(255,255,255,0.06)" stroke-dasharray="2,3"/>`;
+        svg += `<text x="${padL - 4}" y="${y + 3}" text-anchor="end" font-size="8" fill="#64748B">${val}</text>`;
+      });
+
+      svg += `<line x1="${padL}" y1="${padT + plotH}" x2="${w - padR}" y2="${padT + plotH}" stroke="rgba(255,255,255,0.15)"/>`;
+
+      const temasPresentes = new Set();
+
+      dadosAnos.forEach((d, i) => {
+        const x = padL + i * slotW + (slotW - barW) / 2;
+        let currY = padT + plotH;
+
+        d.segmentos.forEach(seg => {
+          temasPresentes.add(seg.tema);
+          const segH = maxQtd > 0 ? (seg.qtd / maxQtd) * plotH : 0;
+          currY -= segH;
+          const cor = obterCorTema(seg.tema);
+          svg += `
+            <rect x="${x}" y="${currY}" width="${barW}" height="${Math.max(1, segH)}" fill="${cor}" rx="1.5">
+              <title>${d.ano} • ${seg.tema}: ${seg.qtd} norma(s)</title>
+            </rect>
+          `;
+        });
+
+        if (d.total > 0) {
+          svg += `<text x="${x + barW/2}" y="${currY - 3}" text-anchor="middle" font-size="8" font-weight="600" fill="#E2E8F0">${d.total}</text>`;
+        }
+
+        const anoCurto = String(d.ano).length === 4 ? "'" + String(d.ano).slice(2) : String(d.ano);
+        svg += `<text x="${x + barW/2}" y="${h - 8}" text-anchor="middle" font-size="8.5" fill="#94A3B8">${anoCurto}</text>`;
+      });
+
+      svg += `</svg>`;
+      container.innerHTML = svg;
+
+      if (legendContainer && temasPresentes.size > 0) {
+        temasPresentes.forEach(tema => {
+          const cor = obterCorTema(tema);
+          legendContainer.innerHTML += `
+            <div style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:#CBD5E1;">
+              <span style="width:8px; height:8px; border-radius:2px; background:${cor}; display:inline-block;"></span>
+              <span>${tema}</span>
+            </div>
+          `;
+        });
+      }
+    }
+
+    let cacheAutoresScatter = [];
+
+    async function abrirModalScatter() {
+      const modal = document.getElementById("modal-scatter");
+      modal.classList.add("open");
+
+      if (cacheAutoresScatter.length === 0) {
+        try {
+          const res = await fetch(`${API_BASE}/api/autores?limit=60`);
+          if (res.ok) {
+            cacheAutoresScatter = await res.json();
+          }
+        } catch (e) {
+          console.warn("Erro ao buscar autores para scatter plot:", e);
+        }
+      }
+
+      const selectFiltro = document.getElementById("scatter-filtro-tema");
+      if (selectFiltro && selectFiltro.options.length <= 1) {
+        const temasSet = new Set(cacheAutoresScatter.map(a => a.temaDominante).filter(Boolean));
+        temasSet.forEach(t => {
+          const opt = document.createElement("option");
+          opt.value = t;
+          opt.innerText = t;
+          selectFiltro.appendChild(opt);
+        });
+      }
+
+      desenharScatterPlot();
+    }
+
+    function desenharScatterPlot() {
+      const container = document.getElementById("scatter-plot-svg");
+      const tooltip = document.getElementById("scatter-tooltip");
+      const buscaInput = document.getElementById("scatter-busca");
+      const filtroTemaInput = document.getElementById("scatter-filtro-tema");
+      const termoBusca = (buscaInput ? buscaInput.value : "").trim().toLowerCase();
+      const temaFiltro = filtroTemaInput ? filtroTemaInput.value : "TODOS";
+
+      if (!container) return;
+
+      const autoresFiltrados = cacheAutoresScatter.filter(a => {
+        const matchNome = !termoBusca || (a.name && a.name.toLowerCase().includes(termoBusca));
+        const matchTema = temaFiltro === "TODOS" || a.temaDominante === temaFiltro;
+        return matchNome && matchTema;
+      });
+
+      const badge = document.getElementById("scatter-badge-total");
+      if (badge) badge.innerText = `${autoresFiltrados.length} autores mapeados`;
+
+      const w = 780;
+      const h = 380;
+      const padL = 50;
+      const padR = 25;
+      const padT = 25;
+      const padB = 45;
+      const plotW = w - padL - padR;
+      const plotH = h - padT - padB;
+
+      const xThreshold = padL + 0.35 * plotW;
+      const yThreshold = padT + (1 - 0.40) * plotH;
+
+      let svg = `<svg viewBox="0 0 ${w} ${h}" width="100%" height="100%" style="overflow:visible;">`;
+
+      // Linhas dos quadrantes
+      svg += `<line x1="${xThreshold}" y1="${padT}" x2="${xThreshold}" y2="${padT + plotH}" stroke="rgba(255,255,255,0.12)" stroke-dasharray="4,4"/>`;
+      svg += `<line x1="${padL}" y1="${yThreshold}" x2="${w - padR}" y2="${yThreshold}" stroke="rgba(255,255,255,0.12)" stroke-dasharray="4,4"/>`;
+
+      // Nomes dos quadrantes sutis
+      svg += `<text x="${padL + 10}" y="${padT + 18}" font-size="10" fill="rgba(148,163,184,0.35)" font-weight="600">Articulador Transversal (Liderança / Amplo Espectro)</text>`;
+      svg += `<text x="${w - padR - 10}" y="${padT + 18}" text-anchor="end" font-size="10" fill="rgba(148,163,184,0.35)" font-weight="600">Articulador Especialista (Comissões Temáticas)</text>`;
+      svg += `<text x="${padL + 10}" y="${padT + plotH - 10}" font-size="10" fill="rgba(148,163,184,0.35)" font-weight="600">Propositor Isolado Generalista</text>`;
+      svg += `<text x="${w - padR - 10}" y="${padT + plotH - 10}" text-anchor="end" font-size="10" fill="rgba(148,163,184,0.35)" font-weight="600">Propositor Isolado Especialista</text>`;
+
+      // Ticks Y (Coautoria 0% a 100%)
+      [0, 25, 50, 75, 100].forEach(val => {
+        const y = padT + plotH * (1 - val / 100);
+        svg += `<line x1="${padL}" y1="${y}" x2="${w - padR}" y2="${y}" stroke="rgba(255,255,255,0.05)"/>`;
+        svg += `<text x="${padL - 8}" y="${y + 3.5}" text-anchor="end" font-size="9" fill="#64748B">${val}%</text>`;
+      });
+
+      // Ticks X (HHI 0.0 a 1.0)
+      [0.0, 0.25, 0.50, 0.75, 1.0].forEach(val => {
+        const x = padL + val * plotW;
+        svg += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT + plotH}" stroke="rgba(255,255,255,0.05)"/>`;
+        svg += `<text x="${x}" y="${padT + plotH + 16}" text-anchor="middle" font-size="9" fill="#64748B">${val.toFixed(2)}</text>`;
+      });
+
+      // Títulos dos eixos
+      svg += `<text x="${padL + plotW/2}" y="${h - 8}" text-anchor="middle" font-size="10" font-weight="600" fill="#94A3B8">Grau de Especialização Temática (HHI: 0 = Generalista → 1 = Hiper-especializado)</text>`;
+      svg += `<text transform="rotate(-90)" x="${-(padT + plotH/2)}" y="16" text-anchor="middle" font-size="10" font-weight="600" fill="#94A3B8">Taxa de Coautoria (%) →</text>`;
+
+      // Pontos dos autores
+      autoresFiltrados.forEach((a, idx) => {
+        const hhiVal = typeof a.hhi === "number" ? a.hhi : 0.2;
+        const coautVal = typeof a.taxaCoautoria === "number" ? a.taxaCoautoria : 0;
+        const cx = padL + Math.max(0, Math.min(1, hhiVal)) * plotW;
+        const cy = padT + (1.0 - Math.max(0, Math.min(100, coautVal)) / 100.0) * plotH;
+        const r = Math.max(5.5, Math.min(18, 4.5 + Math.sqrt(Math.max(1, a.totalNormas)) * 0.45));
+        const cor = obterCorTema(a.temaDominante);
+
+        svg += `
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="${cor}" fill-opacity="0.85" stroke="#FFFFFF" stroke-width="1.4"
+                  style="cursor:pointer; transition: transform 0.2s, fill-opacity 0.2s;"
+                  data-idx="${idx}">
+          </circle>
+        `;
+      });
+
+      svg += `</svg>`;
+      container.innerHTML = svg;
+
+      container.querySelectorAll("circle").forEach(circ => {
+        const idx = parseInt(circ.getAttribute("data-idx"));
+        const autor = autoresFiltrados[idx];
+        if (!autor) return;
+
+        circ.onmouseenter = e => {
+          circ.setAttribute("fill-opacity", "1");
+          circ.setAttribute("stroke", "#38BDF8");
+          circ.setAttribute("stroke-width", "2.5");
+
+          const cor = obterCorTema(autor.temaDominante);
+          tooltip.innerHTML = `
+            <div style="font-weight:700; color:#FFFFFF; font-size:12.5px; margin-bottom:2px;">${autor.name}</div>
+            <div style="font-size:11px; color:#94A3B8; margin-bottom:6px;">${autor.cargo || 'Autor'}</div>
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+              <span style="width:9px; height:9px; border-radius:2px; background:${cor}; display:inline-block;"></span>
+              <span style="font-size:11px; color:#F1F5F9; font-weight:500;">${autor.temaDominante}</span>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:11px; color:#94A3B8; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px;">
+              <div>Normas: <b style="color:#F3F4F6;">${autor.totalNormas}</b></div>
+              <div>Coautoria: <b style="color:#38BDF8;">${(autor.taxaCoautoria || 0).toFixed(1)}%</b></div>
+              <div style="grid-column: span 2;">Especialização (HHI): <b style="color:#A855F7;">${(autor.hhi || 0).toFixed(3)}</b></div>
+            </div>
+          `;
+
+          const rect = container.getBoundingClientRect();
+          let left = e.clientX - rect.left + 15;
+          let top = e.clientY - rect.top - 20;
+          if (left + 260 > rect.width) left = left - 280;
+          if (top + 130 > rect.height) top = top - 110;
+
+          tooltip.style.left = `${left}px`;
+          tooltip.style.top = `${top}px`;
+          tooltip.style.display = "block";
+        };
+
+        circ.onmousemove = e => {
+          const rect = container.getBoundingClientRect();
+          let left = e.clientX - rect.left + 15;
+          let top = e.clientY - rect.top - 20;
+          if (left + 260 > rect.width) left = left - 280;
+          if (top + 130 > rect.height) top = top - 110;
+          tooltip.style.left = `${left}px`;
+          tooltip.style.top = `${top}px`;
+        };
+
+        circ.onmouseleave = () => {
+          circ.setAttribute("fill-opacity", "0.85");
+          circ.setAttribute("stroke", "#FFFFFF");
+          circ.setAttribute("stroke-width", "1.4");
+          tooltip.style.display = "none";
+        };
+
+        circ.onclick = () => {
+          document.getElementById("modal-scatter").classList.remove("open");
+          tooltip.style.display = "none";
+          focarAutor(autor.id);
+        };
+      });
     }
   </script>
 </body>

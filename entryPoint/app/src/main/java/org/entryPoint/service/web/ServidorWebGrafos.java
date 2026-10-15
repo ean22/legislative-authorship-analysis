@@ -234,16 +234,18 @@ public class ServidorWebGrafos {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
       Map<String, String> params = extrairParametros(exchange.getRequestURI());
-      int limite = parseOrDefault(params.get("limit"), 40);
+      int limite = parseOrDefault(params.get("limit"), 60);
 
       try {
         var perfis = servicoPerfil.gerarPerfisPrincipaisAutores(limite);
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < perfis.size(); i++) {
           var p = perfis.get(i);
-          sb.append(String.format("{\"id\":%d,\"name\":\"%s\",\"cargo\":\"%s\",\"totalNormas\":%d,\"temaDominante\":\"%s\"}",
+          sb.append(String.format(java.util.Locale.US,
+              "{\"id\":%d,\"name\":\"%s\",\"cargo\":\"%s\",\"totalNormas\":%d,\"temaDominante\":\"%s\",\"hhi\":%.4f,\"taxaCoautoria\":%.2f}",
               p.idAutor(), escapar(p.nomeAutor()), escapar(p.cargoPrincipal()),
-              p.perfilAtuacao().totalNormas(), escapar(p.perfilTematico().topicoDominante())));
+              p.perfilAtuacao().totalNormas(), escapar(p.perfilTematico().topicoDominante()),
+              p.perfilTematico().indiceEspecializacaoHhi(), p.perfilAtuacao().taxaCoautoria()));
           if (i < perfis.size() - 1) sb.append(",");
         }
         sb.append("]");

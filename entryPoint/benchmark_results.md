@@ -1,6 +1,6 @@
 # Relatório Experimental de Benchmark: Modelagem de Tópicos e Autoria Legislativa
 
-- **Data da Execução:** 2026-10-15 13:24:34
+- **Data da Execução:** 2026-10-15 13:50:01
 - **Corpus Analisado:** 300 normas legislativas
 - **Total de Configurações Comparadas:** 10 experimentos
 - **Baseline:** Baseline: TF-IDF + NMF (K=12) (Score: 0.543)

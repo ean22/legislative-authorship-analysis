@@ -234,7 +234,7 @@ public class MenuPrincipal {
       System.out.println("5. Executar e Auditar NMF (Baseline Comparativo: Matrizes W e H, Coerência e Diversidade)");
       System.out.println("6. Auditoria de Classificações no Banco (Volumetria, % e Confiança por Tópico)");
       System.out.println("7. Inspecionar Amostra de Normas por Tópico (Validação Humana de Ementas Reais)");
-      System.out.printf("8. Configurar Estratégia de Rotulação de Tópicos [Ativa: %s]%n", org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.getModoAtivo().name());
+      System.out.println("8. Informações da Estratégia de Rotulação de Tópicos (LLM Gemini + Fallback Regras Léxicas)");
       System.out.println("0. Voltar ao Menu Principal");
       System.out.print("Escolha uma opção: ");
 
@@ -368,24 +368,18 @@ public class MenuPrincipal {
           break;
 
         case 8:
-          System.out.println("\nEscolha a estratégia para rotular os tópicos descobertos:");
-          System.out.println("1. Alternativa 1: LLM Google Gemini (Prompt em Lote com Raciocínio Semântico Contextual)");
-          System.out.println("2. Alternativa 2: Híbrido (Regras Léxicas + Embeddings Semânticos e Cosseno)");
-          System.out.println("3. Regras Léxicas Tradicionais (Dicionário Fixo + Posicional)");
-          System.out.print("Escolha uma opção: ");
-          String opEstrat = sc.nextLine().trim();
-          if ("1".equals(opEstrat)) {
-            org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.setModoAtivo(org.entryPoint.benchmark.algoritmos.ModoInferidorTema.LLM_GEMINI);
-            System.out.println("Estratégia ativada: " + org.entryPoint.benchmark.algoritmos.ModoInferidorTema.LLM_GEMINI.getDescricao());
-          } else if ("2".equals(opEstrat)) {
-            org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.setModoAtivo(org.entryPoint.benchmark.algoritmos.ModoInferidorTema.HIBRIDO_EMBEDDINGS);
-            System.out.println("Estratégia ativada: " + org.entryPoint.benchmark.algoritmos.ModoInferidorTema.HIBRIDO_EMBEDDINGS.getDescricao());
-          } else if ("3".equals(opEstrat)) {
-            org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.setModoAtivo(org.entryPoint.benchmark.algoritmos.ModoInferidorTema.REGRAS_LEXICAS);
-            System.out.println("Estratégia ativada: " + org.entryPoint.benchmark.algoritmos.ModoInferidorTema.REGRAS_LEXICAS.getDescricao());
-          } else {
-            System.out.println("Opção inválida. Mantida: " + org.entryPoint.benchmark.algoritmos.InferidorRotuloTema.getModoAtivo().getDescricao());
-          }
+          System.out.println("\n" + "=".repeat(85));
+          System.out.println("   ESTRATÉGIA UNIFICADA DE ROTULAÇÃO DE TÓPICOS");
+          System.out.println("=".repeat(85));
+          System.out.println("O sistema utiliza um fluxo único e resiliente:");
+          System.out.println("  1. Primário: LLM Google Gemini (raciocínio semântico contextual em lote)");
+          System.out.println("  2. Fallback Automático: Regras Léxicas e Posição (ativado se GEMINI_API_KEY ausente ou erro)");
+          pularLinha();
+          boolean geminiOk = new org.entryPoint.service.agent.AgenteGemini().isConfigurado();
+          System.out.printf("Status da Chave GEMINI_API_KEY: %s%n",
+              geminiOk ? "[CONFIGURADA] LLM Google Gemini ativo para rotulação semântica."
+                       : "[NÃO CONFIGURADA] O sistema usará automaticamente o fallback de Regras Léxicas.");
+          System.out.println("Sempre que o Topic Modeling for executado, o prompt avisa qual estratégia foi usada e o motivo.");
           pularLinha();
           break;
 

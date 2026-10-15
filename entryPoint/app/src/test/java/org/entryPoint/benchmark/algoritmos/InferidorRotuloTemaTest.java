@@ -91,7 +91,7 @@ public class InferidorRotuloTemaTest {
   @Test
   void testLlmFallbackTransparenteQuandoSemChave() {
     // Se GEMINI_API_KEY não estiver configurada no ambiente de testes,
-    // o fluxo LLM deve alternar transparentemente para o Híbrido sem lançar exceção
+    // o fluxo LLM deve alternar transparentemente para o fallback de REGRAS_LEXICAS sem lançar exceção
     List<List<String>> clusters = List.of(
         List.of("crédito", "suplementar", "adicional", "orçamento")
     );
@@ -102,6 +102,21 @@ public class InferidorRotuloTemaTest {
   }
 
   @Test
+  void testFluxoUnificadoPadrao() {
+    List<List<String>> clusters = List.of(
+        List.of("crédito", "suplementar", "adicional"),
+        List.of("denomina", "logradouro", "praça"),
+        List.of("educação", "infantil", "creche")
+    );
+    // Chamada sem modo explícito: utiliza modoAtivo padrão (LLM_GEMINI com fallback REGRAS_LEXICAS)
+    List<String> rotulos = InferidorRotuloTema.inferirRotulosEmLote(clusters);
+    assertEquals(3, rotulos.size());
+    assertEquals("Crédito Orçamentário e Finanças", rotulos.get(0));
+    assertEquals("Denominação de Vias e Logradouros", rotulos.get(1));
+    assertEquals("Educação e Creches", rotulos.get(2));
+  }
+
+  @Test
   void testClustersVaziosIgnoradosSemFalhas() {
     List<List<String>> clustersComVazios = List.of(
         List.of("crédito", "suplementar"),
@@ -109,7 +124,7 @@ public class InferidorRotuloTemaTest {
         List.of("utilidade", "pública")
     );
 
-    List<String> rotulos = InferidorRotuloTema.inferirRotulosEmLote(clustersComVazios, ModoInferidorTema.HIBRIDO_EMBEDDINGS);
+    List<String> rotulos = InferidorRotuloTema.inferirRotulosEmLote(clustersComVazios);
     assertEquals(3, rotulos.size());
     assertEquals("Crédito Orçamentário e Finanças", rotulos.get(0));
     assertEquals("Tópico Geral / Indefinido", rotulos.get(1));

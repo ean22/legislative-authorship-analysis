@@ -8,11 +8,12 @@ import org.entryPoint.service.agent.AgenteGemini;
  * Utilitário para inferência de rótulos temáticos legíveis por humanos
  * a partir dos termos mais salientes de cada cluster legislativo.
  *
- * Suporta três fluxos operacionais:
- * 1. REGRAS_LEXICAS: Dicionário fixo com pesos forte/médio e decaimento posicional.
- * 2. LLM_GEMINI (Alternativa 1): Inferência semântica contextual em lote via Google Gemini.
- * 3. HIBRIDO_EMBEDDINGS (Alternativa 2): Regras léxicas prioritárias + fallback/desempate
- *    por Embeddings Semânticos e Similaridade de Cosseno.
+ * Adota um fluxo operacional único e resiliente:
+ * - Principal: LLM_GEMINI (Inferência semântica contextual em lote via Google Gemini).
+ * - Fallback: REGRAS_LEXICAS (Dicionário com pesos forte/médio e decaimento posicional),
+ *   acionado automaticamente se a chave não estiver configurada ou a API falhar.
+ *
+ * Sempre avisa no console/prompt qual estratégia foi utilizada e o motivo.
  */
 public class InferidorRotuloTema {
 
@@ -94,7 +95,7 @@ public class InferidorRotuloTema {
       )
   );
 
-  private static volatile ModoInferidorTema modoAtivo = ModoInferidorTema.HIBRIDO_EMBEDDINGS;
+  private static volatile ModoInferidorTema modoAtivo = ModoInferidorTema.LLM_GEMINI;
   private static final Map<String, double[]> CACHE_EMBEDDINGS_LOCAIS = new ConcurrentHashMap<>();
   private static final Map<String, double[]> CACHE_EMBEDDINGS_GEMINI = new ConcurrentHashMap<>();
 
@@ -113,18 +114,19 @@ public class InferidorRotuloTema {
   }
 
   // =========================================================================
-  // PONTO DE ENTRADA PRINCIPAL (EM LOTE)
+  // PONTO DE ENTRADA PRINCIPAL (FLUXO ÚNICO RESILIENTE)
   // =========================================================================
 
   /**
-   * Infere rótulos para uma lista de clusters em lote, despachando para a estratégia ativa.
+   * Infere rótulos para uma lista de clusters em lote utilizando o fluxo unificado
+   * LLM_GEMINI com fallback transparente para REGRAS_LEXICAS.
    */
   public static List<String> inferirRotulosEmLote(List<List<String>> topPalavrasPorCluster) {
     return inferirRotulosEmLote(topPalavrasPorCluster, modoAtivo);
   }
 
   /**
-   * Infere rótulos para uma lista de clusters em lote com modo explícito.
+   * Infere rótulos para uma lista de clusters em lote despachando para a estratégia solicitada.
    */
   public static List<String> inferirRotulosEmLote(List<List<String>> topPalavrasPorCluster, ModoInferidorTema modo) {
     if (topPalavrasPorCluster == null || topPalavrasPorCluster.isEmpty()) {
@@ -134,15 +136,21 @@ public class InferidorRotuloTema {
     ModoInferidorTema estrategia = modo != null ? modo : modoAtivo;
     return switch (estrategia) {
       case LLM_GEMINI -> inferirRotulosViaLlm(topPalavrasPorCluster);
-      case HIBRIDO_EMBEDDINGS -> inferirRotulosHibridoEmbeddingsEmLote(topPalavrasPorCluster);
-      case REGRAS_LEXICAS -> topPalavrasPorCluster.stream()
-          .map(InferidorRotuloTema::inferirRotuloViaRegras)
-          .toList();
+      case REGRAS_LEXICAS -> {
+        System.out.println("[InferidorRotuloTema] Estratégia utilizada: REGRAS_LEXICAS");
+        System.out.println("[InferidorRotuloTema] Motivo: Modo configurado explicitamente para Regras Léxicas e Posição.");
+        yield inferirRotulosViaRegrasEmLote(topPalavrasPorCluster);
+      }
+      case HIBRIDO_EMBEDDINGS -> {
+        System.out.println("[InferidorRotuloTema] Estratégia utilizada: HIBRIDO_EMBEDDINGS");
+        System.out.println("[InferidorRotuloTema] Motivo: Modo configurado explicitamente para Regras Léxicas + Embeddings.");
+        yield inferirRotulosHibridoEmbeddingsEmLote(topPalavrasPorCluster);
+      }
     };
   }
 
   /**
-   * Ponto de entrada compatível com chamadas individuais (delega ao modo ativo).
+   * Ponto de entrada compatível com chamadas individuais (delega ao fluxo unificado).
    */
   public static String inferirRotuloTema(List<String> topPalavras) {
     return inferirRotuloTema(topPalavras, modoAtivo);
@@ -157,20 +165,21 @@ public class InferidorRotuloTema {
     return switch (estrategia) {
       case LLM_GEMINI -> {
         var lote = inferirRotulosViaLlm(List.of(topPalavras));
-        yield lote.isEmpty() ? inferirRotuloHibridoEmbeddings(topPalavras) : lote.get(0);
+        yield lote.isEmpty() ? inferirRotuloViaRegras(topPalavras) : lote.get(0);
       }
-      case HIBRIDO_EMBEDDINGS -> inferirRotuloHibridoEmbeddings(topPalavras);
       case REGRAS_LEXICAS -> inferirRotuloViaRegras(topPalavras);
+      case HIBRIDO_EMBEDDINGS -> inferirRotuloHibridoEmbeddings(topPalavras);
     };
   }
 
   // =========================================================================
-  // FLUXO 1 (ALTERNATIVA 1): ROTULAÇÃO VIA LLM GOOGLE GEMINI
+  // FLUXO PRINCIPAL UNIFICADO: LLM GOOGLE GEMINI COM FALLBACK PARA REGRAS LÉXICAS
   // =========================================================================
 
   /**
-   * Alternativa 1: Envia as palavras-chave de todos os clusters em lote para o Agente Gemini.
-   * Se a chave API não estiver configurada ou a chamada falhar, recorre de forma transparente ao fluxo Híbrido.
+   * Fluxo Único: Envia as palavras-chave de todos os clusters em lote para o Agente Gemini.
+   * Se a chave API não estiver configurada ou a chamada falhar, recorre de forma transparente ao
+   * fallback de Regras Léxicas, informando no console/prompt a estratégia escolhida e o motivo.
    */
   public static List<String> inferirRotulosViaLlm(List<List<String>> topPalavrasPorCluster) {
     if (topPalavrasPorCluster == null || topPalavrasPorCluster.isEmpty()) {
@@ -179,12 +188,14 @@ public class InferidorRotuloTema {
 
     AgenteGemini agente = new AgenteGemini();
     if (!agente.isConfigurado()) {
-      System.out.println("[InferidorRotuloTema] GEMINI_API_KEY não configurada. Alternando automaticamente para Alternativa 2 (Híbrido Embeddings)...");
-      return inferirRotulosHibridoEmbeddingsEmLote(topPalavrasPorCluster);
+      System.out.println("[InferidorRotuloTema] Estratégia utilizada: REGRAS_LEXICAS (Fallback)");
+      System.out.println("[InferidorRotuloTema] Motivo: Variável GEMINI_API_KEY não configurada no ambiente. Recorrendo automaticamente a Regras Léxicas e Posição.");
+      return inferirRotulosViaRegrasEmLote(topPalavrasPorCluster);
     }
 
     try {
-      System.out.printf("[InferidorRotuloTema] Classificando %d tópicos com LLM %s em lote...%n",
+      System.out.println("[InferidorRotuloTema] Estratégia utilizada: LLM_GEMINI (Google Gemini)");
+      System.out.printf("[InferidorRotuloTema] Motivo: GEMINI_API_KEY configurada. Processando %d tópicos com raciocínio semântico contextual via %s...%n",
           topPalavrasPorCluster.size(), agente.getNome());
 
       Map<Integer, List<String>> mapaTopicos = new LinkedHashMap<>();
@@ -201,6 +212,9 @@ public class InferidorRotuloTema {
           : agente.classificarTopicosTematicos(mapaTopicos, nomesSugeridos);
 
       List<String> resultado = new ArrayList<>(topPalavrasPorCluster.size());
+      int rotuladosGemini = 0;
+      int rotuladosFallback = 0;
+
       for (int i = 0; i < topPalavrasPorCluster.size(); i++) {
         int id = i + 1;
         var palavras = topPalavrasPorCluster.get(i);
@@ -210,15 +224,36 @@ public class InferidorRotuloTema {
         }
         String rotulo = mapaClassificado.get(id);
         if (rotulo == null || rotulo.isBlank()) {
-          rotulo = inferirRotuloHibridoEmbeddings(palavras);
+          System.out.printf("[InferidorRotuloTema] Cluster #%d: Rótulo inferido via REGRAS_LEXICAS (Fallback). Motivo: LLM Gemini não retornou rótulo para o cluster.%n", id);
+          rotulo = inferirRotuloViaRegras(palavras);
+          rotuladosFallback++;
+        } else {
+          rotuladosGemini++;
         }
         resultado.add(rotulo);
       }
+
+      System.out.printf("[InferidorRotuloTema] Concluído: %d tópicos rotulados via LLM Gemini (%d recorreram ao fallback de Regras Léxicas).%n",
+          rotuladosGemini, rotuladosFallback);
+
       return resultado;
     } catch (Exception e) {
-      System.err.println("[InferidorRotuloTema] Erro na chamada ao Gemini (" + e.getMessage() + "). Recorrendo ao fluxo Híbrido...");
-      return inferirRotulosHibridoEmbeddingsEmLote(topPalavrasPorCluster);
+      System.err.println("[InferidorRotuloTema] Estratégia utilizada: REGRAS_LEXICAS (Fallback)");
+      System.err.printf("[InferidorRotuloTema] Motivo: Falha na chamada da API Gemini (%s). Recorrendo ao fallback de Regras Léxicas.%n", e.getMessage());
+      return inferirRotulosViaRegrasEmLote(topPalavrasPorCluster);
     }
+  }
+
+  /**
+   * Processa uma lista de clusters aplicando diretamente as regras léxicas com decaimento posicional.
+   */
+  public static List<String> inferirRotulosViaRegrasEmLote(List<List<String>> topPalavrasPorCluster) {
+    if (topPalavrasPorCluster == null || topPalavrasPorCluster.isEmpty()) {
+      return List.of();
+    }
+    return topPalavrasPorCluster.stream()
+        .map(p -> (p == null || p.isEmpty()) ? "Tópico Geral / Indefinido" : inferirRotuloViaRegras(p))
+        .toList();
   }
 
   // =========================================================================

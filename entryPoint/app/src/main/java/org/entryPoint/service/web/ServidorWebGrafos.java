@@ -141,11 +141,12 @@ public class ServidorWebGrafos {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
       Map<String, String> params = extrairParametros(exchange.getRequestURI());
-      int limite = parseOrDefault(params.get("limit"), 30);
+      int minRank = parseOrDefault(params.get("minRank"), 1);
+      int maxRank = parseOrDefault(params.get("maxRank"), parseOrDefault(params.get("limit"), 40));
       int pesoMin = parseOrDefault(params.get("minWeight"), 20);
 
       try {
-        GrafoColaboracaoPolitica grafo = servicoPerfil.construirGrafoColaboracao(limite, pesoMin);
+        GrafoColaboracaoPolitica grafo = servicoPerfil.construirGrafoColaboracao(minRank, maxRank, pesoMin);
         String json = grafo.exportarJsonD3(pesoMin);
         enviarResposta(exchange, 200, "application/json; charset=UTF-8", json);
       } catch (SQLException e) {
@@ -234,18 +235,42 @@ public class ServidorWebGrafos {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
       Map<String, String> params = extrairParametros(exchange.getRequestURI());
-      int limite = parseOrDefault(params.get("limit"), 60);
+      int limite = parseOrDefault(params.get("limit"), 80);
 
       try {
         var perfis = servicoPerfil.gerarPerfisPrincipaisAutores(limite);
+        var stats = servicoPerfil.obterEstatisticasGerais();
+        Map<String, Double> vetorGlobal = new HashMap<>();
+        if (stats.topicos() != null) {
+          for (var t : stats.topicos()) {
+            vetorGlobal.put(t.nome(), (double) t.totalNormas());
+          }
+        }
+        double normaGlobal = 0.0;
+        for (double v : vetorGlobal.values()) normaGlobal += (v * v);
+        double sqrtNormaGlobal = Math.sqrt(normaGlobal);
+
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < perfis.size(); i++) {
           var p = perfis.get(i);
+          double produto = 0.0;
+          double normaP = 0.0;
+          for (var dt : p.perfilTematico().distribuicaoTopicos()) {
+            double vP = dt.percentual();
+            normaP += (vP * vP);
+            double vG = vetorGlobal.getOrDefault(dt.nomeTopico(), 0.0);
+            produto += (vP * vG);
+          }
+          double simCosseno = (normaP > 0 && sqrtNormaGlobal > 0)
+              ? (produto / (Math.sqrt(normaP) * sqrtNormaGlobal))
+              : 0.0;
+
           sb.append(String.format(java.util.Locale.US,
-              "{\"id\":%d,\"name\":\"%s\",\"cargo\":\"%s\",\"totalNormas\":%d,\"temaDominante\":\"%s\",\"hhi\":%.4f,\"taxaCoautoria\":%.2f}",
+              "{\"id\":%d,\"name\":\"%s\",\"cargo\":\"%s\",\"totalNormas\":%d,\"temaDominante\":\"%s\",\"hhi\":%.4f,\"taxaCoautoria\":%.2f,\"cosseno\":%.4f}",
               p.idAutor(), escapar(p.nomeAutor()), escapar(p.cargoPrincipal()),
               p.perfilAtuacao().totalNormas(), escapar(p.perfilTematico().topicoDominante()),
-              p.perfilTematico().indiceEspecializacaoHhi(), p.perfilAtuacao().taxaCoautoria()));
+              p.perfilTematico().indiceEspecializacaoHhi(), p.perfilAtuacao().taxaCoautoria(),
+              simCosseno));
           if (i < perfis.size() - 1) sb.append(",");
         }
         sb.append("]");

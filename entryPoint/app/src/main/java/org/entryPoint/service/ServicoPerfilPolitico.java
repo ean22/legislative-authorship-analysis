@@ -203,7 +203,18 @@ public class ServicoPerfilPolitico {
    * Constrói a Rede/Grafo Global de Colaboração Política e Coautoria.
    */
   public GrafoColaboracaoPolitica construirGrafoColaboracao(int limiteAutores, int pesoMinimoAresta) throws SQLException {
-    var maisProlificos = repositorioPerfil.listarAutoresMaisProlificos(limiteAutores > 0 ? limiteAutores : 35);
+    return construirGrafoColaboracao(1, limiteAutores, pesoMinimoAresta);
+  }
+
+  /**
+   * Constrói a Rede/Grafo Global de Colaboração Política e Coautoria dentro de uma faixa de autores (minRank a maxRank).
+   */
+  public GrafoColaboracaoPolitica construirGrafoColaboracao(int minRank, int maxRank, int pesoMinimoAresta) throws SQLException {
+    int maxLimit = Math.max(1, maxRank > 0 ? maxRank : 40);
+    var todosProlificos = repositorioPerfil.listarAutoresMaisProlificos(maxLimit);
+    int inicio = Math.max(0, Math.min(todosProlificos.size(), minRank > 1 ? minRank - 1 : 0));
+    var maisProlificos = todosProlificos.subList(inicio, todosProlificos.size());
+
     Map<Long, GrafoColaboracaoPolitica.NoAutor> mapaNos = new LinkedHashMap<>();
 
     for (var p : maisProlificos) {
@@ -221,7 +232,7 @@ public class ServicoPerfilPolitico {
       ));
     }
 
-    var arestasBrutas = repositorioPerfil.buscarParesColaboracaoGlobais(pesoMinimoAresta, 300);
+    var arestasBrutas = repositorioPerfil.buscarParesColaboracaoGlobais(pesoMinimoAresta, Math.max(500, maxLimit * 15));
     List<GrafoColaboracaoPolitica.ArestaColaboracao> arestas = new ArrayList<>();
 
     for (var ab : arestasBrutas) {

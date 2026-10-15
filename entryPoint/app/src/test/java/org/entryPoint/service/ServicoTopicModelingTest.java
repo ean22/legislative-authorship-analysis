@@ -22,10 +22,11 @@ public class ServicoTopicModelingTest {
     // 1. Executar Topic Modeling padrão (Pipeline Vencedor: Cluster c-TF-IDF, K=8)
     ServicoTopicModeling.ResultadoTopicModeling resultado = servicoTopicModeling.executarTopicModeling();
     assertNotNull(resultado);
-    assertEquals(ServicoTopicModeling.DEFAULT_K, resultado.topicos().size());
+    assertFalse(resultado.topicos().isEmpty());
+    assertTrue(resultado.topicos().size() <= ServicoTopicModeling.DEFAULT_K, "Número de tópicos deve ser <= K devido ao filtro de clusters vazios");
     assertTrue(resultado.totalTokens() > 0);
 
-    // 2. Verificar que os 8 tópicos oficiais foram persistidos no banco
+    // 2. Verificar que os tópicos oficiais válidos foram persistidos no banco
     List<TopicoTematico> topicosSalvos = repositorioTopicos.listarTopicosSalvos();
     assertFalse(topicosSalvos.isEmpty());
     assertEquals(resultado.topicos().size(), topicosSalvos.size());
@@ -46,7 +47,8 @@ public class ServicoTopicModelingTest {
     ServicoTopicModeling.ResultadoTopicModeling resultado = servicoTopicModeling.executarTopicModeling(6, 15, false);
 
     assertNotNull(resultado);
-    assertEquals(6, resultado.topicos().size());
+    assertFalse(resultado.topicos().isEmpty());
+    assertTrue(resultado.topicos().size() <= 6);
     assertTrue(resultado.totalTokens() > 0);
   }
 

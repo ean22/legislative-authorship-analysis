@@ -19,6 +19,8 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
   private List<TopicoTematico> ultimosTopicos;
   private double[][] ultimaFrequenciaClusterTermo;
   private int[] ultimaPresencaClusterTermo;
+  private int ultimosClustersFiltradosTotal = 0;
+  private int ultimosClustersOriginaisK = 0;
 
   @Override
   public ResultadoModelo executar(CorpusProcessado corpus, int k, int maxIteracoes, long seed) {
@@ -28,6 +30,8 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
     int dim = matrizDensa.length > 0 ? matrizDensa[0].length : 0;
 
     if (dSize == 0 || vSize == 0 || k <= 0 || dim == 0) {
+      this.ultimosClustersFiltradosTotal = 0;
+      this.ultimosClustersOriginaisK = k;
       return new ResultadoModelo(new double[0][0], new double[0][0], List.of());
     }
 
@@ -123,66 +127,141 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
       }
     }
 
-    // 3. Class-based TF-IDF (c-TF-IDF) para extrair termos por cluster
+    // 3. Contagem de documentos e acumulação preliminar de c-TF-IDF por cluster
+    int[] contagensDocs = new int[k];
+    for (int d = 0; d < dSize; d++) {
+      contagensDocs[clusterAtribuido[d]]++;
+    }
+
     var matrizTfidf = corpus.matrizTfidfEsparsa();
-    double[][] frequenciaClusterTermo = new double[k][vSize];
-    double[] somaTokensCluster = new double[k];
-    int[] presencaClusterTermo = new int[vSize];
+    double[][] freqClusterBruta = new double[k][vSize];
+    double[] somaTokensBruta = new double[k];
 
     for (int d = 0; d < dSize; d++) {
       int c = clusterAtribuido[d];
-      for (Map.Entry<Integer, Double> entry : matrizTfidf.get(d).entrySet()) {
-        int wIdx = entry.getKey();
-        double peso = entry.getValue();
-        frequenciaClusterTermo[c][wIdx] += peso;
-        somaTokensCluster[c] += peso;
+      var mapaDoc = matrizTfidf.get(d);
+      if (mapaDoc != null) {
+        for (Map.Entry<Integer, Double> entry : mapaDoc.entrySet()) {
+          int wIdx = entry.getKey();
+          double peso = entry.getValue();
+          freqClusterBruta[c][wIdx] += peso;
+          somaTokensBruta[c] += peso;
+        }
       }
     }
 
+    // 4. Filtro de Clusters Vazios: identificar clusters com documentos e termos válidos
+    List<Integer> clustersValidos = new ArrayList<>();
+    for (int c = 0; c < k; c++) {
+      if (contagensDocs[c] > 0 && somaTokensBruta[c] > 1e-9) {
+        clustersValidos.add(c);
+      }
+    }
+
+    this.ultimosClustersOriginaisK = k;
+    if (clustersValidos.isEmpty()) {
+      this.ultimosClustersFiltradosTotal = k;
+      return new ResultadoModelo(new double[dSize][0], new double[0][vSize], List.of());
+    }
+
+    int kValidos = clustersValidos.size();
+    int descartados = k - kValidos;
+    this.ultimosClustersFiltradosTotal = descartados;
+
+    if (descartados > 0) {
+      System.out.printf("[ClusterTopicModeling] Filtro de clusters vazios aplicado: %d cluster(s) vazio(s) descartado(s) de %d solicitado(s). Topic modeling prosseguindo com %d cluster(s) ativo(s).%n",
+          descartados, k, kValidos);
+    }
+
+    // Mapeamento dos índices antigos para os novos índices sequenciais [0 .. kValidos - 1]
+    int[] mapaNovoIndice = new int[k];
+    Arrays.fill(mapaNovoIndice, -1);
+    for (int novoIdx = 0; novoIdx < kValidos; novoIdx++) {
+      mapaNovoIndice[clustersValidos.get(novoIdx)] = novoIdx;
+    }
+
+    // Centroides compactados apenas para clusters válidos
+    double[][] centroidesValidos = new double[kValidos][dim];
+    for (int novoIdx = 0; novoIdx < kValidos; novoIdx++) {
+      int cAntigo = clustersValidos.get(novoIdx);
+      System.arraycopy(centroides[cAntigo], 0, centroidesValidos[novoIdx], 0, dim);
+    }
+
+    // Reatribuição do mapa de documentos para os clusters válidos compactos
+    for (int d = 0; d < dSize; d++) {
+      int cAntigo = clusterAtribuido[d];
+      int cNovo = mapaNovoIndice[cAntigo];
+      if (cNovo >= 0) {
+        clusterAtribuido[d] = cNovo;
+      } else {
+        int melhorC = 0;
+        double maxSim = -Double.MAX_VALUE;
+        for (int c = 0; c < kValidos; c++) {
+          double sim = similaridadeCosseno(matrizDensa[d], centroidesValidos[c]);
+          if (sim > maxSim) {
+            maxSim = sim;
+            melhorC = c;
+          }
+        }
+        clusterAtribuido[d] = melhorC;
+      }
+    }
+
+    // Frequência cluster-termo e soma de tokens compactada para clusters válidos
+    double[][] frequenciaClusterTermo = new double[kValidos][vSize];
+    double[] somaTokensCluster = new double[kValidos];
+    for (int novoIdx = 0; novoIdx < kValidos; novoIdx++) {
+      int cAntigo = clustersValidos.get(novoIdx);
+      System.arraycopy(freqClusterBruta[cAntigo], 0, frequenciaClusterTermo[novoIdx], 0, vSize);
+      somaTokensCluster[novoIdx] = somaTokensBruta[cAntigo];
+    }
+
+    // Presença vocabular entre os clusters válidos
+    int[] presencaClusterTermo = new int[vSize];
     for (int v = 0; v < vSize; v++) {
-      for (int c = 0; c < k; c++) {
+      for (int c = 0; c < kValidos; c++) {
         if (frequenciaClusterTermo[c][v] > 1e-6) {
           presencaClusterTermo[v]++;
         }
       }
     }
 
-    // Matriz H (c-TF-IDF: K x V)
-    double[][] H = new double[k][vSize];
-    for (int c = 0; c < k; c++) {
+    // Matriz H (c-TF-IDF: K_valido x V)
+    double[][] H = new double[kValidos][vSize];
+    for (int c = 0; c < kValidos; c++) {
       double totalC = Math.max(1e-9, somaTokensCluster[c]);
       for (int v = 0; v < vSize; v++) {
         double tf = frequenciaClusterTermo[c][v] / totalC;
-        double idf = Math.log(1.0 + ((double) k / (presencaClusterTermo[v] + 1.0)));
+        double idf = Math.log(1.0 + ((double) kValidos / (presencaClusterTermo[v] + 1.0)));
         H[c][v] = tf * idf;
       }
     }
 
-    // Matriz W (Doc x Topico) via Softmax da Similaridade Cosseno
-    double[][] W = new double[dSize][k];
+    // Matriz W (Doc x Topico: D x K_valido) via Softmax da Similaridade Cosseno
+    double[][] W = new double[dSize][kValidos];
     double temperatura = 0.3;
 
     for (int d = 0; d < dSize; d++) {
-      double[] expSim = new double[k];
+      double[] expSim = new double[kValidos];
       double somaExp = 0.0;
-      for (int c = 0; c < k; c++) {
-        double sim = similaridadeCosseno(matrizDensa[d], centroides[c]);
+      for (int c = 0; c < kValidos; c++) {
+        double sim = similaridadeCosseno(matrizDensa[d], centroidesValidos[c]);
         expSim[c] = Math.exp(sim / temperatura);
         somaExp += expSim[c];
       }
       if (somaExp > 0) {
-        for (int c = 0; c < k; c++) {
+        for (int c = 0; c < kValidos; c++) {
           W[d][c] = expSim[c] / somaExp;
         }
       }
     }
 
-    // Extrair termos de cada tópico
-    List<TopicoTematico> topicos = new ArrayList<>(k);
+    // 5. Extração de termos e rotulação semântica EXCLUSIVAMENTE para clusters válidos
+    List<TopicoTematico> topicos = new ArrayList<>(kValidos);
     List<String> vocabulario = corpus.vocabulario();
-    List<List<String>> listaTopPalavras = new ArrayList<>(k);
+    List<List<String>> listaTopPalavras = new ArrayList<>(kValidos);
 
-    for (int c = 0; c < k; c++) {
+    for (int c = 0; c < kValidos; c++) {
       List<TermoPeso> pesos = new ArrayList<>(vSize);
       for (int v = 0; v < vSize; v++) {
         pesos.add(new TermoPeso(vocabulario.get(v), H[c][v]));
@@ -193,12 +272,12 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
     }
 
     List<String> nomes = InferidorRotuloTema.inferirRotulosEmLote(listaTopPalavras);
-    for (int c = 0; c < k; c++) {
+    for (int c = 0; c < kValidos; c++) {
       String nome = (c < nomes.size() && nomes.get(c) != null) ? nomes.get(c) : "Tópico " + (c + 1);
       topicos.add(new TopicoTematico(c + 1, nome, listaTopPalavras.get(c)));
     }
 
-    this.ultimosCentroides = centroides;
+    this.ultimosCentroides = centroidesValidos;
     this.ultimosClusters = clusterAtribuido;
     this.ultimaMatrizH = H;
     this.ultimaMatrizDocTopico = W;
@@ -232,6 +311,14 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
 
   public List<TopicoTematico> getUltimosTopicos() {
     return ultimosTopicos;
+  }
+
+  public int getUltimosClustersFiltradosTotal() {
+    return ultimosClustersFiltradosTotal;
+  }
+
+  public int getUltimosClustersOriginaisK() {
+    return ultimosClustersOriginaisK;
   }
 
   public record DetalheTermoCTfIdf(String termo, double scoreCTfIdf, double tfCluster, int presencaClusters) {}

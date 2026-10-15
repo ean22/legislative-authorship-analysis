@@ -100,4 +100,19 @@ public class InferidorRotuloTemaTest {
     assertFalse(rotulos.isEmpty());
     assertEquals("Crédito Orçamentário e Finanças", rotulos.get(0));
   }
+
+  @Test
+  void testClustersVaziosIgnoradosSemFalhas() {
+    List<List<String>> clustersComVazios = List.of(
+        List.of("crédito", "suplementar"),
+        List.of(),
+        List.of("utilidade", "pública")
+    );
+
+    List<String> rotulos = InferidorRotuloTema.inferirRotulosEmLote(clustersComVazios, ModoInferidorTema.HIBRIDO_EMBEDDINGS);
+    assertEquals(3, rotulos.size());
+    assertEquals("Crédito Orçamentário e Finanças", rotulos.get(0));
+    assertEquals("Tópico Geral / Indefinido", rotulos.get(1));
+    assertEquals("Declaração de Utilidade Pública", rotulos.get(2));
+  }
 }

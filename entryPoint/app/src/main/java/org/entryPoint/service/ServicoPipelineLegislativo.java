@@ -136,14 +136,18 @@ public class ServicoPipelineLegislativo {
             }
           }
 
+          int idTopico = (topicoDominante > 0 && topicoDominante <= topicos.size())
+              ? topicos.get(topicoDominante - 1).id()
+              : topicoDominante;
+
           String termosChave = "";
-          if (topicoDominante <= topicos.size()) {
+          if (topicoDominante > 0 && topicoDominante <= topicos.size()) {
             termosChave = String.join(", ", topicos.get(topicoDominante - 1).termosPrincipais());
           }
 
           stmt.setLong(1, idNorma);
-          stmt.setInt(2, topicoDominante);
-          stmt.setInt(3, topicoDominante);
+          stmt.setInt(2, idTopico);
+          stmt.setInt(3, idTopico);
           stmt.setDouble(4, Math.max(0.0, maxScore));
           stmt.setString(5, termosChave);
           stmt.addBatch();

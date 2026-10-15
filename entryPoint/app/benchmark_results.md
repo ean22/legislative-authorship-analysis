@@ -1,142 +1,89 @@
 # Relatório Experimental de Benchmark: Modelagem de Tópicos e Autoria Legislativa
 
-- **Data da Execução:** 2026-10-13 10:51:39
+- **Data da Execução:** 2026-10-15 09:16:37
 - **Corpus Analisado:** 300 normas legislativas
 - **Total de Configurações Comparadas:** 10 experimentos
-- **Baseline:** Baseline: TF-IDF + NMF (K=12) (Score: 0.591)
-- **Melhor Combinação Selecionada:** Cluster c-TF-IDF K=8 (Score: 0.701)
-- **Ganho sobre Baseline:** +18.6%
+- **Baseline:** Baseline: TF-IDF + NMF (K=12) (Score: 0.543)
+- **Melhor Combinação Selecionada:** Cluster c-TF-IDF K=8 (Score: 0.727)
+- **Ganho sobre Baseline:** +34.0%
 
 ## Tabela Comparativa de Desempenho e Métricas Reais
 
 | Rank | Configuração | Redução Textual | Algoritmo | K | Score Global | Coerência (UMass) | Diversidade | Estabilidade | Utilidade Autores | Por que escolher? (Diagnóstico Empírico) |
 |:---:|:---|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---|
-| 1 | Cluster c-TF-IDF K=8 🏆 *(Vencedor)* | TEXTRANK | CLUSTER_C_TFIDF | 8 | **0.701** | -1.36 | 0.94 | 0.40 | 0.46 | Clustering c-TF-IDF obteve alta pureza de assuntos e vocabulário discriminante. Alta diversidade temática (94% termos únicos). Alinhamento institucional moderado (pureza: 42%). |
-| 2 | MMR Diversificado + NMF K=8 | MMR | NMF | 8 | **0.674** | -1.38 | 0.56 | 0.65 | 0.51 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alinhamento institucional moderado (pureza: 40%). |
-| 3 | NMF K=8 | STOPWORDS_TFIDF | NMF | 8 | **0.667** | -1.90 | 0.75 | 0.45 | 0.50 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alinhamento institucional moderado (pureza: 42%). |
-| 4 | Chunking Sentencial + NMF K=8 | CHUNKING_SENTENCAS | NMF | 8 | **0.650** | -1.31 | 0.54 | 0.58 | 0.49 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alinhamento institucional moderado (pureza: 35%). |
-| 5 | Embeddings SVD + NMF K=8 | EMBEDDINGS_SVD | NMF | 8 | **0.639** | -1.78 | 0.65 | 0.47 | 0.47 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alinhamento institucional moderado (pureza: 39%). |
-| 6 | Clustering Semântico + NMF K=8 | CLUSTERING_SEMANTICO | NMF | 8 | **0.635** | -1.40 | 0.42 | 0.67 | 0.49 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alerta: baixa diversidade (42%), risco de redundância. Alinhamento institucional moderado (pureza: 43%). |
-| 7 | Qui-Quadrado + NMF K=8 | CHI_SQUARE | NMF | 8 | **0.604** | -1.25 | 0.48 | 0.46 | 0.47 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alerta: baixa diversidade (48%), risco de redundância. Alinhamento institucional moderado (pureza: 35%). |
-| 8 | TextRank + NMF K=8 | TEXTRANK | NMF | 8 | **0.599** | -2.27 | 0.38 | 0.69 | 0.45 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alerta: baixa diversidade (38%), risco de redundância. Alinhamento institucional moderado (pureza: 38%). |
-| 9 | Baseline: TF-IDF + NMF (K=12) *(Baseline)* | STOPWORDS_TFIDF | NMF | 12 | **0.591** | -1.73 | 0.58 | 0.26 | 0.50 | Baseline de controle. Subótimo: K=12 gerou fragmentação e repetição vocabular em finanças. Alinhamento institucional moderado (pureza: 33%). |
-| 10 | LDA K=8 | STOPWORDS_TFIDF | LDA | 8 | **0.551** | -2.47 | 0.85 | 0.23 | 0.22 | LDA probabilístico apresentou menor coerência para textos concisos de ementas legislativas. Alta diversidade temática (85% termos únicos). Alinhamento institucional moderado (pureza: 13%). |
+| 1 | Cluster c-TF-IDF K=8 🏆 *(Vencedor)* | TEXTRANK | CLUSTER_C_TFIDF | 8 | **0.727** | -1.67 | 0.97 | 0.48 | 0.47 | Clustering c-TF-IDF obteve alta pureza de assuntos e vocabulário discriminante. Alta diversidade temática (97% termos únicos). Alinhamento institucional moderado (pureza: 30%). |
+| 2 | Qui-Quadrado + NMF K=8 | CHI_SQUARE | NMF | 8 | **0.673** | -1.35 | 0.52 | 0.77 | 0.46 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alinhamento institucional moderado (pureza: 30%). |
+| 3 | Chunking Sentencial + NMF K=8 | CHUNKING_SENTENCAS | NMF | 8 | **0.636** | -1.38 | 0.58 | 0.70 | 0.34 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alinhamento institucional moderado (pureza: 30%). |
+| 4 | LDA K=8 | STOPWORDS_TFIDF | LDA | 8 | **0.631** | -2.47 | 0.85 | 0.23 | 0.48 | LDA probabilístico apresentou menor coerência para textos concisos de ementas legislativas. Alta diversidade temática (85% termos únicos). Alinhamento institucional moderado (pureza: 30%). |
+| 5 | TextRank + NMF K=8 | TEXTRANK | NMF | 8 | **0.629** | -2.09 | 0.50 | 0.84 | 0.34 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alerta: baixa diversidade (50%), risco de redundância. Alinhamento institucional moderado (pureza: 30%). |
+| 6 | NMF K=8 | STOPWORDS_TFIDF | NMF | 8 | **0.619** | -1.90 | 0.75 | 0.45 | 0.34 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alinhamento institucional moderado (pureza: 30%). |
+| 7 | MMR Diversificado + NMF K=8 | MMR | NMF | 8 | **0.611** | -1.52 | 0.52 | 0.61 | 0.37 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alinhamento institucional moderado (pureza: 30%). |
+| 8 | Embeddings SVD + NMF K=8 | EMBEDDINGS_SVD | NMF | 8 | **0.599** | -1.78 | 0.65 | 0.47 | 0.34 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alinhamento institucional moderado (pureza: 30%). |
+| 9 | Clustering Semântico + NMF K=8 | CLUSTERING_SEMANTICO | NMF | 8 | **0.562** | -1.57 | 0.46 | 0.49 | 0.34 | NMF compacto (K=8) equilibrou estabilidade e coerência, superando K=12. Alerta: baixa diversidade (46%), risco de redundância. Alinhamento institucional moderado (pureza: 30%). |
+| 10 | Baseline: TF-IDF + NMF (K=12) *(Baseline)* | STOPWORDS_TFIDF | NMF | 12 | **0.543** | -1.73 | 0.58 | 0.26 | 0.34 | Baseline de controle. Subótimo: K=12 gerou fragmentação e repetição vocabular em finanças. Alinhamento institucional moderado (pureza: 30%). |
 
 ## Tópicos Descobertos pela Melhor Combinação
 
-- **Tópico 01 [Educação e Creches]:** conselho, construção, ensino, escola, serviços, parque
-- **Tópico 02 [Denominação de Vias e Logradouros]:** secretaria, uso, veículos, cargos, desenvolvimento, denominação
-- **Tópico 03 [Administração e Normas Gerais (comitê)]:** comitê, programa, governamental, funcionamento, gestão, municipais
-- **Tópico 04 [Declaração de Utilidade Pública]:** pública, declara, entidade, utilidade, codlog, denominação
-- **Tópico 05 [Educação e Creches]:** suplementar, adicional, acordo, infantil, criação, educação
-- **Tópico 06 [Denominação de Vias e Logradouros]:** público, logradouro, espaço, distrito, livre, localizado
-- **Tópico 07 [Denominação de Vias e Logradouros]:** particular, imóvel, necessário, desapropriação, subprefeitura, situado
-- **Tópico 08 [Bens Imóveis e Patrimônio Público]:** necessários, imóveis, particulares, cargos, implantação, desapropriação
+- **Tópico 01 [Denominação de Vias e Logradouros]:** logradouro, serviços, público, denomina, desempenho, urbana
+- **Tópico 02 [Bens Imóveis e Desapropriação]:** necessários, imóveis, particulares, comitê, desapropriação, implantação
+- **Tópico 03 [Declaração de Utilidade Pública]:** espaço, declara, entidade, utilidade, conselho, pública
+- **Tópico 04 [Bens Imóveis e Desapropriação]:** imóvel, necessário, particular, desapropriação, educação, criação
+- **Tópico 05 [Crédito Orçamentário e Finanças]:** suplementar, adicional, acordo, habitação, metropolitana, oneroso
+- **Tópico 06 [Denominação de Vias e Logradouros]:** secretaria, comissão, construção, cargos, denominação, provimento
 
 ## Perfis Temáticos dos Principais Órgãos Emissores (Melhor Combinação)
 
-- **PREFEITO** (284 normas):
-  - Tópico Dominante: *Educação e Creches* (33.2%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (12.9%)
-- **SECRETARIO DO GOVERNO MUNICIPAL** (281 normas):
-  - Tópico Dominante: *Educação e Creches* (33.5%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (13.0%)
-- **SECRETARIO MUNICIPAL DOS NEGOCIOS JURIDICOS** (140 normas):
-  - Tópico Dominante: *Educação e Creches* (55.4%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (13.2%)
-- **SECRETARIA MUNICIPAL DE PLANEJAMENTO, ORCAMENTO E GESTAO** (126 normas):
-  - Tópico Dominante: *Educação e Creches* (62.1%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (7.1%)
-- **SECRETARIO MUNICIPAL DE FINANCAS E DESENVOLVIMENTO ECONOMICO** (105 normas):
-  - Tópico Dominante: *Educação e Creches* (73.1%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (6.5%)
-- **SECRETARIO MUNICIPAL DE EDUCACAO** (41 normas):
-  - Tópico Dominante: *Educação e Creches* (32.7%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (15.7%)
-- **SECRETARIO MUNICIPAL DE HABITACAO** (36 normas):
-  - Tópico Dominante: *Educação e Creches* (27.2%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (26.7%)
-- **SECRETARIO MUNICIPAL DA SAUDE** (14 normas):
-  - Tópico Dominante: *Educação e Creches* (54.2%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (17.2%)
-- **SECRETARIO MUNICIPAL DE CULTURA** (13 normas):
-  - Tópico Dominante: *Educação e Creches* (81.3%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (3.4%)
-- **SECRETARIO MUNICIPAL DE INFRAESTRUTURA URBANA E OBRAS** (11 normas):
-  - Tópico Dominante: *Educação e Creches* (47.2%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (12.6%)
-- **SECRETARIO MUNICIPAL DE COORDENACAO DAS SUBPREFEITURAS** (11 normas):
-  - Tópico Dominante: *Educação e Creches* (54.6%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (11.4%)
-- **SECRETARIO MUNICIPAL DE SERVICOS** (9 normas):
-  - Tópico Dominante: *Educação e Creches* (48.1%)
-  - Tópico Secundário: *Administração e Normas Gerais (comitê)* (11.2%)
-- **SECRETARIO MUNICIPAL DE TRANSPORTES** (8 normas):
-  - Tópico Dominante: *Educação e Creches* (43.0%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (20.3%)
-- **SECRETARIO MUNICIPAL DE DESENVOLVIMENTO URBANO** (7 normas):
-  - Tópico Dominante: *Educação e Creches* (29.1%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (17.8%)
-- **SECRETARIO MUNICIPAL DO TRABALHO E DO EMPREENDEDORISMO** (6 normas):
-  - Tópico Dominante: *Educação e Creches* (56.1%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (24.2%)
-- **SECRETARIO MUNICIPAL DO VERDE E DO MEIO AMBIENTE** (5 normas):
-  - Tópico Dominante: *Educação e Creches* (20.7%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (19.9%)
-- **SECRETARIO MUNICIPAL DE SEGURANCA URBANA** (4 normas):
-  - Tópico Dominante: *Educação e Creches* (64.1%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (5.7%)
-- **SECRETARIA MUNICIPAL DE ASSISTENCIA E DESENVOLVIMENTO SOCIAL** (3 normas):
-  - Tópico Dominante: *Educação e Creches* (54.5%)
-  - Tópico Secundário: *Denominação de Vias e Logradouros* (24.9%)
+- **PREFEITO** (1 normas):
+  - Tópico Dominante: *Bens Imóveis e Desapropriação* (31.5%)
+  - Tópico Secundário: *Denominação de Vias e Logradouros* (21.7%)
 
 ## Perfis Temáticos dos Principais Autores Políticos (Melhor Combinação)
 
-- **FERNANDO HADDAD** (284 normas):
-  - Dominante: *Educação e Creches* (33.2%)
-  - Secundário: *Denominação de Vias e Logradouros* (12.9%)
-- **ANTONIO DONATO MADORMO** (280 normas):
-  - Dominante: *Educação e Creches* (33.6%)
-  - Secundário: *Denominação de Vias e Logradouros* (13.0%)
+- **FERNANDO HADDAD** (283 normas):
+  - Dominante: *Crédito Orçamentário e Finanças* (35.1%)
+  - Secundário: *Bens Imóveis e Desapropriação* (17.2%)
+- **ANTONIO DONATO MADORMO** (279 normas):
+  - Dominante: *Crédito Orçamentário e Finanças* (35.4%)
+  - Secundário: *Bens Imóveis e Desapropriação* (17.4%)
 - **LUIS FERNANDO MASSONETTO** (138 normas):
-  - Dominante: *Educação e Creches* (56.1%)
-  - Secundário: *Denominação de Vias e Logradouros* (13.4%)
+  - Dominante: *Crédito Orçamentário e Finanças* (59.8%)
+  - Secundário: *Bens Imóveis e Desapropriação* (15.8%)
 - **LEDA MARIA PAULANI** (126 normas):
-  - Dominante: *Educação e Creches* (62.1%)
-  - Secundário: *Denominação de Vias e Logradouros* (7.1%)
+  - Dominante: *Crédito Orçamentário e Finanças* (65.0%)
+  - Secundário: *Bens Imóveis e Desapropriação* (9.0%)
 - **MARCOS DE BARROS CRUZ** (105 normas):
-  - Dominante: *Educação e Creches* (73.1%)
-  - Secundário: *Denominação de Vias e Logradouros* (6.5%)
+  - Dominante: *Crédito Orçamentário e Finanças* (76.4%)
+  - Secundário: *Bens Imóveis e Desapropriação* (8.8%)
 - **ANTONIO CESAR RUSSI CALLEGARI** (42 normas):
-  - Dominante: *Educação e Creches* (32.3%)
-  - Secundário: *Denominação de Vias e Logradouros* (16.0%)
+  - Dominante: *Bens Imóveis e Desapropriação* (32.9%)
+  - Secundário: *Crédito Orçamentário e Finanças* (28.4%)
 - **JOSÉ FLORIANO DE AZEVEDO MARQUES NETO** (36 normas):
-  - Dominante: *Educação e Creches* (27.2%)
-  - Secundário: *Denominação de Vias e Logradouros* (26.7%)
+  - Dominante: *Bens Imóveis e Desapropriação* (32.7%)
+  - Secundário: *Crédito Orçamentário e Finanças* (30.1%)
 - **JOSÉ DE FILIPPI JUNIOR** (14 normas):
-  - Dominante: *Educação e Creches* (54.2%)
-  - Secundário: *Denominação de Vias e Logradouros* (17.2%)
+  - Dominante: *Crédito Orçamentário e Finanças* (56.6%)
+  - Secundário: *Bens Imóveis e Desapropriação* (21.6%)
 - **JOÃO LUIZ SILVA FERREIRA** (13 normas):
-  - Dominante: *Educação e Creches* (81.3%)
-  - Secundário: *Denominação de Vias e Logradouros* (3.4%)
+  - Dominante: *Crédito Orçamentário e Finanças* (84.2%)
+  - Secundário: *Bens Imóveis e Desapropriação* (8.3%)
 - **OSVALDO SPURI** (11 normas):
-  - Dominante: *Educação e Creches* (47.2%)
-  - Secundário: *Denominação de Vias e Logradouros* (12.6%)
+  - Dominante: *Crédito Orçamentário e Finanças* (50.9%)
+  - Secundário: *Denominação de Vias e Logradouros* (19.2%)
 - **FRANCISCO MACENA DA SILVA** (11 normas):
-  - Dominante: *Educação e Creches* (54.6%)
-  - Secundário: *Denominação de Vias e Logradouros* (11.4%)
+  - Dominante: *Crédito Orçamentário e Finanças* (57.4%)
+  - Secundário: *Bens Imóveis e Desapropriação* (13.6%)
 - **SIMÃO PEDRO CHIOVETTI** (9 normas):
-  - Dominante: *Educação e Creches* (48.1%)
-  - Secundário: *Administração e Normas Gerais (comitê)* (11.2%)
+  - Dominante: *Crédito Orçamentário e Finanças* (51.1%)
+  - Secundário: *Bens Imóveis e Desapropriação* (15.5%)
 - **ELISEU GABRIEL DE PIERI** (8 normas):
-  - Dominante: *Educação e Creches* (62.4%)
-  - Secundário: *Denominação de Vias e Logradouros* (18.8%)
+  - Dominante: *Crédito Orçamentário e Finanças* (63.8%)
+  - Secundário: *Denominação de Vias e Logradouros* (20.5%)
 - **JILMAR AUGUSTINHO TATTO** (8 normas):
-  - Dominante: *Educação e Creches* (43.0%)
-  - Secundário: *Denominação de Vias e Logradouros* (20.3%)
-- **FERNANDO DE MELLO FRANCO** (7 normas):
-  - Dominante: *Educação e Creches* (29.1%)
+  - Dominante: *Crédito Orçamentário e Finanças* (44.8%)
   - Secundário: *Denominação de Vias e Logradouros* (17.8%)
+- **FERNANDO DE MELLO FRANCO** (7 normas):
+  - Dominante: *Crédito Orçamentário e Finanças* (34.2%)
+  - Secundário: *Denominação de Vias e Logradouros* (23.1%)
 - **RICARDO TEIXEIRA** (5 normas):
-  - Dominante: *Educação e Creches* (20.7%)
-  - Secundário: *Denominação de Vias e Logradouros* (19.9%)
+  - Dominante: *Bens Imóveis e Desapropriação* (32.5%)
+  - Secundário: *Denominação de Vias e Logradouros* (29.4%)

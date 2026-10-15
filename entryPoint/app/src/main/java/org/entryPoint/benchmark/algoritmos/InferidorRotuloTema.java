@@ -189,18 +189,28 @@ public class InferidorRotuloTema {
 
       Map<Integer, List<String>> mapaTopicos = new LinkedHashMap<>();
       for (int i = 0; i < topPalavrasPorCluster.size(); i++) {
-        mapaTopicos.put(i + 1, topPalavrasPorCluster.get(i));
+        var palavras = topPalavrasPorCluster.get(i);
+        if (palavras != null && !palavras.isEmpty()) {
+          mapaTopicos.put(i + 1, palavras);
+        }
       }
 
       List<String> nomesSugeridos = CATEGORIAS.stream().map(CategoriaTematica::nome).toList();
-      Map<Integer, String> mapaClassificado = agente.classificarTopicosTematicos(mapaTopicos, nomesSugeridos);
+      Map<Integer, String> mapaClassificado = mapaTopicos.isEmpty()
+          ? Map.of()
+          : agente.classificarTopicosTematicos(mapaTopicos, nomesSugeridos);
 
       List<String> resultado = new ArrayList<>(topPalavrasPorCluster.size());
       for (int i = 0; i < topPalavrasPorCluster.size(); i++) {
         int id = i + 1;
+        var palavras = topPalavrasPorCluster.get(i);
+        if (palavras == null || palavras.isEmpty()) {
+          resultado.add("Tópico Geral / Indefinido");
+          continue;
+        }
         String rotulo = mapaClassificado.get(id);
         if (rotulo == null || rotulo.isBlank()) {
-          rotulo = inferirRotuloHibridoEmbeddings(topPalavrasPorCluster.get(i));
+          rotulo = inferirRotuloHibridoEmbeddings(palavras);
         }
         resultado.add(rotulo);
       }

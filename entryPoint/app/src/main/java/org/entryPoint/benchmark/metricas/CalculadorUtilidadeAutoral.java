@@ -60,7 +60,7 @@ public class CalculadorUtilidadeAutoral {
           }
         }
 
-        if (normasEncontradas >= 3) {
+        if (normasEncontradas >= 1) {
           double somaGeral = 0.0;
           for (int t = 0; t < k; t++) {
             somaGeral += somaTopicos[t];

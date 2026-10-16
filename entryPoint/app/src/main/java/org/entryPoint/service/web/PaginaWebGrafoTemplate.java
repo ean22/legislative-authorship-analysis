@@ -760,7 +760,7 @@ public class PaginaWebGrafoTemplate {
           <span>Peso Mínimo de Normas</span>
           <span id="label-peso">20</span>
         </div>
-        <input type="range" id="range-peso" class="custom-range" min="5" max="100" value="20" step="5">
+        <input type="range" id="range-peso" class="custom-range" min="0" max="100" value="20" step="1">
       </div>
 
       <!-- Range Controlável de Mínimo e Máximo (Não limitado a Top 60) -->

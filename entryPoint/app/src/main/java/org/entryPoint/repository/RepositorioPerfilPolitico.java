@@ -539,7 +539,7 @@ public class RepositorioPerfilPolitico {
     List<ArestaBruta> arestas = new ArrayList<>();
     try (Connection conexao = gerenciadorConexao.conectar();
          PreparedStatement stmt = conexao.prepareStatement(sql)) {
-      stmt.setInt(1, Math.max(1, pesoMinimo));
+      stmt.setInt(1, Math.max(0, pesoMinimo));
       stmt.setInt(2, limite > 0 ? limite : 250);
       try (ResultSet rs = stmt.executeQuery()) {
         while (rs.next()) {
@@ -579,7 +579,7 @@ public class RepositorioPerfilPolitico {
     try (Connection conexao = gerenciadorConexao.conectar();
          PreparedStatement stmt = conexao.prepareStatement(sql)) {
       stmt.setLong(1, idAutor);
-      stmt.setInt(2, Math.max(1, pesoMinimo));
+      stmt.setInt(2, Math.max(0, pesoMinimo));
       try (ResultSet rs = stmt.executeQuery()) {
         while (rs.next()) {
           arestas.add(new ArestaBruta(

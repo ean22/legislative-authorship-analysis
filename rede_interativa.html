@@ -724,7 +724,7 @@
           <span>Peso Mínimo de Normas</span>
           <span id="label-peso">20</span>
         </div>
-        <input type="range" id="range-peso" class="custom-range" min="5" max="100" value="20" step="5">
+        <input type="range" id="range-peso" class="custom-range" min="0" max="100" value="20" step="1">
       </div>
 
       <!-- Range Controlável de Mínimo e Máximo (Não limitado a Top 60) -->
@@ -1565,9 +1565,9 @@
       document.getElementById("scatter-eixo-x").onchange = () => desenharScatterPlot();
       document.getElementById("scatter-busca").oninput = () => desenharScatterPlot();
       document.getElementById("scatter-filtro-tema").onchange = () => desenharScatterPlot();
-      const btnInverterEixos = document.getElementById("btn-inverter-eixos");
-      if (btnInverterEixos) {
-        btnInverterEixos.onclick = () => {
+      const btnInverter = document.getElementById("btn-inverter-eixos");
+      if (btnInverter) {
+        btnInverter.onclick = () => {
           const selX = document.getElementById("scatter-eixo-x");
           const selY = document.getElementById("scatter-eixo-y");
           if (selX && selY) {
@@ -2246,7 +2246,7 @@
               <span style="width:9px; height:9px; border-radius:2px; background:${cor}; display:inline-block;"></span>
               <span style="font-size:11px; color:#FFFFFF; font-weight:500;">${autor.temaDominante}</span>
             </div>
-            
+
             <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; margin-bottom:8px;">
               <div style="font-size:11px; color:#D4D4D8; display:flex; justify-content:space-between; margin-bottom:2px;">
                 <span>Eixo X (${confX.nomeCurto}):</span>

@@ -25,6 +25,7 @@ public class MenuPrincipal {
   private static final ServicoPerfilPolitico servicoPerfilPolitico = new ServicoPerfilPolitico();
   private static final ServidorWebGrafos servidorWeb = new ServidorWebGrafos(servicoPerfilPolitico);
   private static final org.entryPoint.benchmark.ServicoBenchmark servicoBenchmark = new org.entryPoint.benchmark.ServicoBenchmark();
+  private static final org.entryPoint.service.ServicoAfericaoAssertividade servicoAssertividade = new org.entryPoint.service.ServicoAfericaoAssertividade();
 
   public static void exibirSaudacao() {
     System.out.println("Bem-vindo ao sistema de análise de autoria legislativa!");
@@ -47,6 +48,7 @@ public class MenuPrincipal {
     System.out.println("8. Perfis Políticos e Grafos de Colaboração (Temas, Atuação, Parcerias, Trajetória, Redes)");
     System.out.println("9. Executar Benchmark e Comparar Pipelines (Reduções, Modelos e Perfis de Autores)");
     System.out.println("10. Visualizar Pipeline Ativo Oficial para os Próximos Passos");
+    System.out.println("11. Aferir Assertividade das Leis Classificadas no Banco (vs data/normas_classificadas.csv)");
     System.out.println("0. Sair");
   }
 
@@ -205,6 +207,26 @@ public class MenuPrincipal {
 
           break;
 
+        case 11:
+          try {
+            System.out.println("Iniciando aferição de assertividade das leis do banco contra o CSV de referência...");
+            var relatorio = servicoAssertividade.aferirAssertividade();
+            servicoAssertividade.imprimirRelatorio(relatorio);
+
+            System.out.print("Deseja exportar o relatório detalhado em Markdown? (S/n): ");
+            String exp = sc.nextLine().trim();
+            if (exp.isEmpty() || "s".equalsIgnoreCase(exp) || "sim".equalsIgnoreCase(exp)) {
+              File destino = servicoAssertividade.exportarRelatorioMarkdown(relatorio);
+              System.out.println("Relatório em Markdown gerado com sucesso em: " + destino.getAbsolutePath());
+            }
+          } catch (Exception e) {
+            System.err.println("Erro ao aferir assertividade: " + e.getMessage());
+            e.printStackTrace();
+          }
+          pularLinha();
+
+          break;
+
         case 0:
           sair();
           
@@ -235,6 +257,7 @@ public class MenuPrincipal {
       System.out.println("6. Auditoria de Classificações no Banco (Volumetria, % e Confiança por Tópico)");
       System.out.println("7. Inspecionar Amostra de Normas por Tópico (Validação Humana de Ementas Reais)");
       System.out.println("8. Informações da Estratégia de Rotulação de Tópicos (LLM Gemini + Fallback Regras Léxicas)");
+      System.out.println("9. Aferir Assertividade das Leis Classificadas no Banco (vs data/normas_classificadas.csv)");
       System.out.println("0. Voltar ao Menu Principal");
       System.out.print("Escolha uma opção: ");
 
@@ -380,6 +403,25 @@ public class MenuPrincipal {
               geminiOk ? "[CONFIGURADA] LLM Google Gemini ativo para rotulação semântica."
                        : "[NÃO CONFIGURADA] O sistema usará automaticamente o fallback de Regras Léxicas.");
           System.out.println("Sempre que o Topic Modeling for executado, o prompt avisa qual estratégia foi usada e o motivo.");
+          pularLinha();
+          break;
+
+        case 9:
+          try {
+            System.out.println("Iniciando aferição de assertividade das leis do banco contra o CSV de referência...");
+            var relatorio = servicoAssertividade.aferirAssertividade();
+            servicoAssertividade.imprimirRelatorio(relatorio);
+
+            System.out.print("Deseja exportar o relatório detalhado em Markdown? (S/n): ");
+            String exp = sc.nextLine().trim();
+            if (exp.isEmpty() || "s".equalsIgnoreCase(exp) || "sim".equalsIgnoreCase(exp)) {
+              File destino = servicoAssertividade.exportarRelatorioMarkdown(relatorio);
+              System.out.println("Relatório em Markdown gerado com sucesso em: " + destino.getAbsolutePath());
+            }
+          } catch (Exception e) {
+            System.err.println("Erro ao aferir assertividade: " + e.getMessage());
+            e.printStackTrace();
+          }
           pularLinha();
           break;
 

@@ -1,6 +1,6 @@
 # Relatório Experimental de Benchmark: Modelagem de Tópicos e Autoria Legislativa
 
-- **Data da Execução:** 2026-10-15 14:47:20
+- **Data da Execução:** 2026-10-16 09:07:57
 - **Corpus Analisado:** 300 normas legislativas
 - **Total de Configurações Comparadas:** 10 experimentos
 - **Baseline:** Baseline: TF-IDF + NMF (K=12) (Score: 0.543)
@@ -25,56 +25,56 @@
 ## Tópicos Descobertos pela Melhor Combinação
 
 - **Tópico 01 [Denominação de Vias e Logradouros]:** logradouro, serviços, público, denomina, desempenho, urbana
-- **Tópico 02 [Bens Imóveis e Desapropriação]:** necessários, imóveis, particulares, comitê, desapropriação, implantação
+- **Tópico 02 [Gestão Imobiliária, Habitação e Regularização Fundiária]:** necessários, imóveis, particulares, comitê, desapropriação, implantação
 - **Tópico 03 [Declaração de Utilidade Pública]:** espaço, declara, entidade, utilidade, conselho, pública
-- **Tópico 04 [Bens Imóveis e Desapropriação]:** imóvel, necessário, particular, desapropriação, educação, criação
+- **Tópico 04 [Gestão Imobiliária, Habitação e Regularização Fundiária]:** imóvel, necessário, particular, desapropriação, educação, criação
 - **Tópico 05 [Crédito Orçamentário e Finanças]:** suplementar, adicional, acordo, habitação, metropolitana, oneroso
 - **Tópico 06 [Denominação de Vias e Logradouros]:** secretaria, comissão, construção, cargos, denominação, provimento
 
 ## Perfis Temáticos dos Principais Órgãos Emissores (Melhor Combinação)
 
 - **PREFEITO** (1 normas):
-  - Tópico Dominante: *Bens Imóveis e Desapropriação* (31.5%)
+  - Tópico Dominante: *Gestão Imobiliária, Habitação e Regularização Fundiária* (31.5%)
   - Tópico Secundário: *Denominação de Vias e Logradouros* (21.7%)
 
 ## Perfis Temáticos dos Principais Autores Políticos (Melhor Combinação)
 
 - **FERNANDO HADDAD** (283 normas):
   - Dominante: *Crédito Orçamentário e Finanças* (35.1%)
-  - Secundário: *Bens Imóveis e Desapropriação* (17.2%)
+  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (17.2%)
 - **ANTONIO DONATO MADORMO** (279 normas):
   - Dominante: *Crédito Orçamentário e Finanças* (35.4%)
-  - Secundário: *Bens Imóveis e Desapropriação* (17.4%)
+  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (17.4%)
 - **LUIS FERNANDO MASSONETTO** (138 normas):
   - Dominante: *Crédito Orçamentário e Finanças* (59.8%)
-  - Secundário: *Bens Imóveis e Desapropriação* (15.8%)
+  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (15.8%)
 - **LEDA MARIA PAULANI** (126 normas):
   - Dominante: *Crédito Orçamentário e Finanças* (65.0%)
-  - Secundário: *Bens Imóveis e Desapropriação* (9.0%)
+  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (9.0%)
 - **MARCOS DE BARROS CRUZ** (105 normas):
   - Dominante: *Crédito Orçamentário e Finanças* (76.4%)
-  - Secundário: *Bens Imóveis e Desapropriação* (8.8%)
+  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (8.8%)
 - **ANTONIO CESAR RUSSI CALLEGARI** (42 normas):
-  - Dominante: *Bens Imóveis e Desapropriação* (32.9%)
+  - Dominante: *Gestão Imobiliária, Habitação e Regularização Fundiária* (32.9%)
   - Secundário: *Crédito Orçamentário e Finanças* (28.4%)
 - **JOSÉ FLORIANO DE AZEVEDO MARQUES NETO** (36 normas):
-  - Dominante: *Bens Imóveis e Desapropriação* (32.7%)
+  - Dominante: *Gestão Imobiliária, Habitação e Regularização Fundiária* (32.7%)
   - Secundário: *Crédito Orçamentário e Finanças* (30.1%)
 - **JOSÉ DE FILIPPI JUNIOR** (14 normas):
   - Dominante: *Crédito Orçamentário e Finanças* (56.6%)
-  - Secundário: *Bens Imóveis e Desapropriação* (21.6%)
+  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (21.6%)
 - **JOÃO LUIZ SILVA FERREIRA** (13 normas):
   - Dominante: *Crédito Orçamentário e Finanças* (84.2%)
-  - Secundário: *Bens Imóveis e Desapropriação* (8.3%)
+  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (8.3%)
 - **OSVALDO SPURI** (11 normas):
   - Dominante: *Crédito Orçamentário e Finanças* (50.9%)
   - Secundário: *Denominação de Vias e Logradouros* (19.2%)
 - **FRANCISCO MACENA DA SILVA** (11 normas):
   - Dominante: *Crédito Orçamentário e Finanças* (57.4%)
-  - Secundário: *Bens Imóveis e Desapropriação* (13.6%)
+  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (13.6%)
 - **SIMÃO PEDRO CHIOVETTI** (9 normas):
   - Dominante: *Crédito Orçamentário e Finanças* (51.1%)
-  - Secundário: *Bens Imóveis e Desapropriação* (15.5%)
+  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (15.5%)
 - **ELISEU GABRIEL DE PIERI** (8 normas):
   - Dominante: *Crédito Orçamentário e Finanças* (63.8%)
   - Secundário: *Denominação de Vias e Logradouros* (20.5%)
@@ -85,5 +85,5 @@
   - Dominante: *Crédito Orçamentário e Finanças* (34.2%)
   - Secundário: *Denominação de Vias e Logradouros* (23.1%)
 - **RICARDO TEIXEIRA** (5 normas):
-  - Dominante: *Bens Imóveis e Desapropriação* (32.5%)
+  - Dominante: *Gestão Imobiliária, Habitação e Regularização Fundiária* (32.5%)
   - Secundário: *Denominação de Vias e Logradouros* (29.4%)

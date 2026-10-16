@@ -9,9 +9,11 @@ import org.entryPoint.service.agent.AgenteGemini;
  * a partir dos termos mais salientes de cada cluster legislativo.
  *
  * Adota um fluxo operacional único e resiliente:
- * - Principal: LLM_GEMINI (Inferência semântica contextual em lote via Google Gemini).
- * - Fallback: REGRAS_LEXICAS (Dicionário com pesos forte/médio e decaimento posicional),
- *   acionado automaticamente se a chave não estiver configurada ou a API falhar.
+ * - Principal: LLM_GEMINI (Inferência semântica contextual em lote via Google
+ * Gemini).
+ * - Fallback: REGRAS_LEXICAS (Dicionário com pesos forte/médio e decaimento
+ * posicional),
+ * acionado automaticamente se a chave não estiver configurada ou a API falhar.
  *
  * Sempre avisa no console/prompt qual estratégia foi utilizada e o motivo.
  */
@@ -21,79 +23,67 @@ public class InferidorRotuloTema {
       String nome,
       String descricaoSemantica,
       Set<String> palavrasChaveFortes,
-      Set<String> palavrasChaveMedias
-  ) {}
+      Set<String> palavrasChaveMedias) {
+  }
 
-  public record ResultadoAvaliacaoLexica(CategoriaTematica categoria, double score) {}
+  public record ResultadoAvaliacaoLexica(CategoriaTematica categoria, double score) {
+  }
 
   private static final List<CategoriaTematica> CATEGORIAS = List.of(
       new CategoriaTematica(
           "Crédito Orçamentário e Finanças",
           "abertura de crédito suplementar e especial dotações orçamentárias finanças públicas receitas despesas municipais tributos impostos",
-          Set.of("crédito", "suplementar", "adicional", "orçamento", "subvenções", "receita", "despesa", "tribut", "imposto"),
-          Set.of("abre", "abertura", "recursos", "financeira", "suplementação")
-      ),
+          Set.of("crédito", "suplementar", "adicional", "orçamento", "subvenções", "receita", "despesa", "tribut",
+              "imposto"),
+          Set.of("abre", "abertura", "recursos", "financeira", "suplementação")),
       new CategoriaTematica(
           "Declaração de Utilidade Pública",
           "declaração de utilidade pública para entidades associações civis beneficentes institutos fundações sem fins lucrativos",
           Set.of("utilidade", "declara", "entidade", "associação", "instituto"),
-          Set.of("pública", "beneficente", "fundação")
-      ),
+          Set.of("pública", "beneficente", "fundação")),
       new CategoriaTematica(
           "Educação e Creches",
           "educação infantil creches municipais escolas centros de educação infantil CEI ensino fundamental pedagógico alunos matrículas",
           Set.of("educação", "infantil", "creche", "escola", "ensino", "cei", "pedagógica"),
-          Set.of("alunos", "professores", "matrícula")
-      ),
+          Set.of("alunos", "professores", "matrícula")),
       new CategoriaTematica(
-          "Bens Imóveis e Desapropriação",
-          "desapropriação de imóveis particulares declaração de utilidade pública para desapropriação desafetação de bens públicos terrenos áreas",
-          Set.of("imóveis", "imóvel", "desapropriação", "desapropria", "desafeta", "patrimônio"),
-          Set.of("particulares", "necessários", "implantação", "terreno", "área")
-      ),
+          "Gestão Imobiliária, Habitação e Regularização Fundiária",
+          "gestão de bens imóveis públicos e particulares patrimônio imobiliário desapropriação declaração de utilidade pública aquisição alienação transferência desafetação de terrenos e áreas municipais habitação popular moradia social habitação de interesse social programas habitacionais conjuntos habitacionais regularização fundiária urbana ZEIS urbanização de assentamentos parcelamento e ocupação do solo",
+          Set.of("imóvel", "imóveis", "imobiliário", "patrimônio", "desapropriação", "desapropria", "desafeta",
+              "alienação", "terreno", "terrenos", "habitação", "habitacional", "moradia", "fundiária", "zeis",
+              "assentamento", "cohab", "cdhu"),
+          Set.of("público", "particular", "utilidade", "social", "interesse", "municipal", "área", "áreas", "aquisição",
+              "transferência", "regularização", "urbanização", "conjunto", "propriedade", "ocupação", "parcelamento")),
       new CategoriaTematica(
           "Denominação de Vias e Logradouros",
           "denominação e nomeação oficial de vias públicas praças ruas avenidas travessas e logradouros públicos do município",
           Set.of("denomina", "logradouro", "praça", "avenida", "travessa"),
-          Set.of("rua", "distrito", "situado", "situados", "oficial", "especifica")
-      ),
+          Set.of("rua", "distrito", "situado", "situados", "oficial", "especifica")),
       new CategoriaTematica(
           "Datas Comemorativas e Calendário",
           "inclusão de datas comemorativas semanas de conscientização dias temáticos e eventos no calendário oficial do município",
           Set.of("calendário", "eventos", "comemorado", "conscientização"),
-          Set.of("incluir", "institui", "semana", "dia", "anualmente", "oficial")
-      ),
+          Set.of("incluir", "institui", "semana", "dia", "anualmente", "oficial")),
       new CategoriaTematica(
           "Saúde Pública e Assistência Hospitalar",
           "saúde pública municipal postos de saúde unidades básicas UBS hospitais atendimento médico consultas SUS vacinação medicamentos",
           Set.of("saúde", "médic", "sanitár", "hospital", "sus", "enfermagem", "clínica"),
-          Set.of("atendimento", "vacinação", "medicamentos")
-      ),
-      new CategoriaTematica(
-          "Habitação e Regularização Fundiária",
-          "habitação popular moradia social regularização fundiária urbana zonas especiais de interesse social ZEIS e assentamentos urbanos",
-          Set.of("zeis", "fundiária", "habitação", "moradia"),
-          Set.of("social", "interesse", "assentamento")
-      ),
+          Set.of("atendimento", "vacinação", "medicamentos")),
       new CategoriaTematica(
           "Transportes e Trânsito Urbano",
           "trânsito tráfego mobilidade urbana circulação de veículos transporte coletivo linhas de ônibus tarifas estacionamento rotativo",
           Set.of("trânsito", "transporte", "veículo", "mobilidade", "estacionamento"),
-          Set.of("linhas", "itinerário", "tarifa")
-      ),
+          Set.of("linhas", "itinerário", "tarifa")),
       new CategoriaTematica(
           "Meio Ambiente e Áreas Verdes",
           "preservação ambiental parques municipais áreas verdes arborização urbana sustentabilidade proteção da fauna e flora ecológica",
           Set.of("meio ambiente", "parque", "verde", "ambiental", "sustentab", "preservação"),
-          Set.of("árvores", "fauna", "flora")
-      ),
+          Set.of("árvores", "fauna", "flora")),
       new CategoriaTematica(
           "Serviços Públicos e Gestão Municipal",
           "prestação e concessão de serviços públicos municipais permissão de uso postos de atendimento feiras funcionamento e gestão pública",
           Set.of("serviços", "serviço", "concessão", "permissão", "municipais", "postos", "pontos"),
-          Set.of("funcionamento", "prestação", "fixa", "rua", "atividades", "exercício")
-      )
-  );
+          Set.of("funcionamento", "prestação", "fixa", "rua", "atividades", "exercício")));
 
   private static volatile ModoInferidorTema modoAtivo = ModoInferidorTema.LLM_GEMINI;
   private static final Map<String, double[]> CACHE_EMBEDDINGS_LOCAIS = new ConcurrentHashMap<>();
@@ -118,7 +108,8 @@ public class InferidorRotuloTema {
   // =========================================================================
 
   /**
-   * Infere rótulos para uma lista de clusters em lote utilizando o fluxo unificado
+   * Infere rótulos para uma lista de clusters em lote utilizando o fluxo
+   * unificado
    * LLM_GEMINI com fallback transparente para REGRAS_LEXICAS.
    */
   public static List<String> inferirRotulosEmLote(List<List<String>> topPalavrasPorCluster) {
@@ -126,7 +117,8 @@ public class InferidorRotuloTema {
   }
 
   /**
-   * Infere rótulos para uma lista de clusters em lote despachando para a estratégia solicitada.
+   * Infere rótulos para uma lista de clusters em lote despachando para a
+   * estratégia solicitada.
    */
   public static List<String> inferirRotulosEmLote(List<List<String>> topPalavrasPorCluster, ModoInferidorTema modo) {
     if (topPalavrasPorCluster == null || topPalavrasPorCluster.isEmpty()) {
@@ -138,19 +130,22 @@ public class InferidorRotuloTema {
       case LLM_GEMINI -> inferirRotulosViaLlm(topPalavrasPorCluster);
       case REGRAS_LEXICAS -> {
         System.out.println("[InferidorRotuloTema] Estratégia utilizada: REGRAS_LEXICAS");
-        System.out.println("[InferidorRotuloTema] Motivo: Modo configurado explicitamente para Regras Léxicas e Posição.");
+        System.out
+            .println("[InferidorRotuloTema] Motivo: Modo configurado explicitamente para Regras Léxicas e Posição.");
         yield inferirRotulosViaRegrasEmLote(topPalavrasPorCluster);
       }
       case HIBRIDO_EMBEDDINGS -> {
         System.out.println("[InferidorRotuloTema] Estratégia utilizada: HIBRIDO_EMBEDDINGS");
-        System.out.println("[InferidorRotuloTema] Motivo: Modo configurado explicitamente para Regras Léxicas + Embeddings.");
+        System.out
+            .println("[InferidorRotuloTema] Motivo: Modo configurado explicitamente para Regras Léxicas + Embeddings.");
         yield inferirRotulosHibridoEmbeddingsEmLote(topPalavrasPorCluster);
       }
     };
   }
 
   /**
-   * Ponto de entrada compatível com chamadas individuais (delega ao fluxo unificado).
+   * Ponto de entrada compatível com chamadas individuais (delega ao fluxo
+   * unificado).
    */
   public static String inferirRotuloTema(List<String> topPalavras) {
     return inferirRotuloTema(topPalavras, modoAtivo);
@@ -177,9 +172,12 @@ public class InferidorRotuloTema {
   // =========================================================================
 
   /**
-   * Fluxo Único: Envia as palavras-chave de todos os clusters em lote para o Agente Gemini.
-   * Se a chave API não estiver configurada ou a chamada falhar, recorre de forma transparente ao
-   * fallback de Regras Léxicas, informando no console/prompt a estratégia escolhida e o motivo.
+   * Fluxo Único: Envia as palavras-chave de todos os clusters em lote para o
+   * Agente Gemini.
+   * Se a chave API não estiver configurada ou a chamada falhar, recorre de forma
+   * transparente ao
+   * fallback de Regras Léxicas, informando no console/prompt a estratégia
+   * escolhida e o motivo.
    */
   public static List<String> inferirRotulosViaLlm(List<List<String>> topPalavrasPorCluster) {
     if (topPalavrasPorCluster == null || topPalavrasPorCluster.isEmpty()) {
@@ -189,13 +187,15 @@ public class InferidorRotuloTema {
     AgenteGemini agente = new AgenteGemini();
     if (!agente.isConfigurado()) {
       System.out.println("[InferidorRotuloTema] Estratégia utilizada: REGRAS_LEXICAS (Fallback)");
-      System.out.println("[InferidorRotuloTema] Motivo: Variável GEMINI_API_KEY não configurada no ambiente. Recorrendo automaticamente a Regras Léxicas e Posição.");
+      System.out.println(
+          "[InferidorRotuloTema] Motivo: Variável GEMINI_API_KEY não configurada no ambiente. Recorrendo automaticamente a Regras Léxicas e Posição.");
       return inferirRotulosViaRegrasEmLote(topPalavrasPorCluster);
     }
 
     try {
       System.out.println("[InferidorRotuloTema] Estratégia utilizada: LLM_GEMINI (Google Gemini)");
-      System.out.printf("[InferidorRotuloTema] Motivo: GEMINI_API_KEY configurada. Processando %d tópicos com raciocínio semântico contextual via %s...%n",
+      System.out.printf(
+          "[InferidorRotuloTema] Motivo: GEMINI_API_KEY configurada. Processando %d tópicos com raciocínio semântico contextual via %s...%n",
           topPalavrasPorCluster.size(), agente.getNome());
 
       Map<Integer, List<String>> mapaTopicos = new LinkedHashMap<>();
@@ -224,7 +224,9 @@ public class InferidorRotuloTema {
         }
         String rotulo = mapaClassificado.get(id);
         if (rotulo == null || rotulo.isBlank()) {
-          System.out.printf("[InferidorRotuloTema] Cluster #%d: Rótulo inferido via REGRAS_LEXICAS (Fallback). Motivo: LLM Gemini não retornou rótulo para o cluster.%n", id);
+          System.out.printf(
+              "[InferidorRotuloTema] Cluster #%d: Rótulo inferido via REGRAS_LEXICAS (Fallback). Motivo: LLM Gemini não retornou rótulo para o cluster.%n",
+              id);
           rotulo = inferirRotuloViaRegras(palavras);
           rotuladosFallback++;
         } else {
@@ -233,19 +235,23 @@ public class InferidorRotuloTema {
         resultado.add(rotulo);
       }
 
-      System.out.printf("[InferidorRotuloTema] Concluído: %d tópicos rotulados via LLM Gemini (%d recorreram ao fallback de Regras Léxicas).%n",
+      System.out.printf(
+          "[InferidorRotuloTema] Concluído: %d tópicos rotulados via LLM Gemini (%d recorreram ao fallback de Regras Léxicas).%n",
           rotuladosGemini, rotuladosFallback);
 
       return resultado;
     } catch (Exception e) {
       System.err.println("[InferidorRotuloTema] Estratégia utilizada: REGRAS_LEXICAS (Fallback)");
-      System.err.printf("[InferidorRotuloTema] Motivo: Falha na chamada da API Gemini (%s). Recorrendo ao fallback de Regras Léxicas.%n", e.getMessage());
+      System.err.printf(
+          "[InferidorRotuloTema] Motivo: Falha na chamada da API Gemini (%s). Recorrendo ao fallback de Regras Léxicas.%n",
+          e.getMessage());
       return inferirRotulosViaRegrasEmLote(topPalavrasPorCluster);
     }
   }
 
   /**
-   * Processa uma lista de clusters aplicando diretamente as regras léxicas com decaimento posicional.
+   * Processa uma lista de clusters aplicando diretamente as regras léxicas com
+   * decaimento posicional.
    */
   public static List<String> inferirRotulosViaRegrasEmLote(List<List<String>> topPalavrasPorCluster) {
     if (topPalavrasPorCluster == null || topPalavrasPorCluster.isEmpty()) {
@@ -261,7 +267,8 @@ public class InferidorRotuloTema {
   // =========================================================================
 
   /**
-   * Alternativa 2 em Lote: Processa cada cluster combinando casamento léxico rápido com desempate por embeddings.
+   * Alternativa 2 em Lote: Processa cada cluster combinando casamento léxico
+   * rápido com desempate por embeddings.
    */
   public static List<String> inferirRotulosHibridoEmbeddingsEmLote(List<List<String>> topPalavrasPorCluster) {
     if (topPalavrasPorCluster == null || topPalavrasPorCluster.isEmpty()) {
@@ -278,7 +285,8 @@ public class InferidorRotuloTema {
    * Alternativa 2 Individual:
    * 1. Executa avaliação léxica com decaimento posicional.
    * 2. Se score >= 0.5: aceita o match léxico (alta precisão).
-   * 3. Se score < 0.5: projeta termos em embeddings semânticos e busca categoria por Similaridade de Cosseno.
+   * 3. Se score < 0.5: projeta termos em embeddings semânticos e busca categoria
+   * por Similaridade de Cosseno.
    */
   public static String inferirRotuloHibridoEmbeddings(List<String> topPalavras) {
     if (topPalavras == null || topPalavras.isEmpty()) {
@@ -296,7 +304,8 @@ public class InferidorRotuloTema {
   }
 
   /**
-   * Realiza a classificação puramente vetorial via embeddings e similaridade de cosseno.
+   * Realiza a classificação puramente vetorial via embeddings e similaridade de
+   * cosseno.
    * Prioriza embeddings da API Gemini quando configurada, com fallback automático
    * e imediato para embeddings locais densos do VetorizadorSemanticoLocal.
    */
@@ -435,7 +444,8 @@ public class InferidorRotuloTema {
   }
 
   public static double calcularSimilaridadeCosseno(double[] a, double[] b) {
-    if (a == null || b == null || a.length != b.length) return 0.0;
+    if (a == null || b == null || a.length != b.length)
+      return 0.0;
     double dot = 0.0;
     double normA = 0.0;
     double normB = 0.0;

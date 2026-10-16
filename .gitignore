@@ -6,4 +6,6 @@ build/
 # Project untracked files & directories
 .codegraph/
 agents/
-data/*.db*
+data/*
+
+.env

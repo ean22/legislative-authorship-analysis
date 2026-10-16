@@ -365,8 +365,8 @@ public class ServicoBenchmark {
 
     DefinicaoPipeline pipelineOficial = servicoPipeline.definirPipelineVencedor(melhor);
 
-    // Persistir atribuição documento-tópico para todo o corpus testado
-    if (!ultimosDocIds.isEmpty()) {
+    // Persistir atribuição documento-tópico apenas se o benchmark avaliou o corpus completo
+    if (!ultimosDocIds.isEmpty() && ultimosDocIds.size() >= 5000) {
       servicoPipeline.persistirClassificacaoNormas(ultimosDocIds, melhor.matrizDocTopico(), melhor.topicos());
     }
 

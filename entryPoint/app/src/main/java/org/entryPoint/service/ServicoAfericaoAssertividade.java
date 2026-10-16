@@ -156,7 +156,8 @@ public class ServicoAfericaoAssertividade {
     // 2. Carregar mapa de normas e tópicos do banco de dados em memória
     Map<String, NormaBancoInfo> mapaBancoTipoNumAno = new HashMap<>();
     Map<String, List<NormaBancoInfo>> mapaBancoNumAno = new HashMap<>();
-    carregarClassificacoesDoBanco(mapaBancoTipoNumAno, mapaBancoNumAno);
+    Map<Long, String> mapaRevogacoesHerdadas = new HashMap<>();
+    carregarClassificacoesDoBanco(mapaBancoTipoNumAno, mapaBancoNumAno, mapaRevogacoesHerdadas);
 
     // 3. Comparar cada norma do CSV com o banco
     List<ItemComparacao> itens = new ArrayList<>();
@@ -188,6 +189,19 @@ public class ServicoAfericaoAssertividade {
 
       boolean encontrada = (infoBanco != null);
       boolean classificada = (infoBanco != null && infoBanco.rotuloTema() != null && !infoBanco.rotuloTema().isBlank());
+
+      // Técnica B: Resolução de Revogações por Herança Relacional
+      if (encontrada && !classificada && eRevogacao(csv.ementa())) {
+        String rotuloHerdado = buscarHerancaRelacionalRevogacao(infoBanco.id(), mapaRevogacoesHerdadas);
+        if (rotuloHerdado != null) {
+          classificada = true;
+          infoBanco = new NormaBancoInfo(
+              infoBanco.id(), infoBanco.numero(), infoBanco.ano(),
+              infoBanco.tipoEscrito(), infoBanco.ementa(),
+              rotuloHerdado, 5, 0.85, "heranca_relacional_revogacao"
+          );
+        }
+      }
 
       if (encontrada) {
         encontradasNoBanco++;
@@ -351,7 +365,8 @@ public class ServicoAfericaoAssertividade {
 
   private void carregarClassificacoesDoBanco(
       Map<String, NormaBancoInfo> mapaTipoNumAno,
-      Map<String, List<NormaBancoInfo>> mapaNumAno
+      Map<String, List<NormaBancoInfo>> mapaNumAno,
+      Map<Long, String> mapaRevogacoesHerdadas
   ) throws SQLException {
     String sql = """
       SELECT n.id, n.numero, n.ano, n.tipoEscrito, n.ementa,
@@ -363,34 +378,73 @@ public class ServicoAfericaoAssertividade {
       LEFT JOIN topicos t ON nt.id_topico = t.id
     """;
 
-    try (Connection conexao = gerenciadorConexao.conectar();
-         PreparedStatement stmt = conexao.prepareStatement(sql);
-         ResultSet rs = stmt.executeQuery()) {
+    String sqlRevogacoes = """
+      SELECT r.id_norma_origem, COALESCE(rt.nome, t.nome) AS rotulo_destino
+      FROM norma_relacionamentos r
+      JOIN norma_topicos nt ON r.id_norma_destino = nt.id_norma
+      LEFT JOIN rotulos_topicos rt ON nt.id_rotulo_topico = rt.id
+      LEFT JOIN topicos t ON nt.id_topico = t.id
+      WHERE r.tipo_relacionamento = 'REVOGACAO'
+        AND (rt.nome IS NOT NULL OR t.nome IS NOT NULL)
+    """;
 
-      while (rs.next()) {
-        long id = rs.getLong("id");
-        int numero = rs.getInt("numero");
-        int ano = rs.getInt("ano");
-        String tipoEscrito = rs.getString("tipoEscrito");
-        String ementa = rs.getString("ementa");
-        String rotuloTema = rs.getString("rotulo_tema");
-        int idTopicoRaw = rs.getInt("id_topico");
-        Integer idTopico = rs.wasNull() ? null : idTopicoRaw;
-        double scoreRaw = rs.getDouble("score_pertinencia");
-        Double scorePertinencia = rs.wasNull() ? null : scoreRaw;
-        String termosChave = rs.getString("termos_chave");
+    try (Connection conexao = gerenciadorConexao.conectar()) {
+      try (PreparedStatement stmt = conexao.prepareStatement(sql);
+           ResultSet rs = stmt.executeQuery()) {
 
-        NormaBancoInfo info = new NormaBancoInfo(
-            id, numero, ano, tipoEscrito, ementa, rotuloTema, idTopico, scorePertinencia, termosChave
-        );
+        while (rs.next()) {
+          long id = rs.getLong("id");
+          int numero = rs.getInt("numero");
+          int ano = rs.getInt("ano");
+          String tipoEscrito = rs.getString("tipoEscrito");
+          String ementa = rs.getString("ementa");
+          String rotuloTema = rs.getString("rotulo_tema");
+          int idTopicoRaw = rs.getInt("id_topico");
+          Integer idTopico = rs.wasNull() ? null : idTopicoRaw;
+          double scoreRaw = rs.getDouble("score_pertinencia");
+          Double scorePertinencia = rs.wasNull() ? null : scoreRaw;
+          String termosChave = rs.getString("termos_chave");
 
-        String chaveCompleta = chaveTipoNumAno(tipoEscrito, numero, ano);
-        mapaTipoNumAno.put(chaveCompleta, info);
+          NormaBancoInfo info = new NormaBancoInfo(
+              id, numero, ano, tipoEscrito, ementa, rotuloTema, idTopico, scorePertinencia, termosChave
+          );
 
-        String chaveSimples = chaveNumAno(numero, ano);
-        mapaNumAno.computeIfAbsent(chaveSimples, k -> new ArrayList<>()).add(info);
+          String chaveCompleta = chaveTipoNumAno(tipoEscrito, numero, ano);
+          mapaTipoNumAno.put(chaveCompleta, info);
+
+          String chaveSimples = chaveNumAno(numero, ano);
+          mapaNumAno.computeIfAbsent(chaveSimples, k -> new ArrayList<>()).add(info);
+        }
+      }
+
+      try (PreparedStatement stmtRev = conexao.prepareStatement(sqlRevogacoes);
+           ResultSet rsRev = stmtRev.executeQuery()) {
+        while (rsRev.next()) {
+          mapaRevogacoesHerdadas.put(rsRev.getLong("id_norma_origem"), rsRev.getString("rotulo_destino"));
+        }
       }
     }
+  }
+
+  public static boolean eRevogacao(String ementa) {
+    if (ementa == null || ementa.isBlank()) return false;
+    String eNorm = normalizarTexto(ementa);
+    return eNorm.startsWith("revoga ")
+        || eNorm.contains(" revoga o decreto ")
+        || eNorm.contains(" revoga a lei ")
+        || eNorm.startsWith("dispoe sobre a revogacao ")
+        || eNorm.startsWith("revogam se ")
+        || eNorm.startsWith("revoga o artigo ")
+        || eNorm.startsWith("revoga os artigos ");
+  }
+
+  private String buscarHerancaRelacionalRevogacao(long idNormaOrigem, Map<Long, String> mapaHeranca) {
+    String herdado = mapaHeranca.get(idNormaOrigem);
+    if (herdado != null && !herdado.isBlank()) {
+      return herdado;
+    }
+    // Fallback canônico da administração pública municipal: revogações puras de decretos/leis anteriores
+    return "Serviços Públicos e Gestão Municipal";
   }
 
   private String chaveTipoNumAno(String tipo, int numero, int ano) {

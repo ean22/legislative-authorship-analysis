@@ -1,31 +1,31 @@
 # Relatório Experimental de Aferição de Assertividade das Normas
 
 - **Arquivo de Referência:** `../../data/normas_classificadas.csv`
-- **Data da Aferição:** 2026-10-16 09:06:01
+- **Data da Aferição:** 2026-10-16 10:56:11
 - **Total de Normas Anotadas (Ground Truth):** 500
 - **Normas Casadas no Banco SQLite:** 500
-- **Normas Classificadas no Banco:** 475
+- **Normas Classificadas no Banco:** 495
 
 ## Síntese Global de Acurácia
 
 | Métrica Global | Total de Acertos | Percentual | Observação Metodológica |
 |:---|:---:|:---:|:---|
-| **Assertividade Exata** | 255 / 500 | **51.00%** | Casamento idêntico estrito da string do rótulo |
-| **Assertividade Canônica (Equivalente)** | 259 / 500 | **51.80%** | Reconhece classes equivalentes (ex.: Bens Imóveis e Gestão Imobiliária) |
-| **F1-Score Macro** | - | **0.3131** | Média harmônica balanceada entre classes |
-| **F1-Score Ponderado (Weighted)** | - | **0.5160** | Ponderado pelo suporte de normas em cada classe |
+| **Assertividade Exata** | 272 / 500 | **54.40%** | Casamento idêntico estrito da string do rótulo |
+| **Assertividade Canônica (Equivalente)** | 276 / 500 | **55.20%** | Reconhece classes equivalentes (ex.: Bens Imóveis e Gestão Imobiliária) |
+| **F1-Score Macro** | - | **0.3264** | Média harmônica balanceada entre classes |
+| **F1-Score Ponderado (Weighted)** | - | **0.5467** | Ponderado pelo suporte de normas em cada classe |
 
 ## Performance Detalhada por Classe Temática
 
 | Classe Temática | Esperado (CSV) | Predito (Banco) | TP | FP | FN | Precisão | Revocação | F1-Score |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | Crédito Orçamentário e Finanças | 160 | 175 | 146 | 29 | 14 | 83.4% | 91.3% | **87.2%** |
-| Serviços Públicos e Gestão Municipal | 115 | 50 | 27 | 23 | 88 | 54.0% | 23.5% | **32.7%** |
+| Serviços Públicos e Gestão Municipal | 115 | 68 | 44 | 24 | 71 | 64.7% | 38.3% | **48.1%** |
 | Denominação de Vias e Logradouros | 76 | 53 | 25 | 28 | 51 | 47.2% | 32.9% | **38.8%** |
 | Bens Imóveis e Desapropriação | 71 | 50 | 31 | 19 | 40 | 62.0% | 43.7% | **51.2%** |
 | Gestão Imobiliária, Habitação e Regularização Fundiária | 71 | 50 | 31 | 19 | 40 | 62.0% | 43.7% | **51.2%** |
-| Educação e Creches | 22 | 46 | 13 | 33 | 9 | 28.3% | 59.1% | **38.2%** |
-| Datas Comemorativas e Calendário | 17 | 36 | 2 | 34 | 15 | 5.6% | 11.8% | **7.5%** |
+| Educação e Creches | 22 | 47 | 13 | 34 | 9 | 27.7% | 59.1% | **37.7%** |
+| Datas Comemorativas e Calendário | 17 | 37 | 2 | 35 | 15 | 5.4% | 11.8% | **7.4%** |
 | Declaração de Utilidade Pública | 15 | 65 | 15 | 50 | 0 | 23.1% | 100.0% | **37.5%** |
 | Transportes e Trânsito Urbano | 12 | 0 | 0 | 0 | 12 | 0.0% | 0.0% | **0.0%** |
 | Meio Ambiente e Áreas Verdes | 7 | 0 | 0 | 0 | 7 | 0.0% | 0.0% | **0.0%** |
@@ -73,19 +73,18 @@
 | Saúde Pública e Assistência Hospitalar | Declaração de Utilidade Pública | 1 | ⚠️ Divergente |
 | Saúde Pública e Assistência Hospitalar | Denominação de Vias e Logradouros | 2 | ⚠️ Divergente |
 | Saúde Pública e Assistência Hospitalar | Gestão Imobiliária, Habitação e Regularização Fundiária | 1 | ⚠️ Divergente |
-| Serviços Públicos e Gestão Municipal | (Não Classificada) | 23 | ⚠️ Divergente |
+| Serviços Públicos e Gestão Municipal | (Não Classificada) | 5 | ⚠️ Divergente |
 | Serviços Públicos e Gestão Municipal | Crédito Orçamentário e Finanças | 13 | ⚠️ Divergente |
-| Serviços Públicos e Gestão Municipal | Datas Comemorativas e Calendário | 10 | ⚠️ Divergente |
+| Serviços Públicos e Gestão Municipal | Datas Comemorativas e Calendário | 11 | ⚠️ Divergente |
 | Serviços Públicos e Gestão Municipal | Declaração de Utilidade Pública | 8 | ⚠️ Divergente |
 | Serviços Públicos e Gestão Municipal | Denominação de Vias e Logradouros | 6 | ⚠️ Divergente |
 | Serviços Públicos e Gestão Municipal | Educação e Creches | 17 | ⚠️ Divergente |
 | Serviços Públicos e Gestão Municipal | Gestão Imobiliária, Habitação e Regularização Fundiária | 11 | ⚠️ Divergente |
-| Serviços Públicos e Gestão Municipal | Serviços Públicos e Gestão Municipal | 27 | ✅ Consonante |
-| Transportes e Trânsito Urbano | (Não Classificada) | 2 | ⚠️ Divergente |
+| Serviços Públicos e Gestão Municipal | Serviços Públicos e Gestão Municipal | 44 | ✅ Consonante |
 | Transportes e Trânsito Urbano | Crédito Orçamentário e Finanças | 1 | ⚠️ Divergente |
 | Transportes e Trânsito Urbano | Declaração de Utilidade Pública | 2 | ⚠️ Divergente |
-| Transportes e Trânsito Urbano | Educação e Creches | 1 | ⚠️ Divergente |
-| Transportes e Trânsito Urbano | Serviços Públicos e Gestão Municipal | 6 | ⚠️ Divergente |
+| Transportes e Trânsito Urbano | Educação e Creches | 2 | ⚠️ Divergente |
+| Transportes e Trânsito Urbano | Serviços Públicos e Gestão Municipal | 7 | ⚠️ Divergente |
 
 ## Amostras de Divergência para Auditoria Manual
 

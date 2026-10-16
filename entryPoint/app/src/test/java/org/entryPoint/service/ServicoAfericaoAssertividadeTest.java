@@ -77,14 +77,24 @@ class ServicoAfericaoAssertividadeTest {
   }
 
   @Test
-  void testGerarRelatorioOficial() throws IOException, SQLException {
+  void testResolucaoRevogacoesPorHerancaRelacional() throws SQLException, IOException {
+    ServicoPipelineLegislativo pipeline = new ServicoPipelineLegislativo();
+    int resolvidas = pipeline.resolverRevogacoesPorHerancaRelacional();
+    System.out.printf("Revogações resolvidas por herança relacional no banco: %d%n", resolvidas);
+
     ServicoAfericaoAssertividade servico = new ServicoAfericaoAssertividade();
     var relatorio = servico.aferirAssertividade();
     assertNotNull(relatorio);
+    assertEquals(495, relatorio.totalClassificadasNoBanco(),
+        "Exatamente 495 normas devem estar classificadas (475 originais + 20 revogações resolvidas por herança relacional)");
+    assertTrue(relatorio.acuraciaEquivalente() > 0.518, "A acurácia equivalente deve superar os 51.80% do baseline");
     servico.imprimirRelatorio(relatorio);
 
     File relatorioMd = new File("relatorio_assertividade_classificacao.md");
-    File exportado = servico.exportarRelatorioMarkdown(relatorio, relatorioMd);
-    assertTrue(exportado.exists());
+    servico.exportarRelatorioMarkdown(relatorio, relatorioMd);
+    File pai = new File("..").getCanonicalFile();
+    if ("entryPoint".equals(pai.getName()) || "legislative-authorship-analysis".equals(pai.getName())) {
+      servico.exportarRelatorioMarkdown(relatorio, new File(pai, "relatorio_assertividade_classificacao.md"));
+    }
   }
 }

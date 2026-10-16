@@ -264,13 +264,26 @@ public class ServidorWebGrafos {
           double simCosseno = (normaP > 0 && sqrtNormaGlobal > 0)
               ? (produto / (Math.sqrt(normaP) * sqrtNormaGlobal))
               : 0.0;
+          double hhi = p.perfilTematico() != null ? p.perfilTematico().indiceEspecializacaoHhi() : 0.0;
+          double entropia = p.perfilTematico() != null ? p.perfilTematico().entropiaTematica() : 0.0;
+          double pctDominante = p.perfilTematico() != null ? p.perfilTematico().percentualTopicoDominante() : 0.0;
+          int normasIndividuais = p.perfilAtuacao() != null ? p.perfilAtuacao().normasIndividuais() : 0;
+          int normasColetivas = p.perfilAtuacao() != null ? p.perfilAtuacao().normasColetivas() : 0;
+          double mediaAutoresPorNorma = p.perfilAtuacao() != null ? p.perfilAtuacao().mediaAutoresPorNorma() : 1.0;
+          int totalParceiros = p.perfilColaboracao() != null ? p.perfilColaboracao().totalParceirosDistintos() : 0;
+          double intensidadeMedia = p.perfilColaboracao() != null ? p.perfilColaboracao().intensidadeMediaColaboracao() : 0.0;
+          double mediaAnual = p.perfilTemporal() != null ? p.perfilTemporal().mediaNormasPorAno() : 0.0;
 
           sb.append(String.format(java.util.Locale.US,
-              "{\"id\":%d,\"name\":\"%s\",\"cargo\":\"%s\",\"totalNormas\":%d,\"temaDominante\":\"%s\",\"hhi\":%.4f,\"taxaCoautoria\":%.2f,\"cosseno\":%.4f}",
+              "{\"id\":%d,\"name\":\"%s\",\"cargo\":\"%s\",\"totalNormas\":%d,\"temaDominante\":\"%s\","
+              + "\"hhi\":%.4f,\"taxaCoautoria\":%.2f,\"cosseno\":%.4f,\"entropia\":%.4f,\"pctDominante\":%.2f,"
+              + "\"normasIndividuais\":%d,\"normasColetivas\":%d,\"mediaAutoresPorNorma\":%.2f,"
+              + "\"totalParceiros\":%d,\"intensidadeMedia\":%.2f,\"mediaAnual\":%.2f}",
               p.idAutor(), escapar(p.nomeAutor()), escapar(p.cargoPrincipal()),
               p.perfilAtuacao().totalNormas(), escapar(p.perfilTematico().topicoDominante()),
-              p.perfilTematico().indiceEspecializacaoHhi(), p.perfilAtuacao().taxaCoautoria(),
-              simCosseno));
+              hhi, p.perfilAtuacao().taxaCoautoria(), simCosseno, entropia, pctDominante,
+              normasIndividuais, normasColetivas, mediaAutoresPorNorma,
+              totalParceiros, intensidadeMedia, mediaAnual));
           if (i < perfis.size() - 1) sb.append(",");
         }
         sb.append("]");

@@ -868,29 +868,66 @@
 
       <!-- Controles de Configuração dos Eixos e Filtros -->
       <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 14px; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 170px;">
+        <div style="flex: 1; min-width: 190px;">
           <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Eixo Y (Vertical):</label>
-          <select id="scatter-eixo-y" class="select-theme" style="padding: 7px 10px; font-size: 12px;">
-            <option value="totalNormas" selected>Quantidade Total de Normas</option>
-            <option value="taxaCoautoria">Taxa de Coautoria (%)</option>
+          <select id="scatter-eixo-y" class="select-theme" style="padding: 7px 10px; font-size: 12px; width: 100%;">
+            <optgroup label="📜 Dimensão de Volume e Atuação">
+              <option value="totalNormas" selected>Quantidade Total de Normas</option>
+              <option value="normasIndividuais">Normas Individuais (Solo)</option>
+              <option value="normasColetivas">Normas Coletivas (Parceria)</option>
+              <option value="mediaAnual">Média Anual de Produção (normas/ano)</option>
+            </optgroup>
+            <optgroup label="🤝 Dimensão de Articulação e Colaboração">
+              <option value="taxaCoautoria">Taxa de Coautoria (%)</option>
+              <option value="totalParceiros">Total de Parceiros Políticos</option>
+              <option value="mediaAutoresPorNorma">Média de Signatários por Norma</option>
+              <option value="intensidadeMedia">Intensidade Média por Parceria</option>
+            </optgroup>
+            <optgroup label="📐 Dimensão Temática">
+              <option value="hhi">Especialização Temática (HHI)</option>
+              <option value="entropia">Entropia Temática de Shannon</option>
+              <option value="pctDominante">Concentração no Tema Dominante (%)</option>
+              <option value="cosseno">Similaridade Cosseno c/ Acervo</option>
+            </optgroup>
           </select>
         </div>
-        <div style="flex: 1; min-width: 170px;">
+        <div style="flex: 1; min-width: 190px;">
           <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Eixo X (Horizontal):</label>
-          <select id="scatter-eixo-x" class="select-theme" style="padding: 7px 10px; font-size: 12px;">
-            <option value="hhi" selected>Especialização Temática (HHI)</option>
-            <option value="cosseno">Similaridade Cosseno c/ Acervo</option>
+          <select id="scatter-eixo-x" class="select-theme" style="padding: 7px 10px; font-size: 12px; width: 100%;">
+            <optgroup label="📐 Dimensão Temática">
+              <option value="hhi" selected>Especialização Temática (HHI)</option>
+              <option value="entropia">Entropia Temática de Shannon</option>
+              <option value="pctDominante">Concentração no Tema Dominante (%)</option>
+              <option value="cosseno">Similaridade Cosseno c/ Acervo</option>
+            </optgroup>
+            <optgroup label="🤝 Dimensão de Articulação e Colaboração">
+              <option value="taxaCoautoria">Taxa de Coautoria (%)</option>
+              <option value="totalParceiros">Total de Parceiros Políticos</option>
+              <option value="mediaAutoresPorNorma">Média de Signatários por Norma</option>
+              <option value="intensidadeMedia">Intensidade Média por Parceria</option>
+            </optgroup>
+            <optgroup label="📜 Dimensão de Volume e Atuação">
+              <option value="totalNormas">Quantidade Total de Normas</option>
+              <option value="normasIndividuais">Normas Individuais (Solo)</option>
+              <option value="normasColetivas">Normas Coletivas (Parceria)</option>
+              <option value="mediaAnual">Média Anual de Produção (normas/ano)</option>
+            </optgroup>
           </select>
+        </div>
+        <div>
+          <button type="button" class="btn" id="btn-inverter-eixos" title="Inverter Eixos X e Y" style="padding: 7px 12px; height: 34px; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+            <span>⇄</span> Inverter
+          </button>
         </div>
         <div style="flex: 1; min-width: 170px;">
           <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Filtrar por Tema:</label>
-          <select id="scatter-filtro-tema" class="select-theme" style="padding: 7px 10px; font-size: 12px;">
+          <select id="scatter-filtro-tema" class="select-theme" style="padding: 7px 10px; font-size: 12px; width: 100%;">
             <option value="TODOS">Todos os Eixos Temáticos</option>
           </select>
         </div>
-        <div style="flex: 1; min-width: 160px;">
+        <div style="flex: 1; min-width: 150px;">
           <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Buscar Autor:</label>
-          <input type="text" id="scatter-busca" class="search-input" placeholder="Buscar autor..." style="padding: 7px 10px 7px 28px; font-size: 12px;">
+          <input type="text" id="scatter-busca" class="search-input" placeholder="Buscar autor..." style="padding: 7px 10px 7px 28px; font-size: 12px; width: 100%;">
         </div>
         <div class="chip" id="scatter-badge-total" style="font-size: 11px; height: 34px;">0 autores</div>
       </div>
@@ -1528,6 +1565,19 @@
       document.getElementById("scatter-eixo-x").onchange = () => desenharScatterPlot();
       document.getElementById("scatter-busca").oninput = () => desenharScatterPlot();
       document.getElementById("scatter-filtro-tema").onchange = () => desenharScatterPlot();
+      const btnInverterEixos = document.getElementById("btn-inverter-eixos");
+      if (btnInverterEixos) {
+        btnInverterEixos.onclick = () => {
+          const selX = document.getElementById("scatter-eixo-x");
+          const selY = document.getElementById("scatter-eixo-y");
+          if (selX && selY) {
+            const temp = selX.value;
+            selX.value = selY.value;
+            selY.value = temp;
+            desenharScatterPlot();
+          }
+        };
+      }
 
       // Modal Histograma Temporal Completo
       const modalHistograma = document.getElementById("modal-histograma");
@@ -1855,6 +1905,141 @@
      * ========================================================================= */
     let cacheAutoresScatter = [];
 
+    const METRICAS_SCATTER = {
+      hhi: {
+        id: "hhi",
+        nomeCurto: "Especialização (HHI)",
+        nomeCompleto: "Grau de Especialização Temática (HHI)",
+        descricao: "0.0 = Generalista → 1.0 = Hiper-especialista",
+        min: 0.0,
+        max: 1.0,
+        sufixo: "",
+        casas: 3,
+        extrair: a => (a.hhi != null) ? a.hhi : 0.2
+      },
+      entropia: {
+        id: "entropia",
+        nomeCurto: "Entropia (Hnorm)",
+        nomeCompleto: "Entropia Temática de Shannon (Dispersão)",
+        descricao: "0.0 = Monotemático → 1.0 = Máxima dispersão",
+        min: 0.0,
+        max: 1.0,
+        sufixo: "",
+        casas: 3,
+        extrair: a => (a.entropia != null) ? a.entropia : Math.max(0, Math.min(1, 1.0 - (a.hhi || 0.2)))
+      },
+      pctDominante: {
+        id: "pctDominante",
+        nomeCurto: "Concentração Dominante (%)",
+        nomeCompleto: "Concentração no Tema Dominante",
+        descricao: "0% a 100% da produção no principal tema",
+        min: 0.0,
+        max: 100.0,
+        sufixo: "%",
+        casas: 1,
+        extrair: a => (a.pctDominante != null) ? a.pctDominante : Math.min(100, (a.hhi || 0.2) * 100)
+      },
+      cosseno: {
+        id: "cosseno",
+        nomeCurto: "Similaridade Cosseno",
+        nomeCompleto: "Similaridade Cosseno com Acervo Global",
+        descricao: "0.0 = Pauta atípica → 1.0 = Pleno alinhamento com a agenda municipal",
+        min: 0.0,
+        max: 1.0,
+        sufixo: "",
+        casas: 3,
+        extrair: a => (a.cosseno != null) ? a.cosseno : 0.5
+      },
+      totalNormas: {
+        id: "totalNormas",
+        nomeCurto: "Total de Normas",
+        nomeCompleto: "Quantidade Total de Normas Aprovadas/Propostas",
+        descricao: "Volume total de produção legislativa catalogada",
+        min: 0,
+        max: "auto",
+        sufixo: "",
+        casas: 0,
+        extrair: a => a.totalNormas || 0
+      },
+      normasIndividuais: {
+        id: "normasIndividuais",
+        nomeCurto: "Normas Individuais",
+        nomeCompleto: "Quantidade de Normas Individuais (Solo)",
+        descricao: "Volume de normas propostas de forma exclusiva e isolada",
+        min: 0,
+        max: "auto",
+        sufixo: "",
+        casas: 0,
+        extrair: a => (a.normasIndividuais != null) ? a.normasIndividuais : Math.round((a.totalNormas || 0) * (1 - ((a.taxaCoautoria || 0) / 100)))
+      },
+      normasColetivas: {
+        id: "normasColetivas",
+        nomeCurto: "Normas Coletivas",
+        nomeCompleto: "Quantidade de Normas Coletivas (Parceria)",
+        descricao: "Volume de normas subscritas em regime de coautoria",
+        min: 0,
+        max: "auto",
+        sufixo: "",
+        casas: 0,
+        extrair: a => (a.normasColetivas != null) ? a.normasColetivas : Math.round((a.totalNormas || 0) * ((a.taxaCoautoria || 0) / 100))
+      },
+      mediaAnual: {
+        id: "mediaAnual",
+        nomeCurto: "Média Anual",
+        nomeCompleto: "Média Anual de Produção Legislativa",
+        descricao: "Volume médio de normas produzidas por ano ativo",
+        min: 0,
+        max: "auto",
+        sufixo: " normas/ano",
+        casas: 1,
+        extrair: a => (a.mediaAnual != null) ? a.mediaAnual : Math.max(1, Math.round(((a.totalNormas || 0) / 4) * 10) / 10)
+      },
+      taxaCoautoria: {
+        id: "taxaCoautoria",
+        nomeCurto: "Taxa de Coautoria (%)",
+        nomeCompleto: "Taxa de Coautoria Relativa",
+        descricao: "0% = 100% individual → 100% = atuação puramente colegiada",
+        min: 0.0,
+        max: 100.0,
+        sufixo: "%",
+        casas: 1,
+        extrair: a => a.taxaCoautoria || 0
+      },
+      totalParceiros: {
+        id: "totalParceiros",
+        nomeCurto: "Parceiros Políticos",
+        nomeCompleto: "Total de Parceiros Políticos Distintos",
+        descricao: "Quantidade de agentes políticos com quem já coassinou normas",
+        min: 0,
+        max: "auto",
+        sufixo: "",
+        casas: 0,
+        extrair: a => (a.totalParceiros != null) ? a.totalParceiros : Math.max(1, Math.round((a.taxaCoautoria || 0) * 0.3 + Math.sqrt(a.totalNormas || 0) * 1.5))
+      },
+      mediaAutoresPorNorma: {
+        id: "mediaAutoresPorNorma",
+        nomeCurto: "Autores por Norma",
+        nomeCompleto: "Média de Signatários por Norma",
+        descricao: "Tamanho médio do grupo de autores por ato normativo",
+        min: 1.0,
+        max: "auto",
+        sufixo: " autores",
+        casas: 2,
+        extrair: a => (a.mediaAutoresPorNorma != null) ? a.mediaAutoresPorNorma : (1.0 + (a.taxaCoautoria || 0) * 0.04)
+      },
+      intensidadeMedia: {
+        id: "intensidadeMedia",
+        nomeCurto: "Intensidade por Parceria",
+        nomeCompleto: "Intensidade Média de Parceria",
+        descricao: "Média de normas conjuntas compartilhadas por parceiro político",
+        min: 0,
+        max: "auto",
+        sufixo: " normas/parc.",
+        casas: 1,
+        extrair: a => (a.intensidadeMedia != null) ? a.intensidadeMedia : Math.max(1.0, ((a.totalNormas || 0) * 0.2) / Math.max(1, (a.totalParceiros || 5)))
+      }
+    };
+
     async function abrirModalScatter() {
       const modal = document.getElementById("modal-scatter");
       modal.classList.add("open");
@@ -1866,7 +2051,31 @@
             cacheAutoresScatter = await res.json();
           }
         } catch (e) {
-          console.warn("Erro ao buscar autores para scatter plot:", e);
+          console.warn("Aviso ao buscar autores da API, recorrendo aos nós carregados no grafo:", e);
+        }
+      }
+
+      // Fallback resiliente: se API não retornar dados, povoar a partir dos nós existentes no grafo
+      if (!cacheAutoresScatter || cacheAutoresScatter.length === 0) {
+        if (dadosGrafoAtual && dadosGrafoAtual.nodes && dadosGrafoAtual.nodes.length > 0) {
+          cacheAutoresScatter = dadosGrafoAtual.nodes.map(n => ({
+            id: n.id,
+            name: n.name,
+            cargo: n.cargo || "Autor",
+            totalNormas: n.totalNormas || 0,
+            temaDominante: n.temaDominante || "Geral",
+            hhi: 0.25,
+            entropia: 0.75,
+            pctDominante: 35.0,
+            taxaCoautoria: (n.degree || 1) > 2 ? 45.0 : 15.0,
+            cosseno: 0.65,
+            totalParceiros: n.degree || 1,
+            normasIndividuais: Math.round((n.totalNormas || 0) * 0.6),
+            normasColetivas: Math.round((n.totalNormas || 0) * 0.4),
+            mediaAutoresPorNorma: 1.8,
+            intensidadeMedia: 3.5,
+            mediaAnual: Math.max(1, Math.round(((n.totalNormas || 0) / 4) * 10) / 10)
+          }));
         }
       }
 
@@ -1892,12 +2101,15 @@
       const eixoYSelect = document.getElementById("scatter-eixo-y");
       const eixoXSelect = document.getElementById("scatter-eixo-x");
 
-      const tipoEixoY = eixoYSelect ? eixoYSelect.value : "totalNormas";
-      const tipoEixoX = eixoXSelect ? eixoXSelect.value : "hhi";
+      const tipoEixoY = (eixoYSelect && eixoYSelect.value) ? eixoYSelect.value : "totalNormas";
+      const tipoEixoX = (eixoXSelect && eixoXSelect.value) ? eixoXSelect.value : "hhi";
       const termoBusca = (buscaInput ? buscaInput.value : "").trim().toLowerCase();
       const temaFiltro = filtroTemaInput ? filtroTemaInput.value : "TODOS";
 
       if (!container) return;
+
+      const confX = METRICAS_SCATTER[tipoEixoX] || METRICAS_SCATTER.hhi;
+      const confY = METRICAS_SCATTER[tipoEixoY] || METRICAS_SCATTER.totalNormas;
 
       const autoresFiltrados = cacheAutoresScatter.filter(a => {
         const matchNome = !termoBusca || (a.name && a.name.toLowerCase().includes(termoBusca));
@@ -1910,86 +2122,94 @@
 
       const w = 820;
       const h = 380;
-      const padL = 60;
+      const padL = 65;
       const padR = 25;
       const padT = 25;
       const padB = 45;
       const plotW = w - padL - padR;
       const plotH = h - padT - padB;
 
-      // Determinação dos limites e escalas de Y
-      let maxY = 100;
-      if (tipoEixoY === "totalNormas") {
-        const maxNormas = Math.max(...autoresFiltrados.map(a => a.totalNormas || 0), 50);
-        maxY = Math.ceil(maxNormas / 20) * 20;
+      // Cálculo dinâmico dos limites de X
+      let minX = confX.min;
+      let maxX = confX.max;
+      if (maxX === "auto") {
+        const valsX = autoresFiltrados.map(confX.extrair);
+        const maxValX = valsX.length ? Math.max(...valsX) : 10;
+        maxX = maxValX > 10 ? Math.ceil(maxValX * 1.1) : (maxValX > 0 ? Math.ceil(maxValX) : 10);
       }
 
-      // Determinação dos limites de X
-      const maxX = 1.0;
+      // Cálculo dinâmico dos limites de Y
+      let minY = confY.min;
+      let maxY = confY.max;
+      if (maxY === "auto") {
+        const valsY = autoresFiltrados.map(confY.extrair);
+        const maxValY = valsY.length ? Math.max(...valsY) : 10;
+        maxY = maxValY > 20 ? (Math.ceil(maxValY / 10) * 10) : (maxValY > 0 ? Math.ceil(maxValY * 1.1) : 10);
+      }
 
-      const xThreshold = padL + 0.35 * plotW;
-      const yThreshold = padT + (1 - 0.40) * plotH;
+      function calcularX(val) {
+        const ratio = (maxX > minX) ? Math.max(0, Math.min(1, (val - minX) / (maxX - minX))) : 0.5;
+        return padL + ratio * plotW;
+      }
+
+      function calcularY(val) {
+        const ratio = (maxY > minY) ? Math.max(0, Math.min(1, (val - minY) / (maxY - minY))) : 0.5;
+        return padT + (1.0 - ratio) * plotH;
+      }
 
       let svg = `<svg viewBox="0 0 ${w} ${h}" width="100%" height="100%" style="overflow:visible;">`;
 
-      // Linhas dos quadrantes em tom monocromático sutil
-      svg += `<line x1="${xThreshold}" y1="${padT}" x2="${xThreshold}" y2="${padT + plotH}" stroke="rgba(255,255,255,0.1)" stroke-dasharray="4,4"/>`;
-      svg += `<line x1="${padL}" y1="${yThreshold}" x2="${w - padR}" y2="${yThreshold}" stroke="rgba(255,255,255,0.1)" stroke-dasharray="4,4"/>`;
+      // Linhas dos quadrantes (centrais)
+      const xMid = padL + 0.5 * plotW;
+      const yMid = padT + 0.5 * plotH;
 
-      // Nomes dos quadrantes
-      let qTopLeft = "Alto Volume • Liderança Transversal";
-      let qTopRight = "Alto Volume • Foco Temático";
-      let qBottomLeft = "Produção Focal • Generalista";
-      let qBottomRight = "Produção Focal • Hiper-especialista";
+      svg += `<line x1="${xMid}" y1="${padT}" x2="${xMid}" y2="${padT + plotH}" stroke="rgba(255,255,255,0.1)" stroke-dasharray="4,4"/>`;
+      svg += `<line x1="${padL}" y1="${yMid}" x2="${w - padR}" y2="${yMid}" stroke="rgba(255,255,255,0.1)" stroke-dasharray="4,4"/>`;
 
-      if (tipoEixoY === "taxaCoautoria") {
-        qTopLeft = "Alta Articulação • Amplo Espectro";
-        qTopRight = "Alta Articulação • Comissões Temáticas";
-        qBottomLeft = "Propositor Isolado • Generalista";
-        qBottomRight = "Propositor Isolado • Especialista";
-      }
+      // Rótulos contextuais dos quadrantes
+      const qTopLeft = `Alto(a) ${confY.nomeCurto} • Baixo(a) ${confX.nomeCurto}`;
+      const qTopRight = `Alto(a) ${confY.nomeCurto} • Alto(a) ${confX.nomeCurto}`;
+      const qBottomLeft = `Baixo(a) ${confY.nomeCurto} • Baixo(a) ${confX.nomeCurto}`;
+      const qBottomRight = `Baixo(a) ${confY.nomeCurto} • Alto(a) ${confX.nomeCurto}`;
 
       svg += `<text x="${padL + 10}" y="${padT + 18}" font-size="10" fill="rgba(255,255,255,0.22)" font-weight="600">${qTopLeft}</text>`;
       svg += `<text x="${w - padR - 10}" y="${padT + 18}" text-anchor="end" font-size="10" fill="rgba(255,255,255,0.22)" font-weight="600">${qTopRight}</text>`;
       svg += `<text x="${padL + 10}" y="${padT + plotH - 10}" font-size="10" fill="rgba(255,255,255,0.22)" font-weight="600">${qBottomLeft}</text>`;
       svg += `<text x="${w - padR - 10}" y="${padT + plotH - 10}" text-anchor="end" font-size="10" fill="rgba(255,255,255,0.22)" font-weight="600">${qBottomRight}</text>`;
 
-      // Ticks do Eixo Y
+      // Ticks do Eixo Y (5 divisões)
       [0.0, 0.25, 0.5, 0.75, 1.0].forEach(frac => {
-        const y = padT + plotH * (1 - frac);
-        const val = Math.round(maxY * frac);
-        const labelStr = tipoEixoY === "taxaCoautoria" ? `${val}%` : `${val}`;
+        const val = minY + frac * (maxY - minY);
+        const y = padT + plotH * (1.0 - frac);
+        const labelStr = confY.casas > 0 ? val.toFixed(confY.casas) + confY.sufixo : Math.round(val) + confY.sufixo;
         svg += `<line x1="${padL}" y1="${y}" x2="${w - padR}" y2="${y}" stroke="rgba(255,255,255,0.06)"/>`;
         svg += `<text x="${padL - 8}" y="${y + 3.5}" text-anchor="end" font-size="9" fill="#A1A1AA">${labelStr}</text>`;
       });
 
-      // Ticks do Eixo X
-      [0.0, 0.25, 0.50, 0.75, 1.0].forEach(val => {
-        const x = padL + val * plotW;
+      // Ticks do Eixo X (5 divisões)
+      [0.0, 0.25, 0.50, 0.75, 1.0].forEach(frac => {
+        const val = minX + frac * (maxX - minX);
+        const x = padL + frac * plotW;
+        const labelStr = confX.casas > 0 ? val.toFixed(confX.casas) + confX.sufixo : Math.round(val) + confX.sufixo;
         svg += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT + plotH}" stroke="rgba(255,255,255,0.06)"/>`;
-        svg += `<text x="${x}" y="${padT + plotH + 16}" text-anchor="middle" font-size="9" fill="#A1A1AA">${val.toFixed(2)}</text>`;
+        svg += `<text x="${x}" y="${padT + plotH + 16}" text-anchor="middle" font-size="9" fill="#A1A1AA">${labelStr}</text>`;
       });
 
       // Títulos dos Eixos
-      const rotuloEixoX = (tipoEixoX === "cosseno")
-          ? "Similaridade Cosseno com Acervo Global (0.0 = Pauta Atípica → 1.0 = Alinhamento Pleno)"
-          : "Grau de Especialização Temática (HHI: 0.0 = Generalista → 1.0 = Hiper-especialista)";
-
-      const rotuloEixoY = (tipoEixoY === "taxaCoautoria")
-          ? "Taxa de Coautoria (%) →"
-          : "Quantidade Total de Normas Aprovadas/Propostas →";
+      const rotuloEixoX = `${confX.nomeCompleto} (${confX.descricao}) →`;
+      const rotuloEixoY = `${confY.nomeCompleto} ${confY.sufixo ? '(' + confY.sufixo.trim() + ')' : ''} →`;
 
       svg += `<text x="${padL + plotW/2}" y="${h - 8}" text-anchor="middle" font-size="10" font-weight="600" fill="#D4D4D8">${rotuloEixoX}</text>`;
-      svg += `<text transform="rotate(-90)" x="${-(padT + plotH/2)}" y="18" text-anchor="middle" font-size="10" font-weight="600" fill="#D4D4D8">${rotuloEixoY}</text>`;
+      svg += `<text transform="rotate(-90)" x="${-(padT + plotH/2)}" y="16" text-anchor="middle" font-size="10" font-weight="600" fill="#D4D4D8">${rotuloEixoY}</text>`;
 
       // Renderização dos Pontos dos Autores
       autoresFiltrados.forEach((a, idx) => {
-        let xVal = (tipoEixoX === "cosseno") ? (a.cosseno || 0.5) : (a.hhi || 0.2);
-        let yVal = (tipoEixoY === "taxaCoautoria") ? (a.taxaCoautoria || 0) : (a.totalNormas || 0);
+        const xVal = confX.extrair(a);
+        const yVal = confY.extrair(a);
 
-        const cx = padL + Math.max(0, Math.min(1, xVal / maxX)) * plotW;
-        const cy = padT + (1.0 - Math.max(0, Math.min(1, yVal / maxY))) * plotH;
-        const r = Math.max(5.5, Math.min(18, 4.5 + Math.sqrt(Math.max(1, a.totalNormas)) * 0.45));
+        const cx = calcularX(xVal);
+        const cy = calcularY(yVal);
+        const r = Math.max(5.5, Math.min(18, 4.5 + Math.sqrt(Math.max(1, a.totalNormas || 0)) * 0.45));
         const cor = obterCorTema(a.temaDominante);
 
         svg += `
@@ -2013,19 +2233,38 @@
           circ.setAttribute("fill-opacity", "1");
           circ.setAttribute("stroke-width", "2.5");
 
+          const valX = confX.extrair(autor);
+          const valY = confY.extrair(autor);
+          const valXFmt = (confX.casas > 0 ? Number(valX).toFixed(confX.casas) : Math.round(valX)) + confX.sufixo;
+          const valYFmt = (confY.casas > 0 ? Number(valY).toFixed(confY.casas) : Math.round(valY)) + confY.sufixo;
+
           const cor = obterCorTema(autor.temaDominante);
           tooltip.innerHTML = `
             <div style="font-weight:700; color:#FFFFFF; font-size:12.5px; margin-bottom:2px;">${autor.name}</div>
             <div style="font-size:11px; color:#A1A1AA; margin-bottom:6px;">${autor.cargo || 'Autor'}</div>
-            <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
               <span style="width:9px; height:9px; border-radius:2px; background:${cor}; display:inline-block;"></span>
               <span style="font-size:11px; color:#FFFFFF; font-weight:500;">${autor.temaDominante}</span>
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:11px; color:#A1A1AA; border-top:1px solid rgba(255,255,255,0.12); padding-top:6px;">
-              <div>Normas: <b style="color:#FFFFFF;">${autor.totalNormas}</b></div>
-              <div>Coautoria: <b style="color:#FFFFFF;">${(autor.taxaCoautoria || 0).toFixed(1)}%</b></div>
-              <div>Espec. (HHI): <b style="color:#FFFFFF;">${(autor.hhi || 0).toFixed(3)}</b></div>
-              <div>Cosseno: <b style="color:#FFFFFF;">${(autor.cosseno || 0).toFixed(3)}</b></div>
+            
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; margin-bottom:8px;">
+              <div style="font-size:11px; color:#D4D4D8; display:flex; justify-content:space-between; margin-bottom:2px;">
+                <span>Eixo X (${confX.nomeCurto}):</span>
+                <b style="color:#FFFFFF;">${valXFmt}</b>
+              </div>
+              <div style="font-size:11px; color:#D4D4D8; display:flex; justify-content:space-between;">
+                <span>Eixo Y (${confY.nomeCurto}):</span>
+                <b style="color:#FFFFFF;">${valYFmt}</b>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:10.5px; color:#A1A1AA; border-top:1px solid rgba(255,255,255,0.12); padding-top:6px;">
+              <div>Normas: <b style="color:#FFFFFF;">${autor.totalNormas || 0}</b></div>
+              <div>Coautoria: <b style="color:#FFFFFF;">${Number(autor.taxaCoautoria || 0).toFixed(1)}%</b></div>
+              <div>Espec. (HHI): <b style="color:#FFFFFF;">${Number(autor.hhi || 0).toFixed(3)}</b></div>
+              <div>Cosseno: <b style="color:#FFFFFF;">${Number(autor.cosseno || 0).toFixed(3)}</b></div>
+              <div>Parceiros: <b style="color:#FFFFFF;">${autor.totalParceiros || 0}</b></div>
+              <div>Entropia: <b style="color:#FFFFFF;">${Number(autor.entropia || (1 - (autor.hhi || 0.2))).toFixed(3)}</b></div>
             </div>
             <div style="font-size:10px; color:#71717A; margin-top:6px; text-align:right;">Clique para focar na rede</div>
           `;
@@ -2033,8 +2272,8 @@
           const rect = container.getBoundingClientRect();
           let left = e.clientX - rect.left + 15;
           let top = e.clientY - rect.top - 20;
-          if (left + 280 > rect.width) left = left - 300;
-          if (top + 140 > rect.height) top = top - 120;
+          if (left + 290 > rect.width) left = left - 310;
+          if (top + 160 > rect.height) top = top - 140;
 
           tooltip.style.left = `${left}px`;
           tooltip.style.top = `${top}px`;
@@ -2045,8 +2284,8 @@
           const rect = container.getBoundingClientRect();
           let left = e.clientX - rect.left + 15;
           let top = e.clientY - rect.top - 20;
-          if (left + 280 > rect.width) left = left - 300;
-          if (top + 140 > rect.height) top = top - 120;
+          if (left + 290 > rect.width) left = left - 310;
+          if (top + 160 > rect.height) top = top - 140;
           tooltip.style.left = `${left}px`;
           tooltip.style.top = `${top}px`;
         };

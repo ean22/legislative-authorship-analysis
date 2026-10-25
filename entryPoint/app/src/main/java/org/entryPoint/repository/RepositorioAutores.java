@@ -202,7 +202,7 @@ public class RepositorioAutores {
   }
 
   public Map<Long, String> listarCargosNormalizadosAutores() throws SQLException {
-    String sql = "SELECT DISTINCT id_autor, cargo_autor_normalizado FROM norma_autor WHERE cargo_autor_normalizado IS NOT NULL";
+    String sql = "SELECT DISTINCT id_autor, cargo_autor_normalizado FROM norma_autor WHERE ativo = 1 AND cargo_autor_normalizado IS NOT NULL";
     Map<Long, String> mapa = new HashMap<>();
     try (Connection conexao = gerenciadorConexao.conectar();
       PreparedStatement statement = conexao.prepareStatement(sql);

@@ -68,12 +68,13 @@ public class ServidorWebGrafosTest {
 
     // 3. Testar Endpoint REST /api/autores
     HttpRequest reqAutores = HttpRequest.newBuilder()
-        .uri(URI.create(baseUrl + "/api/autores?limit=5"))
+        .uri(URI.create(baseUrl + "/api/autores?limit=50"))
         .GET()
         .build();
     HttpResponse<String> resAutores = httpClient.send(reqAutores, HttpResponse.BodyHandlers.ofString());
     assertEquals(200, resAutores.statusCode());
     assertTrue(resAutores.body().contains("FERNANDO HADDAD") || resAutores.body().contains("RICARDO NUNES"));
+    assertFalse(resAutores.body().contains("CÂMARA MUNICIPAL DE SÃO PAULO"), "Autor desativado não deve estar em /api/autores");
 
     // 4. Testar Endpoint REST /api/perfil
     HttpRequest reqPerfil = HttpRequest.newBuilder()
@@ -84,6 +85,14 @@ public class ServidorWebGrafosTest {
     assertEquals(200, resPerfil.statusCode());
     assertTrue(resPerfil.body().contains("FERNANDO HADDAD"));
     assertTrue(resPerfil.body().contains("perfilTematico"));
+
+    // 4b. Testar Autor Desativado em /api/perfil deve retornar 404
+    HttpRequest reqPerfilDesativado = HttpRequest.newBuilder()
+        .uri(URI.create(baseUrl + "/api/perfil?id=2023"))
+        .GET()
+        .build();
+    HttpResponse<String> resPerfilDesativado = httpClient.send(reqPerfilDesativado, HttpResponse.BodyHandlers.ofString());
+    assertEquals(404, resPerfilDesativado.statusCode());
 
     // 5. Testar Endpoint REST /api/comparar
     HttpRequest reqComparar = HttpRequest.newBuilder()

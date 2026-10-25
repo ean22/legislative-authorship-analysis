@@ -28,6 +28,7 @@ public class RepositoriosTest {
   private static RepositorioEmentasPreProcessadas repoEmentas;
   private static RepositorioRelacionamentos repoRelacionamentos;
   private static RepositorioTopicos repoTopicos;
+  private static RepositorioPerfilPolitico repoPerfil;
 
   @BeforeAll
   static void setUp() throws SQLException {
@@ -37,6 +38,7 @@ public class RepositoriosTest {
     repoEmentas = repositorioFacade.getRepositorioEmentas();
     repoRelacionamentos = repositorioFacade.getRepositorioRelacionamentos();
     repoTopicos = repositorioFacade.getRepositorioTopicos();
+    repoPerfil = repositorioFacade.getRepositorioPerfilPolitico();
 
     // Inserir norma base para os testes de chave estrangeira
     Norma norma = new Norma();
@@ -175,5 +177,25 @@ public class RepositoriosTest {
         repoTopicos.salvarTopicosDescobertosEmLote(anteriores);
       }
     }
+  }
+
+  @Test
+  @Order(7)
+  @DisplayName("Testa RepositorioPerfilPolitico: filtro de relacionamentos e autores com ativo = 0")
+  void testFiltroRelacionamentosAtivos() throws SQLException {
+    // 1. Autor com todos os relacionamentos desativados (ex: id 2023 - CÂMARA MUNICIPAL DE SÃO PAULO)
+    var optInfoDesativado = repoPerfil.buscarInfoBasicaAutor(2023L);
+    assertTrue(optInfoDesativado.isEmpty(), "Autor com relacionamentos inativos (ativo=0) não deve ter InfoBasica retornada");
+
+    var optIdDesativado = repoPerfil.buscarIdAutorPorNome("CÂMARA MUNICIPAL DE SÃO PAULO");
+    assertTrue(optIdDesativado.isEmpty(), "Autor desativado não deve ser localizado por busca de nome");
+
+    var maisProlificos = repoPerfil.listarAutoresMaisProlificos(100);
+    assertFalse(maisProlificos.stream().anyMatch(a -> a.id() == 2023L), "Autor desativado não deve aparecer entre os mais prolíficos");
+
+    // 2. Estatísticas gerais não devem contar relacionamentos com ativo = 0
+    var stats = repoPerfil.buscarEstatisticasGerais();
+    assertTrue(stats.totalNormas() > 0);
+    assertTrue(stats.totalAutores() > 0);
   }
 }

@@ -64,12 +64,13 @@ public class RepositorioPerfilPolitico {
       SELECT a.id, a.nome,
              (SELECT na2.cargo_autor_normalizado
               FROM norma_autor na2
-              WHERE na2.id_autor = a.id AND na2.cargo_autor_normalizado IS NOT NULL
+              WHERE na2.id_autor = a.id AND na2.cargo_autor_normalizado IS NOT NULL AND na2.ativo = 1
               GROUP BY na2.cargo_autor_normalizado
               ORDER BY COUNT(*) DESC
               LIMIT 1) AS cargo_principal
       FROM autores a
       WHERE a.id = ?
+        AND EXISTS (SELECT 1 FROM norma_autor na WHERE na.id_autor = a.id AND na.ativo = 1)
     """;
 
     try (Connection conexao = gerenciadorConexao.conectar();
@@ -93,7 +94,12 @@ public class RepositorioPerfilPolitico {
    */
   public Optional<Long> buscarIdAutorPorNome(String nome) throws SQLException {
     if (nome == null || nome.isBlank()) return Optional.empty();
-    String sql = "SELECT id FROM autores WHERE UPPER(nome) = UPPER(?) LIMIT 1";
+    String sql = """
+      SELECT a.id FROM autores a
+      WHERE UPPER(a.nome) = UPPER(?)
+        AND EXISTS (SELECT 1 FROM norma_autor na WHERE na.id_autor = a.id AND na.ativo = 1)
+      LIMIT 1
+    """;
 
     try (Connection conexao = gerenciadorConexao.conectar();
          PreparedStatement stmt = conexao.prepareStatement(sql)) {
@@ -106,7 +112,13 @@ public class RepositorioPerfilPolitico {
     }
 
     // Busca parcial caso não encontre exato
-    String sqlLike = "SELECT id FROM autores WHERE UPPER(nome) LIKE UPPER(?) ORDER BY LENGTH(nome) ASC LIMIT 1";
+    String sqlLike = """
+      SELECT a.id FROM autores a
+      WHERE UPPER(a.nome) LIKE UPPER(?)
+        AND EXISTS (SELECT 1 FROM norma_autor na WHERE na.id_autor = a.id AND na.ativo = 1)
+      ORDER BY LENGTH(a.nome) ASC
+      LIMIT 1
+    """;
     try (Connection conexao = gerenciadorConexao.conectar();
          PreparedStatement stmt = conexao.prepareStatement(sqlLike)) {
       stmt.setString(1, "%" + nome.trim() + "%");
@@ -127,12 +139,12 @@ public class RepositorioPerfilPolitico {
     String sql = """
       SELECT nt.id_topico AS id,
              COALESCE(t.nome, (SELECT r.nome FROM rotulos_topicos r WHERE r.id = nt.id_rotulo_topico), 'Tópico #' || nt.id_topico) AS nome,
-             COUNT(*) AS qtd,
+             COUNT(DISTINCT na.id_norma) AS qtd,
              AVG(nt.score_pertinencia) AS score_medio
       FROM norma_autor na
       JOIN norma_topicos nt ON nt.id_norma = na.id_norma
       LEFT JOIN topicos t ON t.id = nt.id_topico
-      WHERE na.id_autor = ?
+      WHERE na.id_autor = ? AND na.ativo = 1
       GROUP BY nt.id_topico
       ORDER BY qtd DESC
     """;
@@ -177,7 +189,7 @@ public class RepositorioPerfilPolitico {
       SELECT nt.termos_chave
       FROM norma_autor na
       JOIN norma_topicos nt ON nt.id_norma = na.id_norma
-      WHERE na.id_autor = ? AND nt.termos_chave IS NOT NULL AND TRIM(nt.termos_chave) <> ''
+      WHERE na.id_autor = ? AND na.ativo = 1 AND nt.termos_chave IS NOT NULL AND TRIM(nt.termos_chave) <> ''
       LIMIT 600
     """;
 
@@ -219,7 +231,7 @@ public class RepositorioPerfilPolitico {
       SELECT COALESCE(n.tipoEscrito, 'Outros') AS tipo, COUNT(DISTINCT na.id_norma) AS qtd
       FROM norma_autor na
       JOIN normas n ON n.id = na.id_norma
-      WHERE na.id_autor = ?
+      WHERE na.id_autor = ? AND na.ativo = 1
       GROUP BY tipo
       ORDER BY qtd DESC
     """;
@@ -246,8 +258,8 @@ public class RepositorioPerfilPolitico {
       FROM (
         SELECT na1.id_norma, COUNT(na2.id_autor) AS total_autores
         FROM norma_autor na1
-        JOIN norma_autor na2 ON na1.id_norma = na2.id_norma
-        WHERE na1.id_autor = ?
+        JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na2.ativo = 1
+        WHERE na1.id_autor = ? AND na1.ativo = 1
         GROUP BY na1.id_norma
       ) sub
       GROUP BY individual
@@ -282,7 +294,7 @@ public class RepositorioPerfilPolitico {
     String sqlCargos = """
       SELECT COALESCE(cargo_autor_normalizado, cargo_autor, 'NÃO INFORMADO') AS cargo, COUNT(*) AS qtd
       FROM norma_autor
-      WHERE id_autor = ?
+      WHERE id_autor = ? AND ativo = 1
       GROUP BY cargo
       ORDER BY qtd DESC
     """;
@@ -318,9 +330,9 @@ public class RepositorioPerfilPolitico {
       SELECT a2.id, a2.nome, na2.cargo_autor_normalizado,
              COUNT(DISTINCT na1.id_norma) AS qtd_compartilhada
       FROM norma_autor na1
-      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor <> na2.id_autor
+      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor <> na2.id_autor AND na2.ativo = 1
       JOIN autores a2 ON a2.id = na2.id_autor
-      WHERE na1.id_autor = ?
+      WHERE na1.id_autor = ? AND na1.ativo = 1
       GROUP BY a2.id, a2.nome, na2.cargo_autor_normalizado
       ORDER BY qtd_compartilhada DESC
       LIMIT ?
@@ -351,12 +363,12 @@ public class RepositorioPerfilPolitico {
   private List<String> buscarTopicosCompartilhados(Connection conexao, long idAutor1, long idAutor2, int limite) throws SQLException {
     String sql = """
       SELECT COALESCE(t.nome, (SELECT r.nome FROM rotulos_topicos r WHERE r.id = nt.id_rotulo_topico), 'Tópico #' || nt.id_topico) AS nome,
-             COUNT(*) AS qtd
+             COUNT(DISTINCT na1.id_norma) AS qtd
       FROM norma_autor na1
-      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na2.id_autor = ?
+      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na2.id_autor = ? AND na2.ativo = 1
       JOIN norma_topicos nt ON nt.id_norma = na1.id_norma
       LEFT JOIN topicos t ON t.id = nt.id_topico
-      WHERE na1.id_autor = ?
+      WHERE na1.id_autor = ? AND na1.ativo = 1
       GROUP BY nt.id_topico
       ORDER BY qtd DESC
       LIMIT ?
@@ -384,8 +396,8 @@ public class RepositorioPerfilPolitico {
       SELECT COALESCE(na2.cargo_autor_normalizado, 'OUTROS CARGOS') AS cargo,
              COUNT(DISTINCT na1.id_norma) AS qtd
       FROM norma_autor na1
-      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor <> na2.id_autor
-      WHERE na1.id_autor = ?
+      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor <> na2.id_autor AND na2.ativo = 1
+      WHERE na1.id_autor = ? AND na1.ativo = 1
       GROUP BY cargo
       ORDER BY qtd DESC
     """;
@@ -410,8 +422,8 @@ public class RepositorioPerfilPolitico {
     String sql = """
       SELECT COUNT(DISTINCT na2.id_autor)
       FROM norma_autor na1
-      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor <> na2.id_autor
-      WHERE na1.id_autor = ?
+      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor <> na2.id_autor AND na2.ativo = 1
+      WHERE na1.id_autor = ? AND na1.ativo = 1
     """;
 
     try (Connection conexao = gerenciadorConexao.conectar();
@@ -435,7 +447,7 @@ public class RepositorioPerfilPolitico {
       SELECT n.ano, COUNT(DISTINCT na.id_norma) AS qtd
       FROM norma_autor na
       JOIN normas n ON n.id = na.id_norma
-      WHERE na.id_autor = ? AND n.ano IS NOT NULL AND n.ano > 1900
+      WHERE na.id_autor = ? AND na.ativo = 1 AND n.ano IS NOT NULL AND n.ano > 1900
       GROUP BY n.ano
       ORDER BY n.ano ASC
     """;
@@ -454,12 +466,12 @@ public class RepositorioPerfilPolitico {
     String sqlTemasAno = """
       SELECT n.ano,
              COALESCE(t.nome, (SELECT r.nome FROM rotulos_topicos r WHERE r.id = nt.id_rotulo_topico), 'Tópico #' || nt.id_topico) AS nome,
-             COUNT(*) AS qtd
+             COUNT(DISTINCT na.id_norma) AS qtd
       FROM norma_autor na
       JOIN normas n ON n.id = na.id_norma
       JOIN norma_topicos nt ON nt.id_norma = na.id_norma
       LEFT JOIN topicos t ON t.id = nt.id_topico
-      WHERE na.id_autor = ? AND n.ano IS NOT NULL AND n.ano > 1900
+      WHERE na.id_autor = ? AND na.ativo = 1 AND n.ano IS NOT NULL AND n.ano > 1900
       GROUP BY n.ano, nt.id_topico
       ORDER BY n.ano ASC, qtd DESC
     """;
@@ -488,12 +500,12 @@ public class RepositorioPerfilPolitico {
       SELECT a.id, a.nome,
              (SELECT na2.cargo_autor_normalizado
               FROM norma_autor na2
-              WHERE na2.id_autor = a.id AND na2.cargo_autor_normalizado IS NOT NULL
+              WHERE na2.id_autor = a.id AND na2.cargo_autor_normalizado IS NOT NULL AND na2.ativo = 1
               GROUP BY na2.cargo_autor_normalizado
               ORDER BY COUNT(*) DESC LIMIT 1) AS cargo,
              COUNT(DISTINCT na.id_norma) AS total_normas
       FROM autores a
-      JOIN norma_autor na ON na.id_autor = a.id
+      JOIN norma_autor na ON na.id_autor = a.id AND na.ativo = 1
       GROUP BY a.id, a.nome
       ORDER BY total_normas DESC
       LIMIT ?
@@ -527,9 +539,10 @@ public class RepositorioPerfilPolitico {
         na2.id_autor AS autor2, a2.nome AS nome2,
         COUNT(DISTINCT na1.id_norma) AS peso
       FROM norma_autor na1
-      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor < na2.id_autor
+      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor < na2.id_autor AND na2.ativo = 1
       JOIN autores a1 ON a1.id = na1.id_autor
       JOIN autores a2 ON a2.id = na2.id_autor
+      WHERE na1.ativo = 1
       GROUP BY na1.id_autor, na2.id_autor
       HAVING peso >= ?
       ORDER BY peso DESC
@@ -566,10 +579,10 @@ public class RepositorioPerfilPolitico {
         na2.id_autor AS autor2, a2.nome AS nome2,
         COUNT(DISTINCT na1.id_norma) AS peso
       FROM norma_autor na1
-      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor <> na2.id_autor
+      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor <> na2.id_autor AND na2.ativo = 1
       JOIN autores a1 ON a1.id = na1.id_autor
       JOIN autores a2 ON a2.id = na2.id_autor
-      WHERE na1.id_autor = ?
+      WHERE na1.id_autor = ? AND na1.ativo = 1
       GROUP BY na2.id_autor
       HAVING peso >= ?
       ORDER BY peso DESC
@@ -602,8 +615,8 @@ public class RepositorioPerfilPolitico {
     String sql = """
       SELECT COUNT(DISTINCT na1.id_norma)
       FROM norma_autor na1
-      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na2.id_autor = ?
-      WHERE na1.id_autor = ?
+      JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na2.id_autor = ? AND na2.ativo = 1
+      WHERE na1.id_autor = ? AND na1.ativo = 1
     """;
 
     try (Connection conexao = gerenciadorConexao.conectar();
@@ -645,17 +658,17 @@ public class RepositorioPerfilPolitico {
     int totalLacos = 0;
 
     try (Connection conexao = gerenciadorConexao.conectar()) {
-      try (PreparedStatement stmt = conexao.prepareStatement("SELECT COUNT(*) FROM normas");
+      try (PreparedStatement stmt = conexao.prepareStatement("SELECT COUNT(DISTINCT id_norma) FROM norma_autor WHERE ativo = 1");
            ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) totalNormas = rs.getInt(1);
       }
 
-      try (PreparedStatement stmt = conexao.prepareStatement("SELECT COUNT(*) FROM autores");
+      try (PreparedStatement stmt = conexao.prepareStatement("SELECT COUNT(DISTINCT id_autor) FROM norma_autor WHERE ativo = 1");
            ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) totalAutores = rs.getInt(1);
       }
 
-      try (PreparedStatement stmt = conexao.prepareStatement("SELECT COUNT(DISTINCT id_topico) FROM norma_topicos");
+      try (PreparedStatement stmt = conexao.prepareStatement("SELECT COUNT(DISTINCT nt.id_topico) FROM norma_topicos nt JOIN norma_autor na ON na.id_norma = nt.id_norma WHERE na.ativo = 1");
            ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) totalTopicos = rs.getInt(1);
       }
@@ -670,7 +683,8 @@ public class RepositorioPerfilPolitico {
         SELECT COUNT(*) FROM (
           SELECT na1.id_autor, na2.id_autor
           FROM norma_autor na1
-          JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor < na2.id_autor
+          JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor < na2.id_autor AND na2.ativo = 1
+          WHERE na1.ativo = 1
           GROUP BY na1.id_autor, na2.id_autor
           HAVING COUNT(DISTINCT na1.id_norma) >= 5
         )
@@ -693,9 +707,10 @@ public class RepositorioPerfilPolitico {
       SELECT 
         COALESCE(t.id, nt.id_topico) AS id,
         COALESCE(t.nome, (SELECT r.nome FROM rotulos_topicos r WHERE r.id = nt.id_rotulo_topico), 'Tópico #' || COALESCE(t.id, nt.id_topico)) AS nome,
-        COUNT(nt.id_norma) AS total_normas
+        COUNT(DISTINCT na.id_norma) AS total_normas
       FROM topicos t
       LEFT JOIN norma_topicos nt ON nt.id_topico = t.id
+      LEFT JOIN norma_autor na ON na.id_norma = nt.id_norma AND na.ativo = 1
       GROUP BY t.id, t.nome
       ORDER BY total_normas DESC, id ASC
     """;
@@ -716,8 +731,9 @@ public class RepositorioPerfilPolitico {
       String sqlFallback = """
         SELECT nt.id_topico AS id,
                COALESCE((SELECT r.nome FROM rotulos_topicos r WHERE r.id = nt.id_rotulo_topico), 'Tópico #' || nt.id_topico) AS nome,
-               COUNT(*) AS total_normas
+               COUNT(DISTINCT na.id_norma) AS total_normas
         FROM norma_topicos nt
+        JOIN norma_autor na ON na.id_norma = nt.id_norma AND na.ativo = 1
         GROUP BY nt.id_topico
         ORDER BY total_normas DESC
       """;

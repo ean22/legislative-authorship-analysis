@@ -241,3 +241,53 @@ WHERE cargo_autor IN (
 'SECRETÁRIO MUNICIPAL DE SERVIÇOS FRANCISCO',
 'SECRETÁRIO MUNICIPAL DOS NEGÓCIOS JURÍDICOS FRANCISCO'
 )
+
+
+
+
+
+
+
+
+PRAGMA table_info(norma_autor);
+
+PRAGMA table_info(normas);
+
+SELECT COUNT(*) AS quantidade
+FROM normas n
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM norma_autor na
+    WHERE na.id_norma = n.id
+      AND na.ativo = 1
+);
+
+SELECT COUNT(*) AS quantidade
+FROM norma_autor
+WHERE ativo = 0;
+
+SELECT
+    COUNT(*) AS total,
+    SUM(CASE WHEN ativo = 1 THEN 1 ELSE 0 END) AS ativos,
+    SUM(CASE WHEN ativo = 0 THEN 1 ELSE 0 END) AS inativos
+FROM norma_autor;
+
+SELECT
+    COUNT(*) AS total_normas,
+    SUM(
+        CASE WHEN EXISTS (
+            SELECT 1
+            FROM norma_autor na
+            WHERE na.id_norma = n.id
+        ) THEN 1 ELSE 0 END
+    ) AS normas_com_relacionamento,
+    SUM(
+        CASE WHEN NOT EXISTS (
+            SELECT 1
+            FROM norma_autor na
+            WHERE na.id_norma = n.id
+        ) THEN 1 ELSE 0 END
+    ) AS normas_sem_relacionamento
+FROM normas n;
+
+select count(*) from norma_autor;

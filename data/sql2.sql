@@ -1,14 +1,10 @@
 SELECT * FROM norma_autor n_a JOIN autores a ON a.id = n_a.id_autor WHERE id_autor IN (1948,1950,1964,2023,1971,1953,1908,1869,1870,1949);
 
-
-UPDATE norma_autor
-SET ativo = 1;
-
 UPDATE norma_autor
 SET ativo = 0
 WHERE id_autor IN (
     1948, 1950, 1964, 2023, 1971,
-    1953, 1908, 1869, 1870, 1949
+    1953, 1908, 1869, 1870, 1949, 2117
 );
 
 UPDATE norma_autor

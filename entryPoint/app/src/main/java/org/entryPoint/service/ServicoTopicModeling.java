@@ -15,8 +15,8 @@ import org.entryPoint.repository.RepositorioTopicos;
 /**
  * Serviço de Modelagem de Tópicos das normas legislativas.
  * Refatorado para executar por padrão o Pipeline Vencedor eleito pelo Benchmark:
- * - Redução Textual: TextRank
- * - Representação Semântica: Espaço Latente Contínuo (DENSE_SVD)
+ * - Redução Textual: TextRank (termos salientes pré-processados)
+ * - Representação Semântica: Vetorização Direta de Termos (SPARSE_TFIDF com normalização L2)
  * - Algoritmo: Cluster c-TF-IDF (K-Means esférico + c-TF-IDF)
  * - K ótimo: 8 tópicos
  */
@@ -61,8 +61,8 @@ public class ServicoTopicModeling {
         return null;
       }
       System.out.printf("Total de registros carregados: %d normas legislativas.%n", ementasCache.size());
-      System.out.println("Construindo espaço latente contínuo (DENSE_SVD)...");
-      corpusCache = extratorRepresentacao.processar(ementasCache, TipoRepresentacaoSemantica.DENSE_SVD);
+      System.out.println("Vetorizando termos salientes do corpus legislativo (SPARSE_TFIDF)...");
+      corpusCache = extratorRepresentacao.processar(ementasCache, TipoRepresentacaoSemantica.SPARSE_TFIDF);
       System.out.printf("Vocabulário refinado: %d termos em %d documentos válidos.%n",
           corpusCache.getTamanhoVocabulario(), corpusCache.getNumeroDocumentos());
     }
@@ -148,11 +148,11 @@ public class ServicoTopicModeling {
     double[][] centroides = algoritmoCluster.getUltimosCentroides();
     int[] clusters = algoritmoCluster.getUltimosClusters();
     List<TopicoTematico> topicos = algoritmoCluster.getUltimosTopicos();
-    double[][] matrizDensa = corpus.matrizDensa();
     List<Long> docIds = corpus.docIds();
+    List<String> vocab = corpus.vocabulario();
 
     int k = centroides.length;
-    int dSize = matrizDensa.length;
+    int dSize = corpus.getNumeroDocumentos();
     int dim = centroides[0].length;
 
     int[] contagens = new int[k];
@@ -164,7 +164,7 @@ public class ServicoTopicModeling {
     for (int d = 0; d < dSize; d++) {
       int c = clusters[d];
       contagens[c]++;
-      double sim = algoritmoCluster.similaridadeCosseno(matrizDensa[d], centroides[c]);
+      double sim = algoritmoCluster.calcularSimilaridadeDocCentroide(corpus, d, c);
       somaSimilaridades[c] += sim;
       if (sim > maxSimilaridade[c]) {
         maxSimilaridade[c] = sim;
@@ -173,7 +173,7 @@ public class ServicoTopicModeling {
     }
 
     System.out.println("\n" + "=".repeat(95));
-    System.out.println("AUDITORIA GEOMÉTRICA DOS CENTROIDES DOS CLUSTERS (ESPAÇO LATENTE DENSE_SVD)");
+    System.out.println("AUDITORIA GEOMÉTRICA DOS CENTROIDES DOS CLUSTERS (ESPAÇO VETORIAL DE TERMOS SALIENTES)");
     System.out.println("=".repeat(95));
     System.out.printf("Dimensão do espaço vetorial: %d componentes | Total de normas avaliadas: %d%n%n", dim, dSize);
 
@@ -181,7 +181,7 @@ public class ServicoTopicModeling {
       String nome = (topicos != null && c < topicos.size()) ? topicos.get(c).nome() : "Cluster #" + (c + 1);
       int qtd = contagens[c];
       double coesao = qtd > 0 ? (somaSimilaridades[c] / qtd) : 0.0;
-      long docMedoideId = docIds.get(melhorDocIdx[c]);
+      long docMedoideId = (melhorDocIdx[c] >= 0 && melhorDocIdx[c] < docIds.size()) ? docIds.get(melhorDocIdx[c]) : -1L;
 
       // Localizar as Top 4 dimensões de maior magnitude no centroide
       List<Integer> dims = new ArrayList<>();
@@ -192,13 +192,14 @@ public class ServicoTopicModeling {
       StringBuilder topDims = new StringBuilder();
       for (int i = 0; i < Math.min(4, dims.size()); i++) {
         int dIdx = dims.get(i);
-        topDims.append(String.format("D%d: %+.3f  ", dIdx, centroides[c][dIdx]));
+        String label = (vocab != null && dIdx < vocab.size()) ? vocab.get(dIdx) : ("D" + dIdx);
+        topDims.append(String.format("%s (%+.3f)  ", label, centroides[c][dIdx]));
       }
 
       System.out.printf("🔷 CLUSTER %d: %s%n", c + 1, nome);
       System.out.printf("   Normas: %d (%.1f%%) | Coesão Cosseno Média: %.3f | Norma Medoide: #%d (Sim: %.3f)%n",
           qtd, (qtd * 100.0) / dSize, coesao, docMedoideId, maxSimilaridade[c]);
-      System.out.printf("   Dimensões Dominantes: [ %s]%n%n", topDims);
+      System.out.printf("   Termos Dominantes no Centroide: [ %s]%n%n", topDims);
     }
     System.out.println("=".repeat(95));
   }

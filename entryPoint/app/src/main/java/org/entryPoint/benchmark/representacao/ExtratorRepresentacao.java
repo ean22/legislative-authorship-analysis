@@ -25,7 +25,7 @@ public class ExtratorRepresentacao {
   private final double maxDfRatio;
 
   public ExtratorRepresentacao() {
-    this(3, 0.35);
+    this(1, 1.0);
   }
 
   public ExtratorRepresentacao(int minDf, double maxDfRatio) {
@@ -71,7 +71,7 @@ public class ExtratorRepresentacao {
     List<String> vocabulario = new ArrayList<>();
     for (Map.Entry<String, Integer> entry : docFreq.entrySet()) {
       int df = entry.getValue();
-      if (df >= minDf && df <= maxDf) {
+      if (df >= minDf && (maxDfRatio >= 1.0 || df <= maxDf)) {
         vocabulario.add(entry.getKey());
       }
     }
@@ -139,13 +139,17 @@ public class ExtratorRepresentacao {
       matrizTfidf.add(vetorDoc);
     }
 
-    // 2. Matriz Densa (se solicitada ou para clustering/SVD)
+    // 2. Matriz Densa (calculada exclusivamente quando solicitada por DENSE_SVD)
     double[][] matrizDensa = null;
-    int dimensoesDensas = Math.min(32, Math.max(8, vSize / 4));
-    if (vSize > 0 && totalDocs > 0) {
-      matrizDensa = projetarEspacoLatenteDenso(matrizTfidf, totalDocs, vSize, dimensoesDensas);
+    if (tipoRepresentacao == TipoRepresentacaoSemantica.DENSE_SVD) {
+      int dimensoesDensas = Math.min(32, Math.max(8, vSize / 4));
+      if (vSize > 0 && totalDocs > 0) {
+        matrizDensa = projetarEspacoLatenteDenso(matrizTfidf, totalDocs, vSize, dimensoesDensas);
+      } else {
+        matrizDensa = new double[totalDocs][1];
+      }
     } else {
-      matrizDensa = new double[totalDocs][1];
+      matrizDensa = new double[0][0];
     }
 
     return new CorpusProcessado(

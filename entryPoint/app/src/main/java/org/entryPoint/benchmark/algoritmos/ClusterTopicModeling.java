@@ -27,7 +27,14 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
     int dSize = corpus.getNumeroDocumentos();
     int vSize = corpus.getTamanhoVocabulario();
     double[][] matrizDensa = corpus.matrizDensa();
-    int dim = matrizDensa.length > 0 ? matrizDensa[0].length : 0;
+    var matrizTfidf = corpus.matrizTfidfEsparsa();
+
+    // Determina se opera no espaço esparso de termos (pipeline simplificado direto)
+    // ou no espaço vetorial contínuo denso (legado / DENSE_SVD)
+    boolean usarEsparsa = (matrizDensa == null || matrizDensa.length == 0 || matrizDensa[0].length == 0)
+        && (matrizTfidf != null && !matrizTfidf.isEmpty());
+
+    int dim = usarEsparsa ? vSize : (matrizDensa != null && matrizDensa.length > 0 ? matrizDensa[0].length : 0);
 
     if (dSize == 0 || vSize == 0 || k <= 0 || dim == 0) {
       this.ultimosClustersFiltradosTotal = 0;
@@ -40,7 +47,11 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
     // 1. Inicialização dos Centroides (K-Means++)
     double[][] centroides = new double[k][dim];
     int primeiroIdx = rng.nextInt(dSize);
-    System.arraycopy(matrizDensa[primeiroIdx], 0, centroides[0], 0, dim);
+    if (usarEsparsa) {
+      copiarDocParaCentroide(matrizTfidf.get(primeiroIdx), centroides[0]);
+    } else {
+      System.arraycopy(matrizDensa[primeiroIdx], 0, centroides[0], 0, dim);
+    }
 
     for (int t = 1; t < k; t++) {
       double[] distancias = new double[dSize];
@@ -48,7 +59,10 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
       for (int d = 0; d < dSize; d++) {
         double minDist = Double.MAX_VALUE;
         for (int c = 0; c < t; c++) {
-          double dist = 1.0 - similaridadeCosseno(matrizDensa[d], centroides[c]);
+          double sim = usarEsparsa
+              ? calcularDot(matrizTfidf.get(d), centroides[c])
+              : similaridadeCosseno(matrizDensa[d], centroides[c]);
+          double dist = Math.max(0.0, 1.0 - sim);
           if (dist < minDist) {
             minDist = dist;
           }
@@ -67,7 +81,11 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
           break;
         }
       }
-      System.arraycopy(matrizDensa[escolhido], 0, centroides[t], 0, dim);
+      if (usarEsparsa) {
+        copiarDocParaCentroide(matrizTfidf.get(escolhido), centroides[t]);
+      } else {
+        System.arraycopy(matrizDensa[escolhido], 0, centroides[t], 0, dim);
+      }
     }
 
     // 2. Iterações K-Means com Similaridade Cosseno
@@ -82,7 +100,9 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
         int melhorC = 0;
         double maxSim = -Double.MAX_VALUE;
         for (int c = 0; c < k; c++) {
-          double sim = similaridadeCosseno(matrizDensa[d], centroides[c]);
+          double sim = usarEsparsa
+              ? calcularDot(matrizTfidf.get(d), centroides[c])
+              : similaridadeCosseno(matrizDensa[d], centroides[c]);
           if (sim > maxSim) {
             maxSim = sim;
             melhorC = c;
@@ -105,8 +125,14 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
       for (int d = 0; d < dSize; d++) {
         int c = clusterAtribuido[d];
         contagens[c]++;
-        for (int j = 0; j < dim; j++) {
-          novosCentroides[c][j] += matrizDensa[d][j];
+        if (usarEsparsa) {
+          for (Map.Entry<Integer, Double> entry : matrizTfidf.get(d).entrySet()) {
+            novosCentroides[c][entry.getKey()] += entry.getValue();
+          }
+        } else {
+          for (int j = 0; j < dim; j++) {
+            novosCentroides[c][j] += matrizDensa[d][j];
+          }
         }
       }
 
@@ -133,13 +159,12 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
       contagensDocs[clusterAtribuido[d]]++;
     }
 
-    var matrizTfidf = corpus.matrizTfidfEsparsa();
     double[][] freqClusterBruta = new double[k][vSize];
     double[] somaTokensBruta = new double[k];
 
     for (int d = 0; d < dSize; d++) {
       int c = clusterAtribuido[d];
-      var mapaDoc = matrizTfidf.get(d);
+      var mapaDoc = matrizTfidf != null && d < matrizTfidf.size() ? matrizTfidf.get(d) : null;
       if (mapaDoc != null) {
         for (Map.Entry<Integer, Double> entry : mapaDoc.entrySet()) {
           int wIdx = entry.getKey();
@@ -197,7 +222,9 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
         int melhorC = 0;
         double maxSim = -Double.MAX_VALUE;
         for (int c = 0; c < kValidos; c++) {
-          double sim = similaridadeCosseno(matrizDensa[d], centroidesValidos[c]);
+          double sim = usarEsparsa
+              ? calcularDot(matrizTfidf.get(d), centroidesValidos[c])
+              : similaridadeCosseno(matrizDensa[d], centroidesValidos[c]);
           if (sim > maxSim) {
             maxSim = sim;
             melhorC = c;
@@ -245,7 +272,9 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
       double[] expSim = new double[kValidos];
       double somaExp = 0.0;
       for (int c = 0; c < kValidos; c++) {
-        double sim = similaridadeCosseno(matrizDensa[d], centroidesValidos[c]);
+        double sim = usarEsparsa
+            ? calcularDot(matrizTfidf.get(d), centroidesValidos[c])
+            : similaridadeCosseno(matrizDensa[d], centroidesValidos[c]);
         expSim[c] = Math.exp(sim / temperatura);
         somaExp += expSim[c];
       }
@@ -351,6 +380,57 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
     }
     double denom = Math.sqrt(nA) * Math.sqrt(nB);
     return denom > 1e-9 ? dot / denom : 0.0;
+  }
+
+  private void copiarDocParaCentroide(Map<Integer, Double> doc, double[] centroide) {
+    Arrays.fill(centroide, 0.0);
+    if (doc == null || doc.isEmpty()) return;
+    for (Map.Entry<Integer, Double> entry : doc.entrySet()) {
+      int idx = entry.getKey();
+      if (idx < centroide.length) {
+        centroide[idx] = entry.getValue();
+      }
+    }
+    double somaQuad = 0.0;
+    for (double val : centroide) {
+      somaQuad += val * val;
+    }
+    double norma = Math.sqrt(somaQuad);
+    if (norma > 1e-9) {
+      for (int i = 0; i < centroide.length; i++) {
+        centroide[i] /= norma;
+      }
+    }
+  }
+
+  private double calcularDot(Map<Integer, Double> docSparse, double[] centroide) {
+    if (docSparse == null || docSparse.isEmpty() || centroide == null) {
+      return 0.0;
+    }
+    double dot = 0.0;
+    for (Map.Entry<Integer, Double> entry : docSparse.entrySet()) {
+      int idx = entry.getKey();
+      if (idx < centroide.length) {
+        dot += entry.getValue() * centroide[idx];
+      }
+    }
+    return dot;
+  }
+
+  public double calcularSimilaridadeDocCentroide(CorpusProcessado corpus, int docIdx, int clusterIdx) {
+    if (ultimosCentroides == null || clusterIdx < 0 || clusterIdx >= ultimosCentroides.length || corpus == null) {
+      return 0.0;
+    }
+    double[] centroide = ultimosCentroides[clusterIdx];
+    var matrizTfidf = corpus.matrizTfidfEsparsa();
+    if (matrizTfidf != null && docIdx < matrizTfidf.size() && !matrizTfidf.get(docIdx).isEmpty()) {
+      return calcularDot(matrizTfidf.get(docIdx), centroide);
+    }
+    double[][] matrizDensa = corpus.matrizDensa();
+    if (matrizDensa != null && docIdx < matrizDensa.length && matrizDensa[docIdx].length == centroide.length) {
+      return similaridadeCosseno(matrizDensa[docIdx], centroide);
+    }
+    return 0.0;
   }
 
   private record TermoPeso(String termo, double peso) {}

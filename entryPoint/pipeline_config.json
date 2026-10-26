@@ -13,6 +13,6 @@
     "utilidade_autoral": 0.4845
   },
   "justificativa_escolha": "Clustering c-TF-IDF obteve alta pureza de assuntos e vocabulário discriminante. Alta diversidade temática (90% termos únicos). Alinhamento institucional moderado (pureza: 30%).",
-  "data_definicao": "2026-10-25T15:35:37.526769413",
+  "data_definicao": "2026-10-25T17:09:03.62794016",
   "ativo": true
 }

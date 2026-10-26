@@ -146,42 +146,18 @@ public class ServicoTopicModeling {
     }
 
     double[][] centroides = algoritmoCluster.getUltimosCentroides();
-    int[] clusters = algoritmoCluster.getUltimosClusters();
     List<TopicoTematico> topicos = algoritmoCluster.getUltimosTopicos();
-    List<Long> docIds = corpus.docIds();
     List<String> vocab = corpus.vocabulario();
 
     int k = centroides.length;
-    int dSize = corpus.getNumeroDocumentos();
     int dim = centroides[0].length;
-
-    int[] contagens = new int[k];
-    double[] somaSimilaridades = new double[k];
-    double[] maxSimilaridade = new double[k];
-    int[] melhorDocIdx = new int[k];
-    Arrays.fill(maxSimilaridade, -1.0);
-
-    for (int d = 0; d < dSize; d++) {
-      int c = clusters[d];
-      contagens[c]++;
-      double sim = algoritmoCluster.calcularSimilaridadeDocCentroide(corpus, d, c);
-      somaSimilaridades[c] += sim;
-      if (sim > maxSimilaridade[c]) {
-        maxSimilaridade[c] = sim;
-        melhorDocIdx[c] = d;
-      }
-    }
 
     System.out.println("\n" + "=".repeat(95));
     System.out.println("AUDITORIA GEOMÉTRICA DOS CENTROIDES DOS CLUSTERS (ESPAÇO VETORIAL DE TERMOS SALIENTES)");
     System.out.println("=".repeat(95));
-    System.out.printf("Dimensão do espaço vetorial: %d componentes | Total de normas avaliadas: %d%n%n", dim, dSize);
 
     for (int c = 0; c < k; c++) {
       String nome = (topicos != null && c < topicos.size()) ? topicos.get(c).nome() : "Cluster #" + (c + 1);
-      int qtd = contagens[c];
-      double coesao = qtd > 0 ? (somaSimilaridades[c] / qtd) : 0.0;
-      long docMedoideId = (melhorDocIdx[c] >= 0 && melhorDocIdx[c] < docIds.size()) ? docIds.get(melhorDocIdx[c]) : -1L;
 
       // Localizar as Top 4 dimensões de maior magnitude no centroide
       List<Integer> dims = new ArrayList<>();
@@ -189,17 +165,15 @@ public class ServicoTopicModeling {
       final int clusterIdx = c;
       dims.sort((d1, d2) -> Double.compare(Math.abs(centroides[clusterIdx][d2]), Math.abs(centroides[clusterIdx][d1])));
 
-      StringBuilder topDims = new StringBuilder();
-      for (int i = 0; i < Math.min(4, dims.size()); i++) {
+      List<String> termosDominantes = new ArrayList<>();
+      for (int i = 0; i < Math.min(6, dims.size()); i++) {
         int dIdx = dims.get(i);
         String label = (vocab != null && dIdx < vocab.size()) ? vocab.get(dIdx) : ("D" + dIdx);
-        topDims.append(String.format("%s (%+.3f)  ", label, centroides[c][dIdx]));
+        termosDominantes.add(label);
       }
 
-      System.out.printf("🔷 CLUSTER %d: %s%n", c + 1, nome);
-      System.out.printf("   Normas: %d (%.1f%%) | Coesão Cosseno Média: %.3f | Norma Medoide: #%d (Sim: %.3f)%n",
-          qtd, (qtd * 100.0) / dSize, coesao, docMedoideId, maxSimilaridade[c]);
-      System.out.printf("   Termos Dominantes no Centroide: [ %s]%n%n", topDims);
+      System.out.printf("CLUSTER %d: %s%n", c + 1, nome);
+      System.out.printf("   Termos Dominantes no Centroide: [ %s ]%n%n", String.join(", ", termosDominantes));
     }
     System.out.println("=".repeat(95));
   }

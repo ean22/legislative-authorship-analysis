@@ -17,11 +17,11 @@ public class InferidorRotuloTemaTest {
   void testFluxoRegrasLexicas() {
     List<String> palavras = List.of("crédito", "suplementar", "adicional", "orçamento", "abertura", "recursos");
     String rotulo = InferidorRotuloTema.inferirRotuloTema(palavras, ModoInferidorTema.REGRAS_LEXICAS);
-    assertEquals("Crédito Orçamentário e Finanças", rotulo);
+    assertEquals("Finanças", rotulo);
 
     List<String> vias = List.of("denomina", "logradouro", "praça", "rua", "oficial", "especifica");
     String rotuloVias = InferidorRotuloTema.inferirRotuloTema(vias, ModoInferidorTema.REGRAS_LEXICAS);
-    assertEquals("Denominação de Vias e Logradouros", rotuloVias);
+    assertEquals("Denominação de Vias", rotuloVias);
   }
 
   @Test
@@ -29,11 +29,11 @@ public class InferidorRotuloTemaTest {
     // Caso com flexões/sinônimos que capturam a categoria via similaridade de cosseno de embeddings
     List<String> palavrasFinanceiras = List.of("dotação", "custeio", "empenho", "repasses", "receitas", "despesas");
     String rotulo = InferidorRotuloTema.inferirRotuloTema(palavrasFinanceiras, ModoInferidorTema.HIBRIDO_EMBEDDINGS);
-    assertEquals("Crédito Orçamentário e Finanças", rotulo);
+    assertEquals("Finanças", rotulo);
 
     List<String> palavrasEscolares = List.of("pedagogia", "escolar", "matrículas", "professores", "educacional");
     String rotuloEduc = InferidorRotuloTema.inferirRotuloTema(palavrasEscolares, ModoInferidorTema.HIBRIDO_EMBEDDINGS);
-    assertEquals("Educação e Creches", rotuloEduc);
+    assertEquals("Educação", rotuloEduc);
   }
 
   @Test
@@ -61,9 +61,9 @@ public class InferidorRotuloTemaTest {
 
     List<String> rotulos = InferidorRotuloTema.inferirRotulosEmLote(clusters, ModoInferidorTema.HIBRIDO_EMBEDDINGS);
     assertEquals(3, rotulos.size());
-    assertEquals("Crédito Orçamentário e Finanças", rotulos.get(0));
-    assertEquals("Declaração de Utilidade Pública", rotulos.get(1));
-    assertEquals("Denominação de Vias e Logradouros", rotulos.get(2));
+    assertEquals("Finanças", rotulos.get(0));
+    assertEquals("Utilidade Pública", rotulos.get(1));
+    assertEquals("Denominação de Vias", rotulos.get(2));
   }
 
   @Test
@@ -72,9 +72,9 @@ public class InferidorRotuloTemaTest {
       ```json
       {
         "topicos": [
-          { "id": 1, "tema": "Crédito Orçamentário e Finanças" },
-          { "id": 2, "tema": "Denominação de Vias e Logradouros" },
-          { "id": 3, "tema": "Cultura, Festas e Tradições Populares" }
+          { "id": 1, "tema": "Finanças" },
+          { "id": 2, "tema": "Denominação de Vias" },
+          { "id": 3, "tema": "Cultura e Tradições" }
         ]
       }
       ```
@@ -83,9 +83,9 @@ public class InferidorRotuloTemaTest {
     Map<Integer, String> mapa = AgenteGemini.parsearRespostaRotulacaoTopicos(jsonSimulado, Set.of(1, 2, 3));
     assertNotNull(mapa);
     assertEquals(3, mapa.size());
-    assertEquals("Crédito Orçamentário e Finanças", mapa.get(1));
-    assertEquals("Denominação de Vias e Logradouros", mapa.get(2));
-    assertEquals("Cultura, Festas e Tradições Populares", mapa.get(3));
+    assertEquals("Finanças", mapa.get(1));
+    assertEquals("Denominação de Vias", mapa.get(2));
+    assertEquals("Cultura e Tradições", mapa.get(3));
   }
 
   @Test
@@ -98,7 +98,7 @@ public class InferidorRotuloTemaTest {
 
     List<String> rotulos = InferidorRotuloTema.inferirRotulosEmLote(clusters, ModoInferidorTema.LLM_GEMINI);
     assertFalse(rotulos.isEmpty());
-    assertEquals("Crédito Orçamentário e Finanças", rotulos.get(0));
+    assertEquals("Finanças", rotulos.get(0));
   }
 
   @Test
@@ -111,9 +111,9 @@ public class InferidorRotuloTemaTest {
     // Chamada sem modo explícito: utiliza modoAtivo padrão (LLM_GEMINI com fallback REGRAS_LEXICAS)
     List<String> rotulos = InferidorRotuloTema.inferirRotulosEmLote(clusters);
     assertEquals(3, rotulos.size());
-    assertEquals("Crédito Orçamentário e Finanças", rotulos.get(0));
-    assertEquals("Denominação de Vias e Logradouros", rotulos.get(1));
-    assertEquals("Educação e Creches", rotulos.get(2));
+    assertEquals("Finanças", rotulos.get(0));
+    assertEquals("Denominação de Vias", rotulos.get(1));
+    assertEquals("Educação", rotulos.get(2));
   }
 
   @Test
@@ -126,8 +126,8 @@ public class InferidorRotuloTemaTest {
 
     List<String> rotulos = InferidorRotuloTema.inferirRotulosEmLote(clustersComVazios);
     assertEquals(3, rotulos.size());
-    assertEquals("Crédito Orçamentário e Finanças", rotulos.get(0));
+    assertEquals("Finanças", rotulos.get(0));
     assertEquals("Tópico Geral / Indefinido", rotulos.get(1));
-    assertEquals("Declaração de Utilidade Pública", rotulos.get(2));
+    assertEquals("Utilidade Pública", rotulos.get(2));
   }
 }

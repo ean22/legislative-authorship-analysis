@@ -116,11 +116,11 @@ public class ServicoAfericaoAssertividade {
 
   public static File localizarArquivoCsvPadrao() {
     List<String> candidatos = List.of(
-        "data/normas_classificadas.csv",
-        "../data/normas_classificadas.csv",
-        "../../data/normas_classificadas.csv",
-        "normas_classificadas.csv",
-        "entryPoint/data/normas_classificadas.csv"
+        "data/normas_classificadas_2.csv",
+        "../data/normas_classificadas_2.csv",
+        "../../data/normas_classificadas_2.csv",
+        "normas_classificadas_2.csv",
+        "entryPoint/data/normas_classificadas_2.csv"
     );
 
     for (String path : candidatos) {
@@ -129,7 +129,7 @@ public class ServicoAfericaoAssertividade {
         return f;
       }
     }
-    return new File("data/normas_classificadas.csv");
+    return new File("data/normas_classificadas_2.csv");
   }
 
   // =========================================================================
@@ -635,6 +635,7 @@ public class ServicoAfericaoAssertividade {
     // Grupo 1: Gestão Imobiliária / Habitação / Bens Imóveis / Desapropriação
     Set<String> grupoImobiliario = Set.of(
         "gestao imobiliaria habitacao e regularizacao fundiaria",
+        "habitacao e imoveis",
         "bens imoveis e desapropriacao",
         "habitacao e regularizacao fundiaria",
         "gestao imobiliaria",
@@ -649,6 +650,7 @@ public class ServicoAfericaoAssertividade {
         "servicos publicos e gestao municipal",
         "estrutura administrativa e servidores",
         "administracao e normas gerais",
+        "administracao geral",
         "servicos publicos"
     );
     if (grupoServicos.contains(a) && grupoServicos.contains(b)) {
@@ -668,7 +670,8 @@ public class ServicoAfericaoAssertividade {
     // Grupo 4: Educação
     Set<String> grupoEducacao = Set.of(
         "educacao e creches",
-        "educacao e ensino municipal"
+        "educacao e ensino municipal",
+        "educacao"
     );
     if (grupoEducacao.contains(a) && grupoEducacao.contains(b)) {
       return true;
@@ -678,9 +681,57 @@ public class ServicoAfericaoAssertividade {
     Set<String> grupoTransportes = Set.of(
         "transportes e transito urbano",
         "transporte transito e mobilidade urbana",
+        "transporte e transito",
         "transito e transportes"
     );
     if (grupoTransportes.contains(a) && grupoTransportes.contains(b)) {
+      return true;
+    }
+
+    // Grupo 6: Orçamento e Finanças
+    Set<String> grupoOrcamento = Set.of(
+        "credito orcamentario e financas",
+        "orcamento e financas",
+        "orcamento"
+    );
+    if (grupoOrcamento.contains(a) && grupoOrcamento.contains(b)) {
+      return true;
+    }
+
+    // Grupo 7: Utilidade Pública
+    Set<String> grupoUtilidade = Set.of(
+        "declaracao de utilidade publica",
+        "utilidade publica"
+    );
+    if (grupoUtilidade.contains(a) && grupoUtilidade.contains(b)) {
+      return true;
+    }
+
+    // Grupo 8: Denominação de Vias
+    Set<String> grupoVias = Set.of(
+        "denominacao de vias e logradouros",
+        "denominacao de vias"
+    );
+    if (grupoVias.contains(a) && grupoVias.contains(b)) {
+      return true;
+    }
+
+    // Grupo 9: Saúde
+    Set<String> grupoSaude = Set.of(
+        "saude publica e assistencia hospitalar",
+        "saude publica",
+        "saude"
+    );
+    if (grupoSaude.contains(a) && grupoSaude.contains(b)) {
+      return true;
+    }
+
+    // Grupo 10: Meio Ambiente
+    Set<String> grupoMeioAmbiente = Set.of(
+        "meio ambiente e areas verdes",
+        "meio ambiente"
+    );
+    if (grupoMeioAmbiente.contains(a) && grupoMeioAmbiente.contains(b)) {
       return true;
     }
 

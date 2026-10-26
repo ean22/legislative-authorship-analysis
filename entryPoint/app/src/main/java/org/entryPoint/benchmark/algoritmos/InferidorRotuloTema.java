@@ -31,23 +31,23 @@ public class InferidorRotuloTema {
 
   private static final List<CategoriaTematica> CATEGORIAS = List.of(
       new CategoriaTematica(
-          "Crédito Orçamentário e Finanças",
+          "Finanças",
           "abertura de crédito suplementar e especial dotações orçamentárias finanças públicas receitas despesas municipais tributos impostos",
           Set.of("crédito", "suplementar", "adicional", "orçamento", "subvenções", "receita", "despesa", "tribut",
               "imposto"),
           Set.of("abre", "abertura", "recursos", "financeira", "suplementação")),
       new CategoriaTematica(
-          "Declaração de Utilidade Pública",
+          "Utilidade Pública",
           "declaração de utilidade pública para entidades associações civis beneficentes institutos fundações sem fins lucrativos",
           Set.of("utilidade", "declara", "entidade", "associação", "instituto"),
           Set.of("pública", "beneficente", "fundação")),
       new CategoriaTematica(
-          "Educação e Creches",
+          "Educação",
           "educação infantil creches municipais escolas centros de educação infantil CEI ensino fundamental pedagógico alunos matrículas",
           Set.of("educação", "infantil", "creche", "escola", "ensino", "cei", "pedagógica"),
           Set.of("alunos", "professores", "matrícula")),
       new CategoriaTematica(
-          "Gestão Imobiliária, Habitação e Regularização Fundiária",
+          "Imóveis",
           "gestão de bens imóveis públicos e particulares patrimônio imobiliário desapropriação declaração de utilidade pública aquisição alienação transferência desafetação de terrenos e áreas municipais habitação popular moradia social habitação de interesse social programas habitacionais conjuntos habitacionais regularização fundiária urbana ZEIS urbanização de assentamentos parcelamento e ocupação do solo",
           Set.of("imóvel", "imóveis", "imobiliário", "patrimônio", "desapropriação", "desapropria", "desafeta",
               "alienação", "terreno", "terrenos", "habitação", "habitacional", "moradia", "fundiária", "zeis",
@@ -55,32 +55,32 @@ public class InferidorRotuloTema {
           Set.of("público", "particular", "utilidade", "social", "interesse", "municipal", "área", "áreas", "aquisição",
               "transferência", "regularização", "urbanização", "conjunto", "propriedade", "ocupação", "parcelamento")),
       new CategoriaTematica(
-          "Denominação de Vias e Logradouros",
+          "Denominação de Vias",
           "denominação e nomeação oficial de vias públicas praças ruas avenidas travessas e logradouros públicos do município",
           Set.of("denomina", "logradouro", "praça", "avenida", "travessa"),
           Set.of("rua", "distrito", "situado", "situados", "oficial", "especifica")),
       new CategoriaTematica(
-          "Datas Comemorativas e Calendário",
+          "Datas Comemorativas",
           "inclusão de datas comemorativas semanas de conscientização dias temáticos e eventos no calendário oficial do município",
           Set.of("calendário", "eventos", "comemorado", "conscientização"),
           Set.of("incluir", "institui", "semana", "dia", "anualmente", "oficial")),
       new CategoriaTematica(
-          "Saúde Pública e Assistência Hospitalar",
+          "Saúde",
           "saúde pública municipal postos de saúde unidades básicas UBS hospitais atendimento médico consultas SUS vacinação medicamentos",
           Set.of("saúde", "médic", "sanitár", "hospital", "sus", "enfermagem", "clínica"),
           Set.of("atendimento", "vacinação", "medicamentos")),
       new CategoriaTematica(
-          "Transportes e Trânsito Urbano",
+          "Trânsito",
           "trânsito tráfego mobilidade urbana circulação de veículos transporte coletivo linhas de ônibus tarifas estacionamento rotativo",
           Set.of("trânsito", "transporte", "veículo", "mobilidade", "estacionamento"),
           Set.of("linhas", "itinerário", "tarifa")),
       new CategoriaTematica(
-          "Meio Ambiente e Áreas Verdes",
+          "Meio Ambiente",
           "preservação ambiental parques municipais áreas verdes arborização urbana sustentabilidade proteção da fauna e flora ecológica",
           Set.of("meio ambiente", "parque", "verde", "ambiental", "sustentab", "preservação"),
           Set.of("árvores", "fauna", "flora")),
       new CategoriaTematica(
-          "Serviços Públicos e Gestão Municipal",
+          "Serviços Públicos",
           "prestação e concessão de serviços públicos municipais permissão de uso postos de atendimento feiras funcionamento e gestão pública",
           Set.of("serviços", "serviço", "concessão", "permissão", "municipais", "postos", "pontos"),
           Set.of("funcionamento", "prestação", "fixa", "rua", "atividades", "exercício")));
@@ -364,7 +364,7 @@ public class InferidorRotuloTema {
     }
 
     // 3. Fallback rotulado
-    return "Administração e Normas Gerais (" + topPalavras.get(0) + ")";
+    return "Normas Gerais";
   }
 
   // =========================================================================
@@ -379,7 +379,7 @@ public class InferidorRotuloTema {
     if (avaliacao.categoria() != null && avaliacao.score() >= 0.5) {
       return avaliacao.categoria().nome();
     }
-    return "Administração e Normas Gerais (" + topPalavras.get(0) + ")";
+    return "Normas Gerais";
   }
 
   public static ResultadoAvaliacaoLexica avaliarScoreLexico(List<String> topPalavras) {

@@ -1,6 +1,6 @@
 # Relatório Experimental de Benchmark: Modelagem de Tópicos e Autoria Legislativa
 
-- **Data da Execução:** 2026-10-25 15:35:37
+- **Data da Execução:** 2026-10-25 17:09:03
 - **Corpus Analisado:** 300 normas legislativas
 - **Total de Configurações Comparadas:** 10 experimentos
 - **Baseline:** Baseline: TF-IDF + NMF (K=12) (Score: 0.579)
@@ -24,68 +24,68 @@
 
 ## Tópicos Descobertos pela Melhor Combinação
 
-- **Tópico 01 [Declaração de Utilidade Pública]:** secretaria, declara, entidade, utilidade, pública, comissão
+- **Tópico 01 [Utilidade Pública]:** secretaria, declara, entidade, utilidade, pública, comissão
 - **Tópico 02 [Administração e Normas Gerais (constitucionais)]:** constitucionais, emenda, introduzido, transitórias, acordo, acrescenta
 - **Tópico 03 [Administração e Normas Gerais (conselho)]:** conselho, comitê, governamental, cria, funcionamento, candidatura
-- **Tópico 04 [Denominação de Vias e Logradouros]:** público, logradouro, denomina, espaço, distrito, livre
-- **Tópico 05 [Gestão Imobiliária, Habitação e Regularização Fundiária]:** desapropriação, necessário, particular, subprefeitura, imóvel, necessários
-- **Tópico 06 [Crédito Orçamentário e Finanças]:** suplementar, adicional, acordo, crédito, acrescenta, adaptação
-- **Tópico 07 [Educação e Creches]:** centro, educação, área, infantil, criação, uso
-- **Tópico 08 [Educação e Creches]:** escola, criação, infantil, educação, fundamental, ensino
+- **Tópico 04 [Denominação de Vias]:** público, logradouro, denomina, espaço, distrito, livre
+- **Tópico 05 [Imóveis]:** desapropriação, necessário, particular, subprefeitura, imóvel, necessários
+- **Tópico 06 [Finanças]:** suplementar, adicional, acordo, crédito, acrescenta, adaptação
+- **Tópico 07 [Educação]:** centro, educação, área, infantil, criação, uso
+- **Tópico 08 [Educação]:** escola, criação, infantil, educação, fundamental, ensino
 
 ## Perfis Temáticos dos Principais Órgãos Emissores (Melhor Combinação)
 
 - **PREFEITO** (1 normas):
-  - Tópico Dominante: *Declaração de Utilidade Pública* (16.5%)
+  - Tópico Dominante: *Utilidade Pública* (16.5%)
   - Tópico Secundário: *Administração e Normas Gerais (constitucionais)* (11.9%)
 
 ## Perfis Temáticos dos Principais Autores Políticos (Melhor Combinação)
 
 - **FERNANDO HADDAD** (283 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (32.2%)
-  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (12.5%)
+  - Dominante: *Finanças* (32.2%)
+  - Secundário: *Imóveis* (12.5%)
 - **ANTONIO DONATO MADORMO** (279 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (32.6%)
-  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (12.5%)
+  - Dominante: *Finanças* (32.6%)
+  - Secundário: *Imóveis* (12.5%)
 - **LUIS FERNANDO MASSONETTO** (138 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (55.1%)
-  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (15.4%)
+  - Dominante: *Finanças* (55.1%)
+  - Secundário: *Imóveis* (15.4%)
 - **LEDA MARIA PAULANI** (126 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (61.4%)
-  - Secundário: *Declaração de Utilidade Pública* (6.8%)
+  - Dominante: *Finanças* (61.4%)
+  - Secundário: *Utilidade Pública* (6.8%)
 - **MARCOS DE BARROS CRUZ** (105 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (71.5%)
+  - Dominante: *Finanças* (71.5%)
   - Secundário: *Administração e Normas Gerais (constitucionais)* (4.6%)
 - **ANTONIO CESAR RUSSI CALLEGARI** (42 normas):
-  - Dominante: *Educação e Creches* (23.7%)
-  - Secundário: *Crédito Orçamentário e Finanças* (21.6%)
+  - Dominante: *Educação* (23.7%)
+  - Secundário: *Finanças* (21.6%)
 - **JOSÉ FLORIANO DE AZEVEDO MARQUES NETO** (36 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (27.2%)
-  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (25.8%)
+  - Dominante: *Finanças* (27.2%)
+  - Secundário: *Imóveis* (25.8%)
 - **JOSÉ DE FILIPPI JUNIOR** (14 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (53.3%)
-  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (14.7%)
+  - Dominante: *Finanças* (53.3%)
+  - Secundário: *Imóveis* (14.7%)
 - **JOÃO LUIZ SILVA FERREIRA** (13 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (79.9%)
-  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (2.9%)
+  - Dominante: *Finanças* (79.9%)
+  - Secundário: *Imóveis* (2.9%)
 - **OSVALDO SPURI** (11 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (47.6%)
-  - Secundário: *Declaração de Utilidade Pública* (12.0%)
+  - Dominante: *Finanças* (47.6%)
+  - Secundário: *Utilidade Pública* (12.0%)
 - **FRANCISCO MACENA DA SILVA** (11 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (54.6%)
-  - Secundário: *Gestão Imobiliária, Habitação e Regularização Fundiária* (8.1%)
+  - Dominante: *Finanças* (54.6%)
+  - Secundário: *Imóveis* (8.1%)
 - **SIMÃO PEDRO CHIOVETTI** (9 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (49.3%)
+  - Dominante: *Finanças* (49.3%)
   - Secundário: *Administração e Normas Gerais (conselho)* (9.6%)
 - **ELISEU GABRIEL DE PIERI** (8 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (62.6%)
-  - Secundário: *Declaração de Utilidade Pública* (8.0%)
+  - Dominante: *Finanças* (62.6%)
+  - Secundário: *Utilidade Pública* (8.0%)
 - **JILMAR AUGUSTINHO TATTO** (8 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (44.2%)
-  - Secundário: *Declaração de Utilidade Pública* (12.6%)
+  - Dominante: *Finanças* (44.2%)
+  - Secundário: *Utilidade Pública* (12.6%)
 - **FERNANDO DE MELLO FRANCO** (7 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (31.1%)
-  - Secundário: *Declaração de Utilidade Pública* (14.1%)
+  - Dominante: *Finanças* (31.1%)
+  - Secundário: *Utilidade Pública* (14.1%)
 - **RICARDO TEIXEIRA** (5 normas):
-  - Dominante: *Crédito Orçamentário e Finanças* (23.7%)
+  - Dominante: *Finanças* (23.7%)
   - Secundário: *Administração e Normas Gerais (conselho)* (15.1%)

@@ -817,16 +817,8 @@ public class PaginaWebGrafoTemplate {
         <div id="stat-total-normas" class="stat-card-value">0</div>
       </div>
       <div class="stat-card">
-        <div class="stat-card-title">Taxa de Coautoria</div>
-        <div id="stat-taxa-coautoria" class="stat-card-value">0%</div>
-      </div>
-      <div class="stat-card">
         <div class="stat-card-title">Parceiros Distintos</div>
         <div id="stat-parceiros-total" class="stat-card-value">0</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-title">Especialização (HHI)</div>
-        <div id="stat-hhi" class="stat-card-value">0.00</div>
       </div>
     </div>
 
@@ -840,9 +832,6 @@ public class PaginaWebGrafoTemplate {
     <div id="tab-temas" class="tab-content active">
       <div class="section-title">Distribuição Temática das Normas</div>
       <div id="drawer-lista-topicos"></div>
-
-      <div class="section-title" style="margin-top: 16px;">Vocabulário Mais Frequente</div>
-      <div id="drawer-palavras-chave" class="keywords-cloud"></div>
     </div>
 
     <!-- Aba 2: Parcerias -->
@@ -1028,13 +1017,27 @@ public class PaginaWebGrafoTemplate {
     // Mapeamento categórico de alto contraste para os eixos temáticos oficiais
     const CORES_TOPICOS_MAPEADOS = {
       "Crédito Orçamentário e Finanças": "#F59E0B",      // Âmbar Dourado
+      "Orçamento e Finanças": "#F59E0B",                 // Âmbar Dourado
       "Declaração de Utilidade Pública": "#A855F7",      // Roxo / Púrpura
+      "Utilidade Pública": "#A855F7",                    // Roxo / Púrpura
       "Educação e Creches": "#06B6D4",                   // Ciano Elétrico
+      "Educação": "#06B6D4",                             // Ciano Elétrico
+      "Gestão Imobiliária, Habitação e Regularização Fundiária": "#F97316", // Laranja Coral
+      "Habitação e Imóveis": "#F97316",                  // Laranja Coral
       "Bens Imóveis e Desapropriação": "#F97316",        // Laranja Coral
       "Serviços Públicos e Gestão Municipal": "#10B981", // Verde Esmeralda
-      "Serviços Públicos e Gestão": "#10B981",           // Variação
+      "Serviços Públicos": "#10B981",                    // Verde Esmeralda
       "Denominação de Vias e Logradouros": "#F43F5E",    // Rosa Choque / Carmesim
-      "Datas Comemorativas e Calendário": "#3B82F6"      // Azul Real
+      "Denominação de Vias": "#F43F5E",                  // Rosa Choque / Carmesim
+      "Datas Comemorativas e Calendário": "#3B82F6",      // Azul Real
+      "Datas Comemorativas": "#3B82F6",                  // Azul Real
+      "Saúde Pública e Assistência Hospitalar": "#14B8A6", // Verde Água / Teal
+      "Saúde": "#14B8A6",                                // Verde Água / Teal
+      "Transportes e Trânsito Urbano": "#E11D48",        // Vermelho / Rubi
+      "Transporte e Trânsito": "#E11D48",                // Vermelho / Rubi
+      "Meio Ambiente e Áreas Verdes": "#84CC16",         // Verde Limão
+      "Meio Ambiente": "#84CC16",                        // Verde Limão
+      "Administração Geral": "#6366F1"                   // Índigo
     };
 
     const CORES_PALETA_BASE = [
@@ -1393,13 +1396,9 @@ public class PaginaWebGrafoTemplate {
       }
       if (perfil.perfilAtuacao) {
         document.getElementById("stat-total-normas").innerText = perfil.perfilAtuacao.totalNormas;
-        document.getElementById("stat-taxa-coautoria").innerText = perfil.perfilAtuacao.taxaCoautoria.toFixed(1) + "%";
       }
       if (perfil.perfilColaboracao) {
         document.getElementById("stat-parceiros-total").innerText = perfil.perfilColaboracao.totalParceirosDistintos;
-      }
-      if (perfil.perfilTematico) {
-        document.getElementById("stat-hhi").innerText = perfil.perfilTematico.indiceEspecializacaoHhi.toFixed(3);
       }
 
       // Renderizar Temas
@@ -1422,14 +1421,7 @@ public class PaginaWebGrafoTemplate {
         });
       }
 
-      // Palavras-chave
-      const containerKeywords = document.getElementById("drawer-palavras-chave");
-      containerKeywords.innerHTML = "";
-      if (perfil.perfilTematico && perfil.perfilTematico.termosMaisFrequentes) {
-        perfil.perfilTematico.termosMaisFrequentes.forEach(kw => {
-          containerKeywords.innerHTML += `<span class="keyword-tag">${kw}</span>`;
-        });
-      }
+
 
       // Parcerias
       const containerParceiros = document.getElementById("drawer-lista-parceiros");

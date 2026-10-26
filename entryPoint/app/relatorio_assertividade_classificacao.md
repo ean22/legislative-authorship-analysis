@@ -1,7 +1,7 @@
 # Relatório Experimental de Aferição de Assertividade das Normas
 
 - **Arquivo de Referência:** `../../data/normas_classificadas.csv`
-- **Data da Aferição:** 2026-10-25 15:35:38
+- **Data da Aferição:** 2026-10-25 17:06:57
 - **Total de Normas Anotadas (Ground Truth):** 500
 - **Normas Casadas no Banco SQLite:** 500
 - **Normas Classificadas no Banco:** 495

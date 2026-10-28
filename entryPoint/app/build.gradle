@@ -17,6 +17,8 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.20.0'
     implementation 'org.xerial:sqlite-jdbc:3.50.3.0'
+    implementation 'org.apache.commons:commons-math3:3.6.1'
+    implementation 'org.jgrapht:jgrapht-core:1.5.2'
     
     compileOnly 'org.projectlombok:lombok:1.18.46'
     annotationProcessor 'org.projectlombok:lombok:1.18.46'
@@ -34,6 +36,7 @@ application {
 
 tasks.named('test') {
     useJUnitPlatform()
+    maxHeapSize = '1024m'
 }
 
 tasks.named('run') {

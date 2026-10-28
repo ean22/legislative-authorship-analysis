@@ -1,13 +1,18 @@
 package org.entryPoint.service.preprocessamento;
 
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
+import org.jgrapht.Graph;
+import org.jgrapht.alg.scoring.PageRank;
+import org.jgrapht.graph.DefaultWeightedEdge;
+import org.jgrapht.graph.SimpleWeightedGraph;
 
+/**
+ * Redução Textual via TextRank (Mihalcea & Tarau, 2004)
+ * implementada sobre a biblioteca consagrada JGraphT.
+ */
 public class EstrategiaTextRank implements EstrategiaReducao {
   private final int topK;
   private final int tamanhoJanela;
@@ -43,12 +48,10 @@ public class EstrategiaTextRank implements EstrategiaReducao {
       return String.join(" ", tokens);
     }
 
-    // Grafo de Coocorrência não direcionado ponderado
-    Map<String, Map<String, Double>> grafo = new HashMap<>();
-    Set<String> vocabulario = new HashSet<>(tokens);
-
-    for (String v : vocabulario) {
-      grafo.put(v, new HashMap<>());
+    // Grafo de Coocorrência não direcionado ponderado utilizando JGraphT
+    Graph<String, DefaultWeightedEdge> grafo = new SimpleWeightedGraph<>(DefaultWeightedEdge.class);
+    for (String token : tokens) {
+      grafo.addVertex(token);
     }
 
     for (int i = 0; i < tokens.size(); i++) {
@@ -56,51 +59,22 @@ public class EstrategiaTextRank implements EstrategiaReducao {
       for (int j = i + 1; j < Math.min(tokens.size(), i + tamanhoJanela + 1); j++) {
         String t2 = tokens.get(j);
         if (!t1.equals(t2)) {
-          grafo.get(t1).merge(t2, 1.0, Double::sum);
-          grafo.get(t2).merge(t1, 1.0, Double::sum);
-        }
-      }
-    }
-
-    // Calcular soma de pesos de saída de cada nó
-    Map<String, Double> somaArestas = new HashMap<>();
-    for (String node : vocabulario) {
-      double soma = grafo.get(node).values().stream().mapToDouble(Double::doubleValue).sum();
-      somaArestas.put(node, soma);
-    }
-
-    // Inicialização do score de PageRank
-    Map<String, Double> scores = new HashMap<>();
-    for (String node : vocabulario) {
-      scores.put(node, 1.0);
-    }
-
-    // Iterações do TextRank / PageRank
-    for (int iter = 0; iter < maxIteracoes; iter++) {
-      Map<String, Double> novosScores = new HashMap<>();
-      double diferencaMaxima = 0.0;
-
-      for (String vi : vocabulario) {
-        double somaVizinhos = 0.0;
-        for (Map.Entry<String, Double> vizinhoEntry : grafo.get(vi).entrySet()) {
-          String vj = vizinhoEntry.getKey();
-          double pesoJparaI = vizinhoEntry.getValue();
-          double pesoTotalVj = somaArestas.getOrDefault(vj, 1.0);
-          if (pesoTotalVj > 0) {
-            somaVizinhos += (pesoJparaI / pesoTotalVj) * scores.get(vj);
+          DefaultWeightedEdge edge = grafo.getEdge(t1, t2);
+          if (edge == null) {
+            edge = grafo.addEdge(t1, t2);
+            if (edge != null) {
+              grafo.setEdgeWeight(edge, 1.0);
+            }
+          } else {
+            grafo.setEdgeWeight(edge, grafo.getEdgeWeight(edge) + 1.0);
           }
         }
-
-        double novoScore = (1.0 - d) + d * somaVizinhos;
-        novosScores.put(vi, novoScore);
-        diferencaMaxima = Math.max(diferencaMaxima, Math.abs(novoScore - scores.get(vi)));
-      }
-
-      scores = novosScores;
-      if (diferencaMaxima < convergenciaThreshold) {
-        break;
       }
     }
+
+    // Execução do algoritmo de PageRank consagrado da biblioteca JGraphT
+    PageRank<String, DefaultWeightedEdge> pageRank = new PageRank<>(grafo, d, maxIteracoes, convergenciaThreshold);
+    Map<String, Double> scores = pageRank.getScores();
 
     // Ordenar os nós pelo score final do TextRank
     return scores.entrySet().stream()

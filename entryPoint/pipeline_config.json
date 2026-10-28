@@ -5,14 +5,14 @@
   "representacao_semantica": "DENSE_SVD",
   "algoritmo_topicos": "CLUSTER_C_TFIDF",
   "k_topicos": 8,
-  "score_global": 0.6892,
+  "score_global": 0.7131,
   "metricas": {
-    "coerencia_umass": -1.3818,
-    "diversidade_topicos": 0.8958,
-    "estabilidade_jaccard": 0.3494,
-    "utilidade_autoral": 0.4845
+    "coerencia_umass": -1.2393,
+    "diversidade_topicos": 0.9792,
+    "estabilidade_jaccard": 0.3661,
+    "utilidade_autoral": 0.4838
   },
-  "justificativa_escolha": "Clustering c-TF-IDF obteve alta pureza de assuntos e vocabulário discriminante. Alta diversidade temática (90% termos únicos). Alinhamento institucional moderado (pureza: 30%).",
-  "data_definicao": "2026-10-25T17:09:03.62794016",
+  "justificativa_escolha": "Clustering c-TF-IDF obteve alta pureza de assuntos e vocabulário discriminante. Alta diversidade temática (98% termos únicos). Alinhamento institucional moderado (pureza: 30%).",
+  "data_definicao": "2026-10-26T13:43:30.176604937",
   "ativo": true
 }

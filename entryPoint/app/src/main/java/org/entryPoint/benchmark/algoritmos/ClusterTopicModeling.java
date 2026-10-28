@@ -1,12 +1,18 @@
 package org.entryPoint.benchmark.algoritmos;
 
 import java.util.*;
+import org.apache.commons.math3.ml.clustering.CentroidCluster;
+import org.apache.commons.math3.ml.clustering.Clusterable;
+import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
+import org.apache.commons.math3.ml.distance.DistanceMeasure;
+import org.apache.commons.math3.random.MersenneTwister;
+import org.apache.commons.math3.random.RandomGenerator;
 import org.entryPoint.benchmark.representacao.CorpusProcessado;
 import org.entryPoint.model.TopicoTematico;
 
 /**
  * Topic Modeling baseado em Clustering Vetorial + Class-based TF-IDF (c-TF-IDF).
- * Agrupa documentos no espaço geométrico via K-Means com distância cosseno
+ * Agrupa documentos no espaço geométrico via KMeansPlusPlusClusterer (Apache Commons Math)
  * e extrai a representação semântica de cada tópico através de c-TF-IDF.
  */
 public class ClusterTopicModeling implements AlgoritmoTopicModeling {
@@ -42,112 +48,127 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
       return new ResultadoModelo(new double[0][0], new double[0][0], List.of());
     }
 
-    Random rng = new Random(seed);
+    // 1. Definição do espaço de atributos para o KMeans (otimizado para até 300 dimensões discriminantes)
+    final int maxDimKmeans = 300;
+    int[] indicesKmeans;
+    int dimKmeans;
 
-    // 1. Inicialização dos Centroides (K-Means++)
-    double[][] centroides = new double[k][dim];
-    int primeiroIdx = rng.nextInt(dSize);
-    if (usarEsparsa) {
-      copiarDocParaCentroide(matrizTfidf.get(primeiroIdx), centroides[0]);
+    if (usarEsparsa && dim > maxDimKmeans) {
+      dimKmeans = maxDimKmeans;
+      var dfMap = corpus.documentFrequency();
+      var vocab = corpus.vocabulario();
+      List<Integer> sortedIndices = new ArrayList<>(dim);
+      for (int i = 0; i < dim; i++) sortedIndices.add(i);
+      sortedIndices.sort((i1, i2) -> {
+        int df1 = (dfMap != null && i1 < vocab.size()) ? dfMap.getOrDefault(vocab.get(i1), 0) : 0;
+        int df2 = (dfMap != null && i2 < vocab.size()) ? dfMap.getOrDefault(vocab.get(i2), 0) : 0;
+        return Integer.compare(df2, df1);
+      });
+      indicesKmeans = new int[dimKmeans];
+      for (int i = 0; i < dimKmeans; i++) {
+        indicesKmeans[i] = sortedIndices.get(i);
+      }
     } else {
-      System.arraycopy(matrizDensa[primeiroIdx], 0, centroides[0], 0, dim);
+      dimKmeans = dim;
+      indicesKmeans = null;
     }
 
-    for (int t = 1; t < k; t++) {
-      double[] distancias = new double[dSize];
-      double somaDist = 0.0;
-      for (int d = 0; d < dSize; d++) {
-        double minDist = Double.MAX_VALUE;
-        for (int c = 0; c < t; c++) {
-          double sim = usarEsparsa
-              ? calcularDot(matrizTfidf.get(d), centroides[c])
-              : similaridadeCosseno(matrizDensa[d], centroides[c]);
-          double dist = Math.max(0.0, 1.0 - sim);
-          if (dist < minDist) {
-            minDist = dist;
-          }
-        }
-        distancias[d] = minDist * minDist;
-        somaDist += distancias[d];
-      }
-
-      double r = rng.nextDouble() * somaDist;
-      double acum = 0.0;
-      int escolhido = 0;
-      for (int d = 0; d < dSize; d++) {
-        acum += distancias[d];
-        if (r <= acum) {
-          escolhido = d;
-          break;
-        }
-      }
+    List<DocumentPoint> pontos = new ArrayList<>(dSize);
+    for (int d = 0; d < dSize; d++) {
+      double[] vec = new double[dimKmeans];
       if (usarEsparsa) {
-        copiarDocParaCentroide(matrizTfidf.get(escolhido), centroides[t]);
+        Map<Integer, Double> linha = matrizTfidf.get(d);
+        if (linha != null) {
+          if (indicesKmeans != null) {
+            for (int kIdx = 0; kIdx < dimKmeans; kIdx++) {
+              Double val = linha.get(indicesKmeans[kIdx]);
+              if (val != null) {
+                vec[kIdx] = val;
+              }
+            }
+          } else {
+            for (Map.Entry<Integer, Double> entry : linha.entrySet()) {
+              int idx = entry.getKey();
+              if (idx < dimKmeans) {
+                vec[idx] = entry.getValue();
+              }
+            }
+          }
+        }
       } else {
-        System.arraycopy(matrizDensa[escolhido], 0, centroides[t], 0, dim);
+        System.arraycopy(matrizDensa[d], 0, vec, 0, dimKmeans);
+      }
+      double somaQuad = 0.0;
+      for (double val : vec) {
+        somaQuad += val * val;
+      }
+      double norma = Math.sqrt(somaQuad);
+      if (norma > 1e-9) {
+        for (int j = 0; j < dimKmeans; j++) {
+          vec[j] /= norma;
+        }
+      }
+      pontos.add(new DocumentPoint(d, vec));
+    }
+
+    // 2. Execução do algoritmo consagrado KMeansPlusPlusClusterer (Apache Commons Math)
+    RandomGenerator rng = new MersenneTwister(seed);
+    int iteracoesKmeans = Math.min(maxIteracoes, 30);
+    int kKmeans = Math.min(k, dSize);
+
+    KMeansPlusPlusClusterer<DocumentPoint> clusterer = new KMeansPlusPlusClusterer<>(
+        kKmeans,
+        iteracoesKmeans,
+        new DistanciaCosseno(),
+        rng,
+        KMeansPlusPlusClusterer.EmptyClusterStrategy.LARGEST_VARIANCE
+    );
+
+    List<CentroidCluster<DocumentPoint>> resultadoClusters = clusterer.cluster(pontos);
+    int totalClustersGerados = resultadoClusters.size();
+
+    int[] clusterAtribuido = new int[dSize];
+    for (int c = 0; c < totalClustersGerados; c++) {
+      CentroidCluster<DocumentPoint> cluster = resultadoClusters.get(c);
+      for (DocumentPoint ponto : cluster.getPoints()) {
+        clusterAtribuido[ponto.getDocId()] = c;
       }
     }
 
-    // 2. Iterações K-Means com Similaridade Cosseno
-    int[] clusterAtribuido = new int[dSize];
-    int iteracoesKmeans = Math.min(maxIteracoes, 20);
-
-    for (int iter = 0; iter < iteracoesKmeans; iter++) {
-      boolean mudou = false;
-
-      // Atribuição de clusters
-      for (int d = 0; d < dSize; d++) {
-        int melhorC = 0;
-        double maxSim = -Double.MAX_VALUE;
-        for (int c = 0; c < k; c++) {
-          double sim = usarEsparsa
-              ? calcularDot(matrizTfidf.get(d), centroides[c])
-              : similaridadeCosseno(matrizDensa[d], centroides[c]);
-          if (sim > maxSim) {
-            maxSim = sim;
-            melhorC = c;
-          }
-        }
-        if (clusterAtribuido[d] != melhorC) {
-          clusterAtribuido[d] = melhorC;
-          mudou = true;
-        }
-      }
-
-      if (!mudou && iter > 2) {
-        break;
-      }
-
-      // Recálculo dos centroides
-      double[][] novosCentroides = new double[k][dim];
-      int[] contagens = new int[k];
-
-      for (int d = 0; d < dSize; d++) {
-        int c = clusterAtribuido[d];
-        contagens[c]++;
-        if (usarEsparsa) {
-          for (Map.Entry<Integer, Double> entry : matrizTfidf.get(d).entrySet()) {
-            novosCentroides[c][entry.getKey()] += entry.getValue();
-          }
-        } else {
-          for (int j = 0; j < dim; j++) {
-            novosCentroides[c][j] += matrizDensa[d][j];
-          }
-        }
-      }
-
-      for (int c = 0; c < k; c++) {
-        if (contagens[c] > 0) {
-          double somaQuad = 0.0;
-          for (int j = 0; j < dim; j++) {
-            novosCentroides[c][j] /= contagens[c];
-            somaQuad += novosCentroides[c][j] * novosCentroides[c][j];
-          }
-          double norma = Math.sqrt(somaQuad);
-          if (norma > 1e-9) {
-            for (int j = 0; j < dim; j++) {
-              centroides[c][j] = novosCentroides[c][j] / norma;
+    // Cálculo dos centroides na dimensão completa (dim) para representação precisa de tópicos
+    double[][] centroides = new double[k][dim];
+    int[] contagensCluster = new int[k];
+    for (int d = 0; d < dSize; d++) {
+      int c = clusterAtribuido[d];
+      contagensCluster[c]++;
+      if (usarEsparsa) {
+        Map<Integer, Double> linha = matrizTfidf.get(d);
+        if (linha != null) {
+          for (Map.Entry<Integer, Double> entry : linha.entrySet()) {
+            int idx = entry.getKey();
+            if (idx < dim) {
+              centroides[c][idx] += entry.getValue();
             }
+          }
+        }
+      } else {
+        for (int j = 0; j < dim; j++) {
+          centroides[c][j] += matrizDensa[d][j];
+        }
+      }
+    }
+
+    for (int c = 0; c < totalClustersGerados; c++) {
+      if (contagensCluster[c] > 0) {
+        double somaQuad = 0.0;
+        for (int j = 0; j < dim; j++) {
+          centroides[c][j] /= contagensCluster[c];
+          somaQuad += centroides[c][j] * centroides[c][j];
+        }
+        double norma = Math.sqrt(somaQuad);
+        if (norma > 1e-9) {
+          for (int j = 0; j < dim; j++) {
+            centroides[c][j] /= norma;
           }
         }
       }
@@ -434,4 +455,43 @@ public class ClusterTopicModeling implements AlgoritmoTopicModeling {
   }
 
   private record TermoPeso(String termo, double peso) {}
+
+  public static class DocumentPoint implements Clusterable {
+    private final int docId;
+    private final double[] point;
+
+    public DocumentPoint(int docId, double[] point) {
+      this.docId = docId;
+      this.point = point;
+    }
+
+    public int getDocId() {
+      return docId;
+    }
+
+    @Override
+    public double[] getPoint() {
+      return point;
+    }
+  }
+
+  public static class DistanciaCosseno implements DistanceMeasure {
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public double compute(double[] a, double[] b) {
+      double dot = 0.0;
+      double nA = 0.0;
+      double nB = 0.0;
+      for (int i = 0; i < a.length; i++) {
+        dot += a[i] * b[i];
+        nA += a[i] * a[i];
+        nB += b[i] * b[i];
+      }
+      double denom = Math.sqrt(nA) * Math.sqrt(nB);
+      if (denom <= 1e-9) return 1.0;
+      double sim = dot / denom;
+      return Math.max(0.0, 1.0 - sim);
+    }
+  }
 }

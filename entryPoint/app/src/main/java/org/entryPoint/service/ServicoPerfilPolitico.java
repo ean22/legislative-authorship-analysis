@@ -232,7 +232,7 @@ public class ServicoPerfilPolitico {
       ));
     }
 
-    var arestasBrutas = repositorioPerfil.buscarParesColaboracaoGlobais(pesoMinimoAresta, Math.max(500, maxLimit * 15));
+    var arestasBrutas = repositorioPerfil.buscarParesColaboracaoGlobais(pesoMinimoAresta, Math.max(10000, maxLimit * 50));
     List<GrafoColaboracaoPolitica.ArestaColaboracao> arestas = new ArrayList<>();
 
     for (var ab : arestasBrutas) {

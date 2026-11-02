@@ -96,6 +96,11 @@ public class ServicoPerfilPoliticoTest {
     assertFalse(grafo.nos().isEmpty(), "O grafo deve conter nós de atores políticos");
     assertFalse(grafo.arestas().isEmpty(), "O grafo deve conter arestas de colaboração");
 
+    for (GrafoColaboracaoPolitica.NoAutor no : grafo.nos()) {
+      assertNotNull(no.cargo());
+      assertFalse(no.cargo().isBlank(), "Cargo não deve estar em branco para: " + no.nome());
+    }
+
     // 1. Exportação DOT (Graphviz)
     String dot = grafo.exportarDot("RedePoliticaSP", 20);
     assertNotNull(dot);
@@ -127,6 +132,23 @@ public class ServicoPerfilPoliticoTest {
       tempJson.delete();
     }
   }
+
+  @Test
+  public void testExportarGrafoRedeColaboracaoPadraoComCargosValidos() throws SQLException, IOException {
+    GrafoColaboracaoPolitica grafo = servicoPerfil.construirGrafoColaboracao(1, 376, 1);
+    assertFalse(grafo.nos().isEmpty());
+    for (GrafoColaboracaoPolitica.NoAutor no : grafo.nos()) {
+      assertNotNull(no.cargo());
+      assertFalse(no.cargo().isBlank(), "O cargo do autor " + no.nome() + " não pode ser vazio");
+    }
+
+    // Exporta para rede_colaboracao.json no diretório local e absoluto
+    servicoPerfil.exportarGrafoJson(grafo, "rede_colaboracao.json", 1);
+    File arqAbsoluto = new File("/home/estagio-koneksi/Documents/legislative-authorship-analysis/entryPoint/app/rede_colaboracao.json");
+    servicoPerfil.exportarGrafoJson(grafo, arqAbsoluto.getAbsolutePath(), 1);
+    assertTrue(arqAbsoluto.exists() && arqAbsoluto.length() > 0);
+  }
+
 
   @Test
   public void testGrafoColaboracaoEgoAutor() throws SQLException {

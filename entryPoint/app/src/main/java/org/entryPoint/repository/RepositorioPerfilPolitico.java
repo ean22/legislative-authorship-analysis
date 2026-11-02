@@ -62,12 +62,16 @@ public class RepositorioPerfilPolitico {
   public Optional<InfoBasicaAutor> buscarInfoBasicaAutor(long idAutor) throws SQLException {
     String sql = """
       SELECT a.id, a.nome,
-             (SELECT na2.cargo_autor_normalizado
-              FROM norma_autor na2
-              WHERE na2.id_autor = a.id AND na2.cargo_autor_normalizado IS NOT NULL AND na2.ativo = 1
-              GROUP BY na2.cargo_autor_normalizado
-              ORDER BY COUNT(*) DESC
-              LIMIT 1) AS cargo_principal
+             COALESCE(
+               (SELECT RTRIM(TRIM(COALESCE(NULLIF(TRIM(na2.cargo_autor_normalizado), ''), NULLIF(TRIM(na2.cargo_autor), ''))), '.;,')
+                FROM norma_autor na2
+                WHERE na2.id_autor = a.id AND na2.ativo = 1
+                  AND COALESCE(NULLIF(TRIM(na2.cargo_autor_normalizado), ''), NULLIF(TRIM(na2.cargo_autor), '')) IS NOT NULL
+                GROUP BY 1
+                ORDER BY COUNT(*) DESC
+                LIMIT 1),
+               'AUTOR'
+             ) AS cargo_principal
       FROM autores a
       WHERE a.id = ?
         AND EXISTS (SELECT 1 FROM norma_autor na WHERE na.id_autor = a.id AND na.ativo = 1)
@@ -292,7 +296,7 @@ public class RepositorioPerfilPolitico {
     // Cargos exercidos pelo autor
     Map<String, Integer> cargos = new LinkedHashMap<>();
     String sqlCargos = """
-      SELECT COALESCE(cargo_autor_normalizado, cargo_autor, 'NÃO INFORMADO') AS cargo, COUNT(*) AS qtd
+      SELECT RTRIM(TRIM(COALESCE(NULLIF(TRIM(cargo_autor_normalizado), ''), NULLIF(TRIM(cargo_autor), ''), 'NÃO INFORMADO')), '.;,') AS cargo, COUNT(*) AS qtd
       FROM norma_autor
       WHERE id_autor = ? AND ativo = 1
       GROUP BY cargo
@@ -327,13 +331,23 @@ public class RepositorioPerfilPolitico {
    */
   public List<ParceriaPolitica> buscarPrincipaisParcerias(long idAutor, int totalNormasAutor, int limite) throws SQLException {
     String sql = """
-      SELECT a2.id, a2.nome, na2.cargo_autor_normalizado,
+      SELECT a2.id, a2.nome,
+             COALESCE(
+               (SELECT RTRIM(TRIM(COALESCE(NULLIF(TRIM(na3.cargo_autor_normalizado), ''), NULLIF(TRIM(na3.cargo_autor), ''))), '.;,')
+                FROM norma_autor na3
+                WHERE na3.id_autor = a2.id AND na3.ativo = 1
+                  AND COALESCE(NULLIF(TRIM(na3.cargo_autor_normalizado), ''), NULLIF(TRIM(na3.cargo_autor), '')) IS NOT NULL
+                GROUP BY 1
+                ORDER BY COUNT(*) DESC
+                LIMIT 1),
+               'AUTOR'
+             ) AS cargo_parceiro,
              COUNT(DISTINCT na1.id_norma) AS qtd_compartilhada
       FROM norma_autor na1
       JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor <> na2.id_autor AND na2.ativo = 1
       JOIN autores a2 ON a2.id = na2.id_autor
       WHERE na1.id_autor = ? AND na1.ativo = 1
-      GROUP BY a2.id, a2.nome, na2.cargo_autor_normalizado
+      GROUP BY a2.id, a2.nome
       ORDER BY qtd_compartilhada DESC
       LIMIT ?
     """;
@@ -348,7 +362,7 @@ public class RepositorioPerfilPolitico {
         while (rs.next()) {
           long idParceiro = rs.getLong("id");
           String nomeParceiro = rs.getString("nome");
-          String cargoParceiro = rs.getString("cargo_autor_normalizado");
+          String cargoParceiro = rs.getString("cargo_parceiro");
           int qtd = rs.getInt("qtd_compartilhada");
           double pct = totalNormasAutor > 0 ? (qtd * 100.0 / totalNormasAutor) : 0.0;
 
@@ -393,7 +407,7 @@ public class RepositorioPerfilPolitico {
    */
   public Map<String, Integer> buscarParceriasPorCargo(long idAutor) throws SQLException {
     String sql = """
-      SELECT COALESCE(na2.cargo_autor_normalizado, 'OUTROS CARGOS') AS cargo,
+      SELECT COALESCE(RTRIM(TRIM(COALESCE(NULLIF(TRIM(na2.cargo_autor_normalizado), ''), NULLIF(TRIM(na2.cargo_autor), ''))), '.;,'), 'OUTROS CARGOS') AS cargo,
              COUNT(DISTINCT na1.id_norma) AS qtd
       FROM norma_autor na1
       JOIN norma_autor na2 ON na1.id_norma = na2.id_norma AND na1.id_autor <> na2.id_autor AND na2.ativo = 1
@@ -498,11 +512,16 @@ public class RepositorioPerfilPolitico {
   public List<ResumoAutorProlifico> listarAutoresMaisProlificos(int limite) throws SQLException {
     String sql = """
       SELECT a.id, a.nome,
-             (SELECT na2.cargo_autor_normalizado
-              FROM norma_autor na2
-              WHERE na2.id_autor = a.id AND na2.cargo_autor_normalizado IS NOT NULL AND na2.ativo = 1
-              GROUP BY na2.cargo_autor_normalizado
-              ORDER BY COUNT(*) DESC LIMIT 1) AS cargo,
+             COALESCE(
+               (SELECT RTRIM(TRIM(COALESCE(NULLIF(TRIM(na2.cargo_autor_normalizado), ''), NULLIF(TRIM(na2.cargo_autor), ''))), '.;,')
+                FROM norma_autor na2
+                WHERE na2.id_autor = a.id AND na2.ativo = 1
+                  AND COALESCE(NULLIF(TRIM(na2.cargo_autor_normalizado), ''), NULLIF(TRIM(na2.cargo_autor), '')) IS NOT NULL
+                GROUP BY 1
+                ORDER BY COUNT(*) DESC
+                LIMIT 1),
+               'AUTOR'
+             ) AS cargo,
              COUNT(DISTINCT na.id_norma) AS total_normas
       FROM autores a
       JOIN norma_autor na ON na.id_autor = a.id AND na.ativo = 1

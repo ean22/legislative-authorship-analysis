@@ -48,7 +48,7 @@ public class MenuPrincipal {
     System.out.println("8. Perfis Políticos e Grafos de Colaboração (Temas, Atuação, Parcerias, Trajetória, Redes)");
     System.out.println("9. Executar Benchmark e Comparar Pipelines (Reduções, Modelos e Perfis de Autores)");
     System.out.println("10. Visualizar Pipeline Ativo Oficial para os Próximos Passos");
-    System.out.println("11. Aferir Assertividade das Leis Classificadas no Banco (vs data/normas_classificadas.csv)");
+    System.out.println("11. Avaliar Desempenho da Classificação (500 Normas, Precisão, Recall, Macro F1 e MCC Multiclasse)");
     System.out.println("0. Sair");
   }
 
@@ -208,23 +208,7 @@ public class MenuPrincipal {
           break;
 
         case 11:
-          try {
-            System.out.println("Iniciando aferição de assertividade das leis do banco contra o CSV de referência...");
-            var relatorio = servicoAssertividade.aferirAssertividade();
-            servicoAssertividade.imprimirRelatorio(relatorio);
-
-            System.out.print("Deseja exportar o relatório detalhado em Markdown? (S/n): ");
-            String exp = sc.nextLine().trim();
-            if (exp.isEmpty() || "s".equalsIgnoreCase(exp) || "sim".equalsIgnoreCase(exp)) {
-              File destino = servicoAssertividade.exportarRelatorioMarkdown(relatorio);
-              System.out.println("Relatório em Markdown gerado com sucesso em: " + destino.getAbsolutePath());
-            }
-          } catch (Exception e) {
-            System.err.println("Erro ao aferir assertividade: " + e.getMessage());
-            e.printStackTrace();
-          }
-          pularLinha();
-
+          controlarMenuAssertividade();
           break;
 
         case 0:
@@ -257,7 +241,7 @@ public class MenuPrincipal {
       System.out.println("6. Auditoria de Classificações no Banco (Volumetria, % e Confiança por Tópico)");
       System.out.println("7. Inspecionar Amostra de Normas por Tópico (Validação Humana de Ementas Reais)");
       System.out.println("8. Informações da Estratégia de Rotulação de Tópicos (LLM Gemini + Fallback Regras Léxicas)");
-      System.out.println("9. Aferir Assertividade das Leis Classificadas no Banco (vs data/normas_classificadas.csv)");
+      System.out.println("9. Avaliar Desempenho da Classificação (Validação 500 Normas, Precisão, Recall, Macro F1 e MCC)");
       System.out.println("0. Voltar ao Menu Principal");
       System.out.print("Escolha uma opção: ");
 
@@ -407,22 +391,7 @@ public class MenuPrincipal {
           break;
 
         case 9:
-          try {
-            System.out.println("Iniciando aferição de assertividade das leis do banco contra o CSV de referência...");
-            var relatorio = servicoAssertividade.aferirAssertividade();
-            servicoAssertividade.imprimirRelatorio(relatorio);
-
-            System.out.print("Deseja exportar o relatório detalhado em Markdown? (S/n): ");
-            String exp = sc.nextLine().trim();
-            if (exp.isEmpty() || "s".equalsIgnoreCase(exp) || "sim".equalsIgnoreCase(exp)) {
-              File destino = servicoAssertividade.exportarRelatorioMarkdown(relatorio);
-              System.out.println("Relatório em Markdown gerado com sucesso em: " + destino.getAbsolutePath());
-            }
-          } catch (Exception e) {
-            System.err.println("Erro ao aferir assertividade: " + e.getMessage());
-            e.printStackTrace();
-          }
-          pularLinha();
+          controlarMenuAssertividade();
           break;
 
         case 0:
@@ -549,14 +518,33 @@ public class MenuPrincipal {
 
         case 5:
           try {
+            int totalAutores = 376;
+            try {
+              totalAutores = (int) servicoPerfilPolitico.obterEstatisticasGerais().totalAutores();
+            } catch (Exception ignored) {}
+
+            System.out.print("Informe o rank inicial de autores [padrão: 1]: ");
+            String minStr = sc.nextLine().trim();
+            int minRank = minStr.isEmpty() ? 1 : Integer.parseInt(minStr);
+
+            System.out.printf("Informe o rank final de autores [padrão: %d (todos)]: ", totalAutores);
+            String maxStr = sc.nextLine().trim();
+            int maxRank = maxStr.isEmpty() ? totalAutores : Integer.parseInt(maxStr);
+
+            System.out.print("Informe o peso mínimo de normas compartilhadas por aresta [padrão: 1]: ");
+            String pesoStr = sc.nextLine().trim();
+            int pesoMin = pesoStr.isEmpty() ? 1 : Integer.parseInt(pesoStr);
+
             System.out.print("Informe o caminho do arquivo .dot [padrão: rede_colaboracao.dot]: ");
             String path = sc.nextLine().trim();
             if (path.isEmpty()) path = "rede_colaboracao.dot";
 
-            var grafo = servicoPerfilPolitico.construirGrafoColaboracao(35, 15);
-            File f = servicoPerfilPolitico.exportarGrafoDot(grafo, path, 15);
-            System.out.println("Grafo exportado com sucesso em: " + f.getAbsolutePath());
-            System.out.println("Dica: você pode gerar PNG com o comando: dot -Tpng " + path + " -o rede.png");
+            var grafo = servicoPerfilPolitico.construirGrafoColaboracao(minRank, maxRank, pesoMin);
+            File f = servicoPerfilPolitico.exportarGrafoDot(grafo, path, pesoMin);
+            System.out.println("✨ Grafo DOT exportado com sucesso em: " + f.getAbsolutePath());
+            System.out.printf("📊 Estatísticas: %d autores (nós) e %d colaborações (arestas) exportadas.%n",
+                grafo.nos().size(), grafo.arestas().size());
+            System.out.println("👉 Dica para renderizar imagem: dot -Tpng " + path + " -o rede.png");
           } catch (Exception e) {
             System.err.println("Erro ao exportar DOT: " + e.getMessage());
           }
@@ -565,13 +553,32 @@ public class MenuPrincipal {
 
         case 6:
           try {
+            int totalAutores = 376;
+            try {
+              totalAutores = (int) servicoPerfilPolitico.obterEstatisticasGerais().totalAutores();
+            } catch (Exception ignored) {}
+
+            System.out.print("Informe o rank inicial de autores [padrão: 1]: ");
+            String minStr = sc.nextLine().trim();
+            int minRank = minStr.isEmpty() ? 1 : Integer.parseInt(minStr);
+
+            System.out.printf("Informe o rank final de autores [padrão: %d (todos)]: ", totalAutores);
+            String maxStr = sc.nextLine().trim();
+            int maxRank = maxStr.isEmpty() ? totalAutores : Integer.parseInt(maxStr);
+
+            System.out.print("Informe o peso mínimo de normas compartilhadas por aresta [padrão: 1]: ");
+            String pesoStr = sc.nextLine().trim();
+            int pesoMin = pesoStr.isEmpty() ? 1 : Integer.parseInt(pesoStr);
+
             System.out.print("Informe o caminho do arquivo .json [padrão: rede_colaboracao.json]: ");
             String path = sc.nextLine().trim();
             if (path.isEmpty()) path = "rede_colaboracao.json";
 
-            var grafo = servicoPerfilPolitico.construirGrafoColaboracao(35, 15);
-            File f = servicoPerfilPolitico.exportarGrafoJson(grafo, path, 15);
-            System.out.println("Arquivo JSON exportado com sucesso em: " + f.getAbsolutePath());
+            var grafo = servicoPerfilPolitico.construirGrafoColaboracao(minRank, maxRank, pesoMin);
+            File f = servicoPerfilPolitico.exportarGrafoJson(grafo, path, pesoMin);
+            System.out.println("✨ Arquivo JSON exportado com sucesso em: " + f.getAbsolutePath());
+            System.out.printf("📊 Estatísticas: %d autores (nós) e %d colaborações (arestas) exportadas.%n",
+                grafo.nos().size(), grafo.arestas().size());
           } catch (Exception e) {
             System.err.println("Erro ao exportar JSON: " + e.getMessage());
           }
@@ -643,6 +650,101 @@ public class MenuPrincipal {
         default:
           exibirOpcaoInvalida();
           break;
+      }
+    } while (subOpcao != 0);
+  }
+
+  private static void controlarMenuAssertividade() {
+    int subOpcao = 0;
+    do {
+      System.out.println("=".repeat(105));
+      System.out.println("   MÓDULO DE AVALIAÇÃO DE DESEMPENHO DA CLASSIFICAÇÃO AUTOMATIZADA");
+      System.out.println("   Validação Manual nas Primeiras 500 Normas do Acervo (GRIMMER; STEWART, 2013)");
+      System.out.println("=".repeat(105));
+      System.out.println("1. Executar Avaliação Completa (Síntese das Métricas, Tabela por Classe, Matriz e Divergências)");
+      System.out.println("2. Exibir Métricas Centrais: Precisão, Recall, Macro F1 e MCC Multiclasse (com Citações)");
+      System.out.println("3. Exibir Desempenho Detalhado por Classe: Precisão, Recall e F1 por Tema (POWERS, 2011)");
+      System.out.println("4. Exibir Matriz de Confusão Multiclasse (Mapeamento Automatizado vs 500 Normas Manuais)");
+      System.out.println("5. Inspecionar Amostra de Divergências com Ementas Reais (Auditoria Manual vs Automatizada)");
+      System.out.println("6. Exportar Relatório Metodológico em Markdown (relatorio_assertividade_classificacao.md)");
+      System.out.println("0. Voltar ao Menu Principal");
+      System.out.print("Escolha uma opção: ");
+
+      try {
+        String entrada = sc.nextLine().trim();
+        if (entrada.isEmpty()) {
+          continue;
+        }
+        subOpcao = Integer.parseInt(entrada);
+      } catch (NumberFormatException e) {
+        System.out.println("Entrada inválida. Por favor, insira um número.");
+        pularLinha();
+        continue;
+      }
+
+      try {
+        switch (subOpcao) {
+          case 1:
+            System.out.println("Executando avaliação de desempenho contra validação manual (500 normas)...");
+            var relatorioCompleto = servicoAssertividade.aferirAssertividade();
+            servicoAssertividade.imprimirRelatorio(relatorioCompleto);
+
+            System.out.print("Deseja exportar o relatório metodológico em Markdown? (S/n): ");
+            String exp = sc.nextLine().trim();
+            if (exp.isEmpty() || "s".equalsIgnoreCase(exp) || "sim".equalsIgnoreCase(exp)) {
+              File destino = servicoAssertividade.exportarRelatorioMarkdown(relatorioCompleto);
+              System.out.println("Relatório metodológico em Markdown gerado com sucesso em: " + destino.getAbsolutePath());
+            }
+            pularLinha();
+            break;
+
+          case 2:
+            var relatorioSintese = servicoAssertividade.aferirAssertividade();
+            servicoAssertividade.imprimirSinteseGlobal(relatorioSintese);
+            pularLinha();
+            break;
+
+          case 3:
+            var relatorioClasses = servicoAssertividade.aferirAssertividade();
+            servicoAssertividade.imprimirTabelaClasses(relatorioClasses);
+            pularLinha();
+            break;
+
+          case 4:
+            var relatorioMatriz = servicoAssertividade.aferirAssertividade();
+            servicoAssertividade.imprimirMatrizConfusao(relatorioMatriz);
+            pularLinha();
+            break;
+
+          case 5:
+            System.out.print("Quantas divergências deseja exibir? [padrão: 8]: ");
+            String divStr = sc.nextLine().trim();
+            int limDiv = divStr.isEmpty() ? 8 : Integer.parseInt(divStr);
+            var relatorioDiv = servicoAssertividade.aferirAssertividade();
+            servicoAssertividade.imprimirDivergencias(relatorioDiv, limDiv);
+            pularLinha();
+            break;
+
+          case 6:
+            var relatorioExp = servicoAssertividade.aferirAssertividade();
+            File dest = servicoAssertividade.exportarRelatorioMarkdown(relatorioExp);
+            System.out.println("Relatório metodológico em Markdown gerado em: " + dest.getAbsolutePath());
+            pularLinha();
+            break;
+
+          case 0:
+            System.out.println("Retornando ao menu principal...");
+            pularLinha();
+            break;
+
+          default:
+            exibirOpcaoInvalida();
+            break;
+        }
+      } catch (Exception e) {
+        System.err.println("Erro ao processar avaliação de desempenho da classificação: " + e.getMessage());
+        e.printStackTrace();
+        pularLinha();
       }
     } while (subOpcao != 0);
   }

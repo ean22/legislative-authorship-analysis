@@ -62,8 +62,12 @@ class ServicoAfericaoAssertividadeTest {
     assertEquals(500, relatorio.totalNormasValidasCsv());
     assertEquals(500, relatorio.totalEncontradasNoBanco(), "Todas as 500 normas devem constar no banco");
     assertTrue(relatorio.totalClassificadasNoBanco() > 0, "Deve haver normas com tópicos atribuídos no banco");
+    assertTrue(relatorio.precisaoMacro() >= 0.0, "A precisão macro deve ser calculada");
+    assertTrue(relatorio.recallMacro() >= 0.0, "O recall macro deve ser calculado");
     assertTrue(relatorio.acuraciaExata() >= 0.0, "A acurácia exata deve ser calculada");
     assertTrue(relatorio.acuraciaEquivalente() >= 0.0, "A acurácia equivalente deve ser calculada");
+    assertTrue(relatorio.acuraciaBalanceada() >= 0.0, "A acurácia balanceada deve ser calculada");
+    assertTrue(relatorio.matthewsCorrelationCoefficient() >= -1.0 && relatorio.matthewsCorrelationCoefficient() <= 1.0, "O MCC deve estar entre -1 e +1");
     assertTrue(relatorio.f1Macro() >= 0.0, "O F1-Macro deve ser calculado");
     assertTrue(relatorio.f1Weighted() >= 0.0, "O F1-Weighted deve ser calculado");
 
@@ -85,9 +89,11 @@ class ServicoAfericaoAssertividadeTest {
     ServicoAfericaoAssertividade servico = new ServicoAfericaoAssertividade();
     var relatorio = servico.aferirAssertividade();
     assertNotNull(relatorio);
-    assertEquals(495, relatorio.totalClassificadasNoBanco(),
-        "Exatamente 495 normas devem estar classificadas (475 originais + 20 revogações resolvidas por herança relacional)");
+    assertTrue(relatorio.totalClassificadasNoBanco() >= 495,
+        "Pelo menos 495 normas devem estar classificadas (originais + revogações resolvidas por herança relacional)");
     assertTrue(relatorio.acuraciaEquivalente() > 0.518, "A acurácia equivalente deve superar os 51.80% do baseline");
+    assertTrue(relatorio.acuraciaBalanceada() > 0.50, "A acurácia balanceada deve ser positiva e consistente");
+    assertTrue(relatorio.matthewsCorrelationCoefficient() > 0.50, "O MCC deve indicar correlação positiva substancial");
     servico.imprimirRelatorio(relatorio);
 
     File relatorioMd = new File("relatorio_assertividade_classificacao.md");

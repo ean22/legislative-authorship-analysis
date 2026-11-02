@@ -101,6 +101,10 @@ public class ServicoAfericaoAssertividade {
       int acertosEquivalentes,
       double acuraciaExata,
       double acuraciaEquivalente,
+      double acuraciaBalanceada,
+      double precisaoMacro,
+      double recallMacro,
+      double matthewsCorrelationCoefficient,
       double f1Macro,
       double f1Weighted,
       Map<String, EstatisticaClasse> estatisticasPorClasse,
@@ -327,6 +331,80 @@ public class ServicoAfericaoAssertividade {
     double f1Macro = classesComSuporte > 0 ? somaF1Macro / classesComSuporte : 0.0;
     double f1Weighted = totalSuporte > 0 ? somaF1Ponderado / totalSuporte : 0.0;
 
+    // 5. Cálculo das métricas robustas recomendadas para desbalanceamento severo:
+    // Acurácia Balanceada (Balanced Accuracy / Macro-Recall) e MCC Multiclasse (Gorodkin, 2004; Chicco & Jurman, 2020)
+    List<String> classesCanonicas = new ArrayList<>();
+    for (NormaCsv c : normasCsv) {
+      String classe = c.classeEsperada() != null ? c.classeEsperada().trim() : "";
+      if (!classe.isBlank()) {
+        boolean jaExiste = classesCanonicas.stream()
+            .anyMatch(existente -> saoClassesEquivalentes(existente, classe));
+        if (!jaExiste) {
+          classesCanonicas.add(classe);
+        }
+      }
+    }
+
+    double somaRecallCanonico = 0.0;
+    double somaPrecisaoCanonico = 0.0;
+    int classesCanonicasComSuporte = 0;
+    double somaTkQuadrado = 0.0;
+    double somaPkQuadrado = 0.0;
+    double somaPkTk = 0.0;
+    int totalPreditoEmClassesCanonicas = 0;
+
+    for (String cls : classesCanonicas) {
+      int tp = 0;
+      int fp = 0;
+      int totalEsperado = 0;
+      int totalPredito = 0;
+
+      for (ItemComparacao it : itens) {
+        boolean eEsperado = saoClassesEquivalentes(cls, it.csv().classeEsperada());
+        boolean ePredito = it.classificadaNoBanco() && saoClassesEquivalentes(cls, it.classeBanco());
+
+        if (eEsperado) totalEsperado++;
+        if (ePredito) totalPredito++;
+        if (eEsperado && ePredito) tp++;
+        else if (!eEsperado && ePredito) fp++;
+      }
+
+      double rec = totalEsperado > 0 ? (double) tp / totalEsperado : 0.0;
+      double prec = (tp + fp) > 0 ? (double) tp / (tp + fp) : 0.0;
+      if (totalEsperado > 0) {
+        somaRecallCanonico += rec;
+        somaPrecisaoCanonico += prec;
+        classesCanonicasComSuporte++;
+      }
+
+      totalPreditoEmClassesCanonicas += totalPredito;
+      somaTkQuadrado += (double) totalEsperado * totalEsperado;
+      somaPkQuadrado += (double) totalPredito * totalPredito;
+      somaPkTk += (double) totalPredito * totalEsperado;
+    }
+
+    double recallMacro = classesCanonicasComSuporte > 0
+        ? somaRecallCanonico / classesCanonicasComSuporte
+        : 0.0;
+    double precisaoMacro = classesCanonicasComSuporte > 0
+        ? somaPrecisaoCanonico / classesCanonicasComSuporte
+        : 0.0;
+    double acuraciaBalanceada = recallMacro;
+
+    double s = totalValidos;
+    double c = acertosEquivalentes;
+    int predicoesForaClassesCanonicas = Math.max(0, (int) s - totalPreditoEmClassesCanonicas);
+    somaPkQuadrado += (double) predicoesForaClassesCanonicas * predicoesForaClassesCanonicas;
+
+    double numeradorMcc = (c * s) - somaPkTk;
+    double denomTermo1 = (s * s) - somaTkQuadrado;
+    double denomTermo2 = (s * s) - somaPkQuadrado;
+    double matthewsCorrelationCoefficient = 0.0;
+    if (denomTermo1 > 0 && denomTermo2 > 0) {
+      double denomMcc = Math.sqrt(denomTermo1 * denomTermo2);
+      matthewsCorrelationCoefficient = denomMcc > 1e-9 ? numeradorMcc / denomMcc : 0.0;
+    }
+
     return new RelatorioAssertividade(
         arquivoCsv,
         normasCsv.size(),
@@ -337,6 +415,10 @@ public class ServicoAfericaoAssertividade {
         acertosEquivalentes,
         acuraciaExata,
         acuraciaEquivalente,
+        acuraciaBalanceada,
+        precisaoMacro,
+        recallMacro,
+        matthewsCorrelationCoefficient,
         f1Macro,
         f1Weighted,
         estatisticasPorClasse,
@@ -743,27 +825,45 @@ public class ServicoAfericaoAssertividade {
   // =========================================================================
 
   public void imprimirRelatorio(RelatorioAssertividade r) {
-    System.out.println("\n" + "=".repeat(95));
-    System.out.println("   RELATÓRIO DE AFERIÇÃO DE ASSERTIVIDADE: NORMAS DO BANCO VS CSV GROUND TRUTH");
-    System.out.println("=".repeat(95));
+    imprimirSinteseGlobal(r);
+    imprimirTabelaClasses(r);
+    imprimirMatrizConfusao(r);
+    imprimirDivergencias(r, 8);
+    System.out.println("=".repeat(105) + "\n");
+  }
+
+  public void imprimirSinteseGlobal(RelatorioAssertividade r) {
+    System.out.println("\n" + "=".repeat(110));
+    System.out.println("   AVALIAÇÃO DE DESEMPENHO DA CLASSIFICAÇÃO (GROUND TRUTH: 500 NORMAS - GRIMMER & STEWART, 2013)");
+    System.out.println("=".repeat(110));
     System.out.printf("Arquivo de Referência (CSV): %s%n", r.arquivoOrigemCsv().getPath());
     System.out.printf("Data da Análise: %s%n", LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
-    System.out.println("-".repeat(95));
-    System.out.printf("• Total de Linhas Válidas no CSV:          %d%n", r.totalNormasValidasCsv());
-    System.out.printf("• Normas Localizadas no Banco SQLite:      %d (%.1f%%)%n",
+    System.out.println("-".repeat(110));
+    System.out.printf("• Total de Normas Anotadas no Ground Truth: %d%n", r.totalNormasValidasCsv());
+    System.out.printf("• Normas Localizadas no Banco SQLite:       %d (%.1f%%)%n",
         r.totalEncontradasNoBanco(), (r.totalEncontradasNoBanco() * 100.0) / Math.max(1, r.totalNormasValidasCsv()));
-    System.out.printf("• Normas com Classificação (norma_topicos): %d (%.1f%%)%n",
+    System.out.printf("• Normas com Classificação (norma_topicos):  %d (%.1f%%)%n",
         r.totalClassificadasNoBanco(), (r.totalClassificadasNoBanco() * 100.0) / Math.max(1, r.totalNormasValidasCsv()));
-    System.out.println("-".repeat(95));
-    System.out.printf("★ ASSERTIVIDADE EXATA (String Identical):  %d / %d  ->  %.2f%%%n",
-        r.acertosExatos(), r.totalNormasValidasCsv(), r.acuraciaExata() * 100.0);
-    System.out.printf("★ ASSERTIVIDADE EQUIVALENTE (Canônica):    %d / %d  ->  %.2f%%%n",
+    System.out.println("-".repeat(110));
+    System.out.println("★ MÉTRICAS DE AVALIAÇÃO DE DESEMPENHO:");
+    System.out.printf("  • PRECISÃO MACRO (Macro Precision):      %.2f%%  (proporção de normas atribuídas que pertencem à classe)%n", r.precisaoMacro() * 100.0);
+    System.out.printf("  • RECALL MACRO (Macro Recall):           %.2f%%  (proporção de normas de uma classe recuperadas)%n", r.recallMacro() * 100.0);
+    System.out.printf("  • MACRO F1-SCORE:                        %.4f   [Powers, 2011; Chalkidis et al., 2022]%n", r.f1Macro());
+    System.out.println("    └─ Média dos F1 por classe, exigindo bom desempenho simultâneo em precisão e recall.");
+    System.out.printf("  • MCC MULTICLASSE (Matthews Coeff):      %.4f   [Jurman, Riccadonna & Furlanello, 2012; Chicco & Jurman, 2020]%n", r.matthewsCorrelationCoefficient());
+    System.out.println("    └─ Generalização multiclasse sobre toda a matriz de contingência, imune a desbalanceamento.");
+    System.out.println("-".repeat(110));
+    System.out.println("⚠️ CONTRAPONTO CRÍTICO: ACURÁCIA TRADICIONAL");
+    System.out.printf("  • Acurácia Canônica (Assertividade):     %d / %d  ->  %.2f%%%n",
         r.acertosEquivalentes(), r.totalNormasValidasCsv(), r.acuraciaEquivalente() * 100.0);
-    System.out.printf("★ F1-SCORE MACRO:                          %.4f%n", r.f1Macro());
-    System.out.printf("★ F1-SCORE PONDERADO (Weighted):           %.4f%n", r.f1Weighted());
-    System.out.println("-".repeat(95));
+    System.out.printf("  • Assertividade Exata (String):          %d / %d  ->  %.2f%%%n",
+        r.acertosExatos(), r.totalNormasValidasCsv(), r.acuraciaExata() * 100.0);
+    System.out.println("  • Nota: Como a acurácia pode ser excessivamente otimista em conjuntos desbalanceados (Chicco & Jurman, 2020),");
+    System.out.println("    a avaliação é complementada pelo Coeficiente de Correlação de Matthews (MCC) e pelo Macro F1-score.");
+    System.out.println("=".repeat(110));
+  }
 
-    // Tabela detalhada por classe
+  public void imprimirTabelaClasses(RelatorioAssertividade r) {
     System.out.println("\nDETALHAMENTO DE PERFORMANCE POR CLASSE TEMÁTICA:");
     System.out.println("-".repeat(95));
     System.out.printf("%-40s | %8s | %7s | %4s | %4s | %4s | %6s | %6s | %6s%n",
@@ -788,8 +888,9 @@ public class ServicoAfericaoAssertividade {
       );
     }
     System.out.println("-".repeat(95));
+  }
 
-    // Matriz de Confusão Resumida
+  public void imprimirMatrizConfusao(RelatorioAssertividade r) {
     System.out.println("\nMATRIZ DE CONFUSÃO (Linha: Esperado no CSV -> Colunas: Atribuído no Banco):");
     System.out.println("-".repeat(95));
     for (Map.Entry<String, Map<String, Integer>> entry : r.matrizConfusao().entrySet()) {
@@ -805,13 +906,14 @@ public class ServicoAfericaoAssertividade {
       }
     }
     System.out.println("-".repeat(95));
+  }
 
-    // Amostra de Divergências
+  public void imprimirDivergencias(RelatorioAssertividade r, int limite) {
     if (!r.divergencias().isEmpty()) {
-      System.out.printf("\nAMOSTRA DE DIVERGÊNCIAS (Exibindo até 8 de %d casos):%n", r.divergencias().size());
+      int count = limite > 0 ? Math.min(limite, r.divergencias().size()) : r.divergencias().size();
+      System.out.printf("\nAMOSTRA DE DIVERGÊNCIAS (Exibindo até %d de %d casos):%n", count, r.divergencias().size());
       System.out.println("-".repeat(95));
-      int limit = Math.min(8, r.divergencias().size());
-      for (int i = 0; i < limit; i++) {
+      for (int i = 0; i < count; i++) {
         ItemComparacao div = r.divergencias().get(i);
         System.out.printf("[%d] %s%n", i + 1, div.csv().normaOriginal());
         System.out.printf("    Esperado (CSV): %s%n", div.csv().classeEsperada());
@@ -826,8 +928,6 @@ public class ServicoAfericaoAssertividade {
       System.out.printf("Atenção: %d normas do CSV não possuem tópico classificado no banco de dados.%n",
           r.naoClassificadasOuAusentes().size());
     }
-
-    System.out.println("=".repeat(95) + "\n");
   }
 
   // =========================================================================
@@ -845,22 +945,29 @@ public class ServicoAfericaoAssertividade {
   public File exportarRelatorioMarkdown(RelatorioAssertividade r, File destino) throws IOException {
     StringBuilder sb = new StringBuilder();
 
-    sb.append("# Relatório Experimental de Aferição de Assertividade das Normas\n\n");
-    sb.append("- **Arquivo de Referência:** `").append(r.arquivoOrigemCsv().getPath()).append("`\n");
+    sb.append("# Relatório de Avaliação de Desempenho da Classificação de Normas\n\n");
+    sb.append("> \"Por fim, as primeiras 500 normas do acervo foram classificadas manualmente para validar o método automatizado (GRIMMER; STEWART, 2013). O desempenho foi avaliado por precisão, recall e Macro F1-score, média dos F1 por classe (POWERS, 2011; CHALKIDIS et al., 2022). Como a acurácia pode ser excessivamente otimista em conjuntos desbalanceados (CHICCO; JURMAN, 2020), a avaliação foi complementada pelo Coeficiente de Correlação de Matthews (MCC) em sua generalização multiclasse (JURMAN; RICCADONNA; FURLANELLO, 2012).\"\n\n");
+    sb.append("- **Arquivo de Referência (Ground Truth):** `").append(r.arquivoOrigemCsv().getPath()).append("`\n");
     sb.append("- **Data da Aferição:** ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).append("\n");
-    sb.append("- **Total de Normas Anotadas (Ground Truth):** ").append(r.totalNormasValidasCsv()).append("\n");
-    sb.append("- **Normas Casadas no Banco SQLite:** ").append(r.totalEncontradasNoBanco()).append("\n");
+    sb.append("- **Amostra Manual Anotada:** ").append(r.totalNormasValidasCsv()).append(" normas (Grimmer & Stewart, 2013)\n");
+    sb.append("- **Normas Localizadas no Banco SQLite:** ").append(r.totalEncontradasNoBanco()).append("\n");
     sb.append("- **Normas Classificadas no Banco:** ").append(r.totalClassificadasNoBanco()).append("\n\n");
 
-    sb.append("## Síntese Global de Acurácia\n\n");
-    sb.append("| Métrica Global | Total de Acertos | Percentual | Observação Metodológica |\n");
-    sb.append("|:---|:---:|:---:|:---|\n");
-    sb.append(String.format(Locale.US, "| **Assertividade Exata** | %d / %d | **%.2f%%** | Casamento idêntico estrito da string do rótulo |\n",
-        r.acertosExatos(), r.totalNormasValidasCsv(), r.acuraciaExata() * 100.0));
-    sb.append(String.format(Locale.US, "| **Assertividade Canônica (Equivalente)** | %d / %d | **%.2f%%** | Reconhece classes equivalentes (ex.: Bens Imóveis e Gestão Imobiliária) |\n",
-        r.acertosEquivalentes(), r.totalNormasValidasCsv(), r.acuraciaEquivalente() * 100.0));
-    sb.append(String.format(Locale.US, "| **F1-Score Macro** | - | **%.4f** | Média harmônica balanceada entre classes |\n", r.f1Macro()));
-    sb.append(String.format(Locale.US, "| **F1-Score Ponderado (Weighted)** | - | **%.4f** | Ponderado pelo suporte de normas em cada classe |\n\n", r.f1Weighted()));
+    sb.append("## Síntese Global das Métricas de Desempenho\n\n");
+    sb.append("| Métrica de Desempenho | Valor / Acertos | Justificativa / Definição Metodológica | Referência Acadêmica |\n");
+    sb.append("|:---|:---:|:---|:---|\n");
+    sb.append(String.format(Locale.US, "| **Precisão Macro (Macro Precision)** | **%.2f%%** | Proporção média de normas atribuídas a uma categoria que de fato pertencem a ela | Powers (2011) |\n",
+        r.precisaoMacro() * 100.0));
+    sb.append(String.format(Locale.US, "| **Recall Macro (Macro Recall)** | **%.2f%%** | Proporção média de normas de uma categoria que foram corretamente recuperadas | Powers (2011) |\n",
+        r.recallMacro() * 100.0));
+    sb.append(String.format(Locale.US, "| **Macro F1-score** | **%.4f** | Média harmônica dos F1 por classe; exige bom desempenho simultâneo em precisão e recall | Powers (2011); Chalkidis et al. (2022) |\n",
+        r.f1Macro()));
+    sb.append(String.format(Locale.US, "| **MCC Multiclasse (Matthews Coeff)** | **%.4f** | Coeficiente de correlação multiclasse [-1, +1] imune ao desbalanceamento temático | Jurman, Riccadonna & Furlanello (2012); Chicco & Jurman (2020) |\n",
+        r.matthewsCorrelationCoefficient()));
+    sb.append(String.format(Locale.US, "| *Acurácia Canônica (Assertividade Tradicional)* | *%.2f%%* (%d/%d) | Métrica convencional de acertos; pode ser excessivamente otimista sob classes desbalanceadas | Chicco & Jurman (2020) |\n",
+        r.acuraciaEquivalente() * 100.0, r.acertosEquivalentes(), r.totalNormasValidasCsv()));
+    sb.append(String.format(Locale.US, "| *Assertividade Exata (String Identical)* | *%.2f%%* (%d/%d) | Casamento idêntico estrito da string do rótulo | - |\n\n",
+        r.acuraciaExata() * 100.0, r.acertosExatos(), r.totalNormasValidasCsv()));
 
     sb.append("## Performance Detalhada por Classe Temática\n\n");
     sb.append("| Classe Temática | Esperado (CSV) | Predito (Banco) | TP | FP | FN | Precisão | Revocação | F1-Score |\n");
@@ -907,6 +1014,13 @@ public class ServicoAfericaoAssertividade {
       sb.append("- **Confiança/Score de Pertinência:** `").append(String.format(Locale.US, "%.4f", div.scorePertinencia() != null ? div.scorePertinencia() : 0.0)).append("`\n");
       sb.append("- **Ementa:** *\"").append(div.csv().ementa()).append("\"*\n\n");
     }
+
+    sb.append("## Referências Acadêmicas\n\n");
+    sb.append("- **CHALKIDIS, I. et al.** Multieurlex -- a multi-lingual and multi-label legal document classification dataset for zero-shot cross-lingual transfer. In: *Proceedings of EMNLP 2022*, p. 6974–6996, 2022.\n");
+    sb.append("- **CHICCO, D.; JURMAN, G.** The advantages of the Matthews correlation coefficient (MCC) over F1 score and accuracy in binary assessment. *BMC Genomics*, v. 21, n. 6, 2020.\n");
+    sb.append("- **GRIMMER, J.; STEWART, B. M.** Text as Data: The Promise and Pitfalls of Automatic Content Analysis Methods for Political Texts. *Political Analysis*, v. 21, n. 3, p. 267–297, 2013.\n");
+    sb.append("- **JURMAN, G.; RICCADONNA, S.; FURLANELLO, C.** A High-Performance Implementation of the Matthews Correlation Coefficient for Multi-Class Classification. *PLOS ONE*, v. 7, n. 8, e41882, 2012.\n");
+    sb.append("- **POWERS, D. M. W.** Evaluation: from precision, recall and F-measure to ROC, informedness, markedness and correlation. *Journal of Machine Learning Technologies*, v. 2, n. 1, p. 37–63, 2011.\n\n");
 
     try (FileWriter writer = new FileWriter(destino, StandardCharsets.UTF_8)) {
       writer.write(sb.toString());

@@ -29,9 +29,30 @@ public class RepositorioPerfilPolitico {
     this.gerenciadorConexao = gerenciadorConexao;
   }
 
-  public record InfoBasicaAutor(long id, String nome, String cargoPrincipal) {}
+  public record InfoBasicaAutor(
+      long id,
+      String nome,
+      String cargoPrincipal,
+      String dataPrimeiraNorma,
+      String dataUltimaNorma
+  ) {
+    public InfoBasicaAutor(long id, String nome, String cargoPrincipal) {
+      this(id, nome, cargoPrincipal, null, null);
+    }
+  }
 
-  public record ResumoAutorProlifico(long id, String nome, String cargo, int totalNormas) {}
+  public record ResumoAutorProlifico(
+      long id,
+      String nome,
+      String cargo,
+      int totalNormas,
+      String dataPrimeiraNorma,
+      String dataUltimaNorma
+  ) {
+    public ResumoAutorProlifico(long id, String nome, String cargo, int totalNormas) {
+      this(id, nome, cargo, totalNormas, null, null);
+    }
+  }
 
   public record DadoAtuacaoBruto(
       int totalNormas,
@@ -71,10 +92,14 @@ public class RepositorioPerfilPolitico {
                 ORDER BY COUNT(*) DESC
                 LIMIT 1),
                'AUTOR'
-             ) AS cargo_principal
+             ) AS cargo_principal,
+             MIN(n.dataOriginal) AS data_primeira_norma,
+             MAX(n.dataOriginal) AS data_ultima_norma
       FROM autores a
+      JOIN norma_autor na ON na.id_autor = a.id AND na.ativo = 1
+      JOIN normas n ON n.id = na.id_norma
       WHERE a.id = ?
-        AND EXISTS (SELECT 1 FROM norma_autor na WHERE na.id_autor = a.id AND na.ativo = 1)
+      GROUP BY a.id, a.nome
     """;
 
     try (Connection conexao = gerenciadorConexao.conectar();
@@ -85,7 +110,9 @@ public class RepositorioPerfilPolitico {
           return Optional.of(new InfoBasicaAutor(
               rs.getLong("id"),
               rs.getString("nome"),
-              rs.getString("cargo_principal")
+              rs.getString("cargo_principal"),
+              rs.getString("data_primeira_norma"),
+              rs.getString("data_ultima_norma")
           ));
         }
       }
@@ -522,9 +549,12 @@ public class RepositorioPerfilPolitico {
                 LIMIT 1),
                'AUTOR'
              ) AS cargo,
-             COUNT(DISTINCT na.id_norma) AS total_normas
+             COUNT(DISTINCT na.id_norma) AS total_normas,
+             MIN(n.dataOriginal) AS data_primeira_norma,
+             MAX(n.dataOriginal) AS data_ultima_norma
       FROM autores a
       JOIN norma_autor na ON na.id_autor = a.id AND na.ativo = 1
+      JOIN normas n ON n.id = na.id_norma
       GROUP BY a.id, a.nome
       ORDER BY total_normas DESC
       LIMIT ?
@@ -540,7 +570,9 @@ public class RepositorioPerfilPolitico {
               rs.getLong("id"),
               rs.getString("nome"),
               rs.getString("cargo"),
-              rs.getInt("total_normas")
+              rs.getInt("total_normas"),
+              rs.getString("data_primeira_norma"),
+              rs.getString("data_ultima_norma")
           ));
         }
       }

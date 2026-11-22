@@ -99,6 +99,10 @@ public class ServicoPerfilPoliticoTest {
     for (GrafoColaboracaoPolitica.NoAutor no : grafo.nos()) {
       assertNotNull(no.cargo());
       assertFalse(no.cargo().isBlank(), "Cargo não deve estar em branco para: " + no.nome());
+      assertNotNull(no.dataPrimeiraNorma(), "dataPrimeiraNorma não deve ser nula para: " + no.nome());
+      assertNotNull(no.dataUltimaNorma(), "dataUltimaNorma não deve ser nula para: " + no.nome());
+      assertTrue(no.dataPrimeiraNorma().matches("\\d{4}-\\d{2}-\\d{2}"), "Formato de dataPrimeiraNorma inválido: " + no.dataPrimeiraNorma());
+      assertTrue(no.dataUltimaNorma().matches("\\d{4}-\\d{2}-\\d{2}"), "Formato de dataUltimaNorma inválido: " + no.dataUltimaNorma());
     }
 
     // 1. Exportação DOT (Graphviz)
@@ -112,6 +116,8 @@ public class ServicoPerfilPoliticoTest {
     assertNotNull(json);
     assertTrue(json.contains("\"nodes\": ["));
     assertTrue(json.contains("\"links\": ["));
+    assertTrue(json.contains("\"dataPrimeiraNorma\":"));
+    assertTrue(json.contains("\"dataUltimaNorma\":"));
 
     // 3. Visualização em Console
     String visualConsole = grafo.gerarVisualizacaoConsole(10);
@@ -140,7 +146,17 @@ public class ServicoPerfilPoliticoTest {
     for (GrafoColaboracaoPolitica.NoAutor no : grafo.nos()) {
       assertNotNull(no.cargo());
       assertFalse(no.cargo().isBlank(), "O cargo do autor " + no.nome() + " não pode ser vazio");
+      assertNotNull(no.dataPrimeiraNorma(), "dataPrimeiraNorma não pode ser nula: " + no.nome());
+      assertNotNull(no.dataUltimaNorma(), "dataUltimaNorma não pode ser nula: " + no.nome());
+      assertTrue(no.dataPrimeiraNorma().compareTo(no.dataUltimaNorma()) <= 0,
+          "dataPrimeiraNorma deve ser anterior ou igual à dataUltimaNorma: " + no.nome());
     }
+
+    // Valida especificamente Leda Paulani (ID 1733)
+    var leda = grafo.nos().stream().filter(n -> n.id() == 1733).findFirst();
+    assertTrue(leda.isPresent());
+    assertEquals("2013-01-01", leda.get().dataPrimeiraNorma());
+    assertEquals("2015-02-27", leda.get().dataUltimaNorma());
 
     // Exporta para rede_colaboracao.json no diretório local e absoluto
     servicoPerfil.exportarGrafoJson(grafo, "rede_colaboracao.json", 1);

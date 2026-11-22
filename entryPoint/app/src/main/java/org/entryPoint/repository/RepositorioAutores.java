@@ -70,11 +70,13 @@ public class RepositorioAutores {
       INSERT INTO norma_autor (
         id_norma,
         id_autor,
-        cargo_autor
+        cargo_autor,
+        ativo
       )
-      VALUES (?, ?, ?)
+      VALUES (?, ?, ?, 1)
       ON CONFLICT(id_norma, id_autor) DO UPDATE SET
-        cargo_autor = excluded.cargo_autor
+        cargo_autor = excluded.cargo_autor,
+        ativo = 1
       """;
 
     try (Connection conexao = gerenciadorConexao.conectar();

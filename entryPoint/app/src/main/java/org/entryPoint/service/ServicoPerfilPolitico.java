@@ -228,7 +228,9 @@ public class ServicoPerfilPolitico {
           p.cargo(),
           p.totalNormas(),
           temaDominante,
-          grau
+          grau,
+          p.dataPrimeiraNorma(),
+          p.dataUltimaNorma()
       ));
     }
 
@@ -267,7 +269,9 @@ public class ServicoPerfilPolitico {
     List<DistribuicaoTopico> distCentro = repositorioPerfil.buscarDistribuicaoTematica(idAutor);
     String temaCentro = distCentro.isEmpty() ? "Geral" : distCentro.get(0).nomeTopico();
     int grauCentro = repositorioPerfil.contarParceirosDistintos(idAutor);
-    nos.put(idAutor, new GrafoColaboracaoPolitica.NoAutor(idAutor, info.nome(), info.cargoPrincipal(), 0, temaCentro, grauCentro));
+    nos.put(idAutor, new GrafoColaboracaoPolitica.NoAutor(
+        idAutor, info.nome(), info.cargoPrincipal(), 0, temaCentro, grauCentro,
+        info.dataPrimeiraNorma(), info.dataUltimaNorma()));
 
     var arestasBrutas = repositorioPerfil.buscarParesColaboracaoDoAutor(idAutor, pesoMinimoAresta);
     List<GrafoColaboracaoPolitica.ArestaColaboracao> arestas = new ArrayList<>();
@@ -277,11 +281,14 @@ public class ServicoPerfilPolitico {
       if (!nos.containsKey(idParceiro)) {
         var optParceiro = repositorioPerfil.buscarInfoBasicaAutor(idParceiro);
         String cargo = optParceiro.map(RepositorioPerfilPolitico.InfoBasicaAutor::cargoPrincipal).orElse("N/D");
+        String dataPri = optParceiro.map(RepositorioPerfilPolitico.InfoBasicaAutor::dataPrimeiraNorma).orElse(null);
+        String dataUlt = optParceiro.map(RepositorioPerfilPolitico.InfoBasicaAutor::dataUltimaNorma).orElse(null);
         List<DistribuicaoTopico> distP = repositorioPerfil.buscarDistribuicaoTematica(idParceiro);
         String temaP = distP.isEmpty() ? "Geral" : distP.get(0).nomeTopico();
         int grauP = repositorioPerfil.contarParceirosDistintos(idParceiro);
 
-        nos.put(idParceiro, new GrafoColaboracaoPolitica.NoAutor(idParceiro, ab.nome2(), cargo, 0, temaP, grauP));
+        nos.put(idParceiro, new GrafoColaboracaoPolitica.NoAutor(
+            idParceiro, ab.nome2(), cargo, 0, temaP, grauP, dataPri, dataUlt));
       }
 
       List<String> topicosComum = repositorioPerfil.obterTopicosCompartilhados(idAutor, idParceiro, 2);

@@ -807,6 +807,7 @@ public class PaginaWebGrafoTemplate {
       <div>
         <div id="drawer-nome" class="author-name">Nome do Autor</div>
         <div id="drawer-cargo" class="author-cargo">Cargo</div>
+        <div id="drawer-periodo" style="font-size: 11px; color: #A1A1AA; margin-top: 4px;"></div>
       </div>
       <button class="close-btn" id="btn-close-drawer">✕</button>
     </div>
@@ -1374,6 +1375,14 @@ public class PaginaWebGrafoTemplate {
         document.getElementById("drawer-cargo").innerText = no.dataOriginal.cargo || "AUTOR / VEREADOR";
         document.getElementById("stat-total-normas").innerText = no.dataOriginal.totalNormas || "0";
         document.getElementById("stat-parceiros-total").innerText = no.dataOriginal.degree || "0";
+        const elPeriodo = document.getElementById("drawer-periodo");
+        if (elPeriodo) {
+          if (no.dataOriginal.dataPrimeiraNorma && no.dataOriginal.dataUltimaNorma) {
+            elPeriodo.innerText = `📅 Período: ${no.dataOriginal.dataPrimeiraNorma} a ${no.dataOriginal.dataUltimaNorma}`;
+          } else {
+            elPeriodo.innerText = "";
+          }
+        }
       }
 
       // Buscar perfil detalhado em tempo real diretamente do banco via API

@@ -20,8 +20,14 @@ public record GrafoColaboracaoPolitica(
       String cargo,
       int totalNormas,
       String temaDominante,
-      int grauConexoes
-  ) {}
+      int grauConexoes,
+      String dataPrimeiraNorma,
+      String dataUltimaNorma
+  ) {
+    public NoAutor(long id, String nome, String cargo, int totalNormas, String temaDominante, int grauConexoes) {
+      this(id, nome, cargo, totalNormas, temaDominante, grauConexoes, null, null);
+    }
+  }
 
   public record ArestaColaboracao(
       long idOrigem,
@@ -82,10 +88,12 @@ public record GrafoColaboracaoPolitica(
     for (int i = 0; i < nos.size(); i++) {
       NoAutor n = nos.get(i);
       sb.append(String.format(
-          "    {\"id\": %d, \"name\": \"%s\", \"cargo\": \"%s\", \"totalNormas\": %d, \"temaDominante\": \"%s\", \"degree\": %d}%s\n",
+          "    {\"id\": %d, \"name\": \"%s\", \"cargo\": \"%s\", \"totalNormas\": %d, \"temaDominante\": \"%s\", \"degree\": %d, \"dataPrimeiraNorma\": \"%s\", \"dataUltimaNorma\": \"%s\"}%s\n",
           n.id(), escaparJson(n.nome()), escaparJson(n.cargo() != null ? n.cargo() : ""),
           n.totalNormas(), escaparJson(n.temaDominante() != null ? n.temaDominante() : ""),
           n.grauConexoes(),
+          escaparJson(n.dataPrimeiraNorma() != null ? n.dataPrimeiraNorma() : ""),
+          escaparJson(n.dataUltimaNorma() != null ? n.dataUltimaNorma() : ""),
           (i < nos.size() - 1 ? "," : "")));
     }
 

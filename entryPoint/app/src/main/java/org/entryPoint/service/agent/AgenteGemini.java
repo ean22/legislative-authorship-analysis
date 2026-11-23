@@ -313,9 +313,8 @@ public class AgenteGemini {
       3. REMOVER pontuações no início ou no fim (como '.', ';', ',', ']', '['. Ex: 'PREFEITO.' -> 'PREFEITO', 'PREFEITO;' -> 'PREFEITO').
       4. CORRIGIR fragmentações de sílabas, hífens de OCR e espaçamentos corrompidos (ex: 'FINAN-ÇAS' ou 'FINAN ÇAS' -> 'FINANCAS', 'PLANEJA MENTO' -> 'PLANEJAMENTO', 'ESPOR TES' -> 'ESPORTES', 'INFRA-ESTRUTURA' -> 'INFRAESTRUTURA').
       5. CORRIGIR palavras coladas e erros de digitação (ex: 'DOSNEGÓCIOS' -> 'DOS NEGOCIOS', 'MUNINICPAL' -> 'MUNICIPAL', 'SUSBSTITUTO' -> 'SUBSTITUTO', 'MUNICIPALDE' -> 'MUNICIPAL DE').
-      6. REMOVER nomes de outros autores inseridos indevidamente no cargo por falha de scraping (ex: 'SECRETÁRIO MUNICIPAL DE ESPORTES E LAZER ORLANDO LINDÓRIO DE FARIA, SECRETÁRIO MUNICIPAL DA CASA CIVIL.' -> 'SECRETARIO MUNICIPAL DE ESPORTES E LAZER').
-      7. PADRONIZAR designações de substituto e em exercício (ex: '= SUBSTITUTA' ou '-SUBSTITUTO' ou 'SUBSTITUTO' -> ' - SUBSTITUTO' / ' - SUBSTITUTA', 'EM EXERCICIO').
-      8. PADRONIZAR 'RESPONDENDO PELO CARGO SECRETARIO' para 'RESPONDENDO PELO CARGO DE SECRETARIO'.
+      6. PADRONIZAR designações de substituto e em exercício (ex: '= SUBSTITUTA' ou '-SUBSTITUTO' ou 'SUBSTITUTO' -> ' - SUBSTITUTO' / ' - SUBSTITUTA', 'EM EXERCICIO').
+      7. PADRONIZAR 'RESPONDENDO PELO CARGO SECRETARIO' para 'RESPONDENDO PELO CARGO DE SECRETARIO'.
 
       Entrada (JSON):
       %s
